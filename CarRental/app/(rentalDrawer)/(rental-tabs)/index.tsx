@@ -5,6 +5,7 @@ import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import AppLayout from "../../screens/AppLayout"; 
 import RentalAppLayout from "@/app/screens/rentalAppLayout";
+
 type HomeScreenNavigationProp = DrawerNavigationProp<any>;
 
 const RentalHomeScreen = () => {
@@ -15,7 +16,7 @@ const RentalHomeScreen = () => {
     {
       id: "1",
       name: "Tesla Model S",
-      image: "https://www.google.com/imgres?q=cars&imgurl=https%3A%2F%2Flookaside.fbsbx.com%2Flookaside%2Fcrawler%2Fmedia%2F%3Fmedia_id%3D100063859190322&imgrefurl=https%3A%2F%2Fwww.facebook.com%2FLuxuryCarsRentalsAndTours%2F&docid=ESraJKb687-fSM&tbnid=BJ4_0n76HLJYBM&vet=12ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA..i&w=718&h=727&hcb=2&ved=2ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA",
+      image: "https://example.com/tesla.jpg",
       price: "$80/day",
       fromDate: "2024-03-10",
       toDate: "2024-03-15",
@@ -25,7 +26,7 @@ const RentalHomeScreen = () => {
     {
       id: "2",
       name: "BMW i8",
-      image: "https://www.google.com/imgres?q=cars&imgurl=https%3A%2F%2Flookaside.fbsbx.com%2Flookaside%2Fcrawler%2Fmedia%2F%3Fmedia_id%3D100063859190322&imgrefurl=https%3A%2F%2Fwww.facebook.com%2FLuxuryCarsRentalsAndTours%2F&docid=ESraJKb687-fSM&tbnid=BJ4_0n76HLJYBM&vet=12ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA..i&w=718&h=727&hcb=2&ved=2ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA",
+      image: "https://example.com/bmw.jpg",
       price: "$100/day",
       fromDate: "2024-04-01",
       toDate: "2024-04-07",
@@ -35,7 +36,7 @@ const RentalHomeScreen = () => {
     {
       id: "3",
       name: "Mercedes Benz G-Wagon",
-      image: "https://www.google.com/imgres?q=cars&imgurl=https%3A%2F%2Flookaside.fbsbx.com%2Flookaside%2Fcrawler%2Fmedia%2F%3Fmedia_id%3D100063859190322&imgrefurl=https%3A%2F%2Fwww.facebook.com%2FLuxuryCarsRentalsAndTours%2F&docid=ESraJKb687-fSM&tbnid=BJ4_0n76HLJYBM&vet=12ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA..i&w=718&h=727&hcb=2&ved=2ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA",
+      image: "https://example.com/mercedes.jpg",
       price: "$150/day",
       fromDate: "2024-05-15",
       toDate: "2024-05-20",
@@ -45,47 +46,47 @@ const RentalHomeScreen = () => {
   ]);
 
   return (
-    <RentalAppLayout title="Dashboard">    <View style={styles.container}>
-      {/* Car List */}
-      {cars.length > 0 ? (
-        <FlatList
-          data={cars}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <Image source={{ uri: item.image }} style={styles.carImage} />
-              <View style={styles.cardContent}>
-                <Text style={styles.carName}>{item.name}</Text>
-                <Text style={styles.carPrice}>{item.price}</Text>
+    <RentalAppLayout title="Dashboard">
+      <View style={styles.container}>
+        {/* Car List */}
+        {cars.length > 0 ? (
+          <FlatList
+            data={cars}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.card}>
+                <Image source={{ uri: item.image }} style={styles.carImage} />
+                <View style={styles.cardContent}>
+                  <Text style={styles.carName}>{item.name}</Text>
+                  <Text style={styles.carPrice}>{item.price}</Text>
 
-                {/* Booking Details */}
-                <View style={styles.infoRow}>
-                  <Text style={styles.label}>Rental Company:</Text>
-                  <Text style={styles.value}>{item.rentalCompany}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.label}>Capacity:</Text>
-                  <Text style={styles.value}>{item.capacity} seats</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.label}>Booking Dates:</Text>
-                  <Text style={styles.value}>
-                    {item.fromDate} → {item.toDate}
-                  </Text>
+                  {/* Booking Details */}
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Rental Company:</Text>
+                    <Text style={styles.value}>{item.rentalCompany}</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Capacity:</Text>
+                    <Text style={styles.value}>{item.capacity} seats</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Booking Dates:</Text>
+                    <Text style={styles.value}>
+                      {item.fromDate} → {item.toDate}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          )}
-        />
-      ) : (
-        /* Empty State */
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Currently there are no cars added</Text>
-        </View>
-      )}
-    </View>
+            )}
+          />
+        ) : (
+          /* Empty State */
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Currently there are no cars added</Text>
+          </View>
+        )}
+      </View>
     </RentalAppLayout>
-
   );
 };
 

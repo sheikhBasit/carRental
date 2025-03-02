@@ -59,7 +59,7 @@ export default function TabLayout() {
         options={{
           title: "Trips",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="paperplane.fill" color={color} />
+            <IconSymbol size={28} name="car.fill" color={color} />
           ),
         }}
       />

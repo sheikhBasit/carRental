@@ -18,7 +18,7 @@ const RentalLoginScreen: React.FC = () => {
         console.log("Iasldnsa ",isLoggedIn);
         if (isLoggedIn) {
             console.log('Logged in');
-            router.push('/(rental-tabs)/addCarScreen');
+            router.push('/(rentalDrawer)/(rental-tabs)');
         } else {
             console.log('Not Logged In');
         }

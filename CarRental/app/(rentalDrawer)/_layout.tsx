@@ -49,7 +49,7 @@ export default function DrawerLayout() {
   >
     {/* Define your drawer screens here */}
     <Drawer.Screen
-      name="(tabs)" // Embed the tabs layout inside the drawer
+      name="(rental-tabs)" // Embed the tabs layout inside the drawer
       options={{
         title: "Home",
         drawerIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
