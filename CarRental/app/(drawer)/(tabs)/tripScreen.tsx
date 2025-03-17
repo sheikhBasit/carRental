@@ -1,92 +1,129 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList } from "react-native";
-
-import { Card, Title, Paragraph, Button } from "react-native-paper";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, Image, FlatList, ActivityIndicator } from "react-native";
+import { Button } from "react-native-paper";
 import { router } from "expo-router";
 import AppLayout from "../../screens/AppLayout";
+import { getStoredUserId } from "@/utils/storageUtil";
+import { AppConstants } from "@/constants/appConstants";
 
+type CarProps = {
+  id: string;
+  name: string;
+  image: string;
+  price: string;
+  fromDate: string;
+  toDate: string;
+  rentalCompany: string;
+  capacity: number;
+};
 
 const TripScreen = () => {
+  const [cars, setCars] = useState<CarProps[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const handleHomeNavigation = () => {
     router.push("/explore");
   };
-  const [cars, setCars] = useState([
-    {
-      id: "1",
-      name: "Tesla Model S",
-      image: "https://www.google.com/imgres?q=cars&imgurl=https%3A%2F%2Flookaside.fbsbx.com%2Flookaside%2Fcrawler%2Fmedia%2F%3Fmedia_id%3D100063859190322&imgrefurl=https%3A%2F%2Fwww.facebook.com%2FLuxuryCarsRentalsAndTours%2F&docid=ESraJKb687-fSM&tbnid=BJ4_0n76HLJYBM&vet=12ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA..i&w=718&h=727&hcb=2&ved=2ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA",
-      price: "$80/day",
-      fromDate: "2024-03-10",
-      toDate: "2024-03-15",
-      rentalCompany: "Tesla Rentals",
-      capacity: 5, // Number of seats
-    },
-    {
-      id: "2",
-      name: "BMW i8",
-      image: "https://www.google.com/imgres?q=cars&imgurl=https%3A%2F%2Flookaside.fbsbx.com%2Flookaside%2Fcrawler%2Fmedia%2F%3Fmedia_id%3D100063859190322&imgrefurl=https%3A%2F%2Fwww.facebook.com%2FLuxuryCarsRentalsAndTours%2F&docid=ESraJKb687-fSM&tbnid=BJ4_0n76HLJYBM&vet=12ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA..i&w=718&h=727&hcb=2&ved=2ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA",
-      price: "$100/day",
-      fromDate: "2024-04-01",
-      toDate: "2024-04-07",
-      rentalCompany: "Luxury Wheels",
-      capacity: 2,
-    },
-    {
-      id: "3",
-      name: "Mercedes Benz G-Wagon",
-      image: "https://www.google.com/imgres?q=cars&imgurl=https%3A%2F%2Flookaside.fbsbx.com%2Flookaside%2Fcrawler%2Fmedia%2F%3Fmedia_id%3D100063859190322&imgrefurl=https%3A%2F%2Fwww.facebook.com%2FLuxuryCarsRentalsAndTours%2F&docid=ESraJKb687-fSM&tbnid=BJ4_0n76HLJYBM&vet=12ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA..i&w=718&h=727&hcb=2&ved=2ahUKEwjx3N6-ydSLAxWbzDgGHfy6CrMQM3oECBsQAA",
-      price: "$150/day",
-      fromDate: "2024-05-15",
-      toDate: "2024-05-20",
-      rentalCompany: "Elite Rentals",
-      capacity: 7,
-    },
-  ]);
+
+  const fetchCompletedBookings = async () => {
+    try {
+      setLoading(true);
+      const userId = await getStoredUserId(); // Fetch userId using utility function
+      if (!userId) {
+        console.error("User ID not found in storage");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(
+        `${AppConstants.LOCAL_URL}/bookings/userBookings?userId=${userId}&status=completed`
+      );
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log("No bookings found for the user.");
+          setCars([]); // Set cars to an empty array
+          return;
+        }
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid response format");
+      }
+
+      // Format data to match CarProps
+      const formattedCars = data.map((booking: any) => {
+        const vehicle = booking.idVehicle || {};
+        const company = booking.company || {};
+
+        return {
+          id: booking._id,
+          name: `${vehicle.manufacturer || "Unknown"} ${vehicle.model || ""}`.trim(),
+          image: vehicle.carImageUrl || "https://via.placeholder.com/150",
+          price: vehicle.rent || "N/A",
+          fromDate: booking.from || "N/A",
+          toDate: booking.to || "N/A",
+          rentalCompany: company.companyName || "Unknown",
+          capacity: vehicle.capacity || "N/A",
+        };
+      });
+
+      setCars(formattedCars);
+    } catch (error) {
+      console.error("Error fetching completed bookings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCompletedBookings();
+  }, []);
 
   return (
     <AppLayout title="Your Trips">
       <View style={styles.container}>
-        <FlatList
-          data={cars}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-                         <Image source={{ uri: item.image }} style={styles.carImage} />
-                         <View style={styles.cardContent}>
-                           <Text style={styles.carName}>{item.name}</Text>
-                           <Text style={styles.carPrice}>{item.price}</Text>
-           
-                           {/* Booking Details */}
-                           <View style={styles.infoRow}>
-                             <Text style={styles.label}>Rental Company:</Text>
-                             <Text style={styles.value}>{item.rentalCompany}</Text>
-                           </View>
-                           <View style={styles.infoRow}>
-                             <Text style={styles.label}>Capacity:</Text>
-                             <Text style={styles.value}>{item.capacity} seats</Text>
-                           </View>
-                           <View style={styles.infoRow}>
-                             <Text style={styles.label}>Booking Dates:</Text>
-                             <Text style={styles.value}>
-                               {item.fromDate} → {item.toDate}
-                             </Text>
-                           </View>
-                         </View>
-                       </View>
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No past trips available.</Text>
-              <Button
-                mode="contained"
-                onPress={handleHomeNavigation}
-                style={styles.backButton}
-              >
-                Book New Car
-              </Button>
-            </View>
-          }
-        />
+        {loading ? (
+          <ActivityIndicator size="large" color="#FFF" />
+        ) : cars.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No completed trips available.</Text>
+            <Button mode="contained" onPress={handleHomeNavigation} style={styles.backButton}>
+              Book New Car
+            </Button>
+          </View>
+        ) : (
+          <FlatList
+            data={cars}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.card}>
+                <Image source={{ uri: item.image }} style={styles.carImage} />
+                <View style={styles.cardContent}>
+                  <Text style={styles.carName}>{item.name}</Text>
+                  <Text style={styles.carPrice}>${item.price} per day</Text>
+
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Rental Company:</Text>
+                    <Text style={styles.value}>{item.rentalCompany}</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Capacity:</Text>
+                    <Text style={styles.value}>{item.capacity} seats</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Booking Dates:</Text>
+                    <Text style={styles.value}>
+                      {item.fromDate} → {item.toDate}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          />
+        )}
       </View>
     </AppLayout>
   );
@@ -95,22 +132,9 @@ const TripScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#003366", // Background color updated
+    backgroundColor: "#003366",
     padding: 10,
   },
-  image: {
-    height: 180,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "white", // Text color updated
-  },
-  detail: {
-    fontSize: 14,
-    color: "white", // Text color updated
-  },
-  /* Car Card Styles */
   card: {
     backgroundColor: "#1E5A82",
     borderRadius: 10,
@@ -134,8 +158,6 @@ const styles = StyleSheet.create({
     color: "#ADD8E6",
     marginTop: 5,
   },
-
-  /* Booking Details */
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -165,7 +187,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: "white", // Text color updated
+    color: "white",
     marginBottom: 10,
   },
 });

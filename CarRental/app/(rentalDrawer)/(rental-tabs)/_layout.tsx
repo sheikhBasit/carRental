@@ -46,11 +46,29 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="addCarScreen"
+        name="carScreen"
         options={{
-          title: "Add Car",
+          title: "Cars",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="car.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="driverScreen"
+        options={{
+          title: "Drivers",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="paperclip.circle" color={color} />
+          ),
+        }}
+      />
+            <Tabs.Screen
+        name="activeBookings"
+        options={{
+          title: "Bookings",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="paperclip.circle.fill" color={color} />
           ),
         }}
       />

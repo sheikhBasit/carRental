@@ -1,12 +1,16 @@
 // app/start.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import Button from '../../components/ui/Button';
 
 const StartScreen: React.FC = () => {
+    const[permission,setPermission]=useState(false);
     const router = useRouter();
-
+    
+    if(!permission){
+        <View></View>
+    }
     return (
         <ImageBackground source={require('../../assets/images/background.png')} style={styles.background}>
             <View style={styles.container}>
@@ -47,19 +51,20 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#fff',
+        color: '#000',
         textAlign: 'center',
         marginBottom: 10,
     },
     subtitle: {
         fontSize: 18,
-        color: '#fff',
+        color: '#000',
         textAlign: 'center',
         marginBottom: 40,
     },
     button: {
         width: '80%',
         marginBottom: 20,
+        color: "#003366"
     },
 });
 

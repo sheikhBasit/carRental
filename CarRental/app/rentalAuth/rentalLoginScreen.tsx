@@ -1,28 +1,64 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState,useEffect } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import InputField from '../../components/ui/InputField';
 import Button from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { AppConstants } from '@/constants/appConstants';
+import { loadCompanyId, saveCompanyId } from '@/utils/storageUtil';
 
 const RentalLoginScreen: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [companyId,setCompanyId] = useState('');
+    const [isLoading,setIsLoading] = useState(false);
     const router = useRouter();
+    useEffect(() => {
+        // Load city from AsyncStorage when the component mounts
+        const fetchCompanyId = async () => {
+            const storedCity = await loadCompanyId();
+            if (storedCity) {
+                setCompanyId(storedCity);
+            }
+        };
+        fetchCompanyId();
+    }, []);
 
     const handleLogin = async () => {
-        console.log('Logging in with:', email, password);
-        await AsyncStorage.setItem('isLoggedIn', "true");
-        const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
-        console.log("Iasldnsa ",isLoggedIn);
-        if (isLoggedIn) {
-            console.log('Logged in');
-            router.push('/(rentalDrawer)/(rental-tabs)');
-        } else {
-            console.log('Not Logged In');
+        try {
+            const response = await fetch(`${AppConstants.LOCAL_URL}/rental-companies/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: password,
+                }),
+            });
+    
+            const data = await response.json();
+    
+            if (response.ok) {
+                console.log('Login successful:', data);
+                await AsyncStorage.setItem('isLoggedIn', "true");
+                // Store companyId if returned from API
+                if (data.company._id) {
+                    await saveCompanyId(data.company._id);
+                    setCompanyId(data.company._id);
+                }
+                router.push('/(rentalDrawer)/(rental-tabs)');
+            } else {
+                console.log('Login failed:', data.message);
+                alert('Login failed: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error logging in:', error);
+            alert('Something went wrong. Please try again later.');
         }
     };
+    
 
     const handleGoogleLogin = () => {
         console.log('Logging in with Google');
@@ -33,7 +69,7 @@ const RentalLoginScreen: React.FC = () => {
     };
 
     const handleSignUp = () => {
-        router.push('/auth/signUpScreen');
+        router.push('/rentalAuth/rentalSignUpScreen');
     };
 
     return (
@@ -70,8 +106,18 @@ const RentalLoginScreen: React.FC = () => {
                         <Text style={styles.forgotPassword}>Forgot Password?</Text>
                     </TouchableOpacity>
                     
-                    <Button title="Log In" onPress={handleLogin} style={styles.loginButton} />
-
+             {/* Sign Up Button with Loader */}
+             <TouchableOpacity
+               style={[styles.button, isLoading && styles.buttonDisabled]}
+               onPress={handleLogin}
+               disabled={isLoading}
+             >
+               {isLoading ? (
+                 <ActivityIndicator color="white" />
+               ) : (
+                 <Text style={styles.buttonText}>Login</Text>
+               )}
+             </TouchableOpacity>
                     <Text style={styles.signUpText}>
                         Don't have an account?{' '}
                         <TouchableOpacity onPress={handleSignUp}>
@@ -117,6 +163,22 @@ const styles = StyleSheet.create({
         marginVertical: 15,
         textAlign: 'center',
     },
+    button: {
+        marginTop: 10,
+        backgroundColor: "#003366",
+        padding: 15,
+        borderRadius: 5,
+        alignItems: "center",
+      },
+      buttonDisabled: {
+        backgroundColor: "#cccccc", // Disabled button color
+      },
+      buttonText: {
+        color: "white",
+        fontSize: 16,
+        fontWeight: "bold",
+      },
+    
     formContainer: {
         backgroundColor: "white",
         padding: 20,

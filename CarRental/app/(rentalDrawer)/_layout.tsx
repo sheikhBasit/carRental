@@ -56,6 +56,20 @@ export default function DrawerLayout() {
       }}
     />
     <Drawer.Screen
+      name="addCarScreen"
+      options={{
+        title: "Add Cars",
+        drawerIcon: ({ color, size }) => <Ionicons name="car" size={size} color={color} />,
+      }}
+    />
+    <Drawer.Screen
+      name="addDriverScreen"
+      options={{
+        title: "Add Drivers",
+        drawerIcon: ({ color, size }) => <Ionicons name="add-circle" size={size} color={color} />,
+      }}
+    />
+    <Drawer.Screen
       name="contact"
       options={{
         title: "Contact Us",
