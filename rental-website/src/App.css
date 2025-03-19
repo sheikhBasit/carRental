@@ -1,0 +1,34 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+.custom-footer {
+  background-color: #003366 !important;
+}
+
+.car-card {
+  min-width: 300px;
+  cursor: pointer;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.car-card:hover {
+  transform: translateY(-5px) scale(1.07); /* Slight lift and pop-up effect */
+  box-shadow: 0 12px 24px rgba(0, 0, 255, 0.5); /* Soft blue glow effect */
+  /* border: 2px solid rgba(0, 0, 255, 0.4); */
+}
+
+/* Optional: Smooth Image Effect */
+.car-card img {
+  transition: transform 0.3s ease-in-out;
+}
+
+.car-card:hover img {
+  transform: scale(1.1); /* Zoom in image on hover */
+}
+
+

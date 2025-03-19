@@ -1,0 +1,133 @@
+/* Base styles */
+.book-now-container {
+    width: 100%;
+    padding: 20px;
+    min-height: 100vh;
+    text-align: center; /* Center all text in the container */
+  }
+  
+  
+  .book-now-content {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center; /* Center all text in the content */
+  }
+  
+  .car-image {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .car-details {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .car-details h1 {
+    font-size: 2rem;
+    color: #003366;
+  }
+  
+  .car-details p {
+    font-size: 1.5rem;
+    color: #666;
+  }
+  
+  .date-pickers {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    justify-content: center; /* Center date pickers horizontally */
+  }
+  
+  .date-pickers label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    text-align: center; /* Center text in labels */
+  }
+  
+  .date-pickers input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    text-align: center; /* Center text in inputs */
+  }
+  
+  .intercity-switch {
+    margin-bottom: 20px;
+    text-align: center; /* Center intercity switch */
+  }
+  
+  .intercity-switch label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center; /* Center label content */
+  }
+  
+  .city-name-input input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center; /* Center text in input */
+  }
+  
+  .driver-selection {
+    margin-bottom: 20px;
+    text-align: center; /* Center driver selection */
+  }
+  
+  .drivers-list {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center; /* Center driver cards horizontally */
+  }
+  
+  .driver-card {
+    width: 150px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: center; /* Center text in driver cards */
+  }
+  
+  .driver-card.selected {
+    border-color: #003366;
+    background-color: #f0f8ff;
+  }
+  
+  .driver-image {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin-bottom: 10px;
+  }
+  
+  .confirm-button {
+    width: 100%;
+    padding: 15px;
+    background-color: #003366;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    text-align: center; /* Center text in button */
+  }
+  
+  .confirm-button:hover {
+    background-color: #002244;
+  }

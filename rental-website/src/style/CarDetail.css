@@ -1,0 +1,190 @@
+/* Base styles */
+.car-detail-container {
+  width: 100%;
+  padding: 20px;
+  margin-top: 20px;
+  color: #fff;
+}
+
+
+.car-detail-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+  gap: 20px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.car-image-container {
+  width: 40%;
+}
+
+.car-image {
+  width: 100%;
+  height: 500px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.car-details {
+  width: 60%;
+  padding: 20px;
+  color: #003366;
+}
+
+.car-model {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #003366;
+}
+
+.car-manufacturer,
+.car-speed,
+.car-fuel {
+  font-size: 1.2rem;
+  color: #666;
+  margin-top: 10px;
+}
+
+.car-rating {
+  color: #ffd700;
+  font-size: 1.5rem;
+  margin-top: 10px;
+}
+
+.rental-price {
+  display: flex;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.price {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #003366;
+}
+
+.book-now-button {
+  background-color: #003366;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  margin-left: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.book-now-button:hover {
+  background-color: #002244;
+}
+
+.company-info {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.company-name {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #003366;
+}
+
+.company-location,
+.company-contact {
+  font-size: 1.1rem;
+  color: #666;
+  margin-top: 10px;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .car-detail-content {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .car-image-container {
+    width: 100%;
+  }
+
+  .car-image {
+    height: 300px; /* Adjust height for smaller screens */
+  }
+
+  .car-details {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .car-model {
+    font-size: 2rem;
+  }
+
+  .car-manufacturer,
+  .car-speed,
+  .car-fuel {
+    font-size: 1rem;
+  }
+
+  .price {
+    font-size: 1.5rem;
+  }
+
+  .book-now-button {
+    padding: 8px 16px;
+  }
+
+  .company-info {
+    padding: 10px;
+  }
+
+  .company-name {
+    font-size: 1.2rem;
+  }
+
+  .company-location,
+  .company-contact {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .car-image {
+    height: 250px; /* Further adjust height for mobile screens */
+  }
+
+  .car-model {
+    font-size: 1.8rem;
+  }
+
+  .car-manufacturer,
+  .car-speed,
+  .car-fuel {
+    font-size: 0.9rem;
+  }
+
+  .price {
+    font-size: 1.2rem;
+  }
+
+  .book-now-button {
+    padding: 6px 12px;
+  }
+
+  .company-name {
+    font-size: 1rem;
+  }
+
+  .company-location,
+  .company-contact {
+    font-size: 0.9rem;
+  }
+}
