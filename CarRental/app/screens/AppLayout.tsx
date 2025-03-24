@@ -12,21 +12,12 @@ interface AppLayoutProps {
 const AppLayout: React.FC<AppLayoutProps> = ({ children, title }) => {
   const navigation = useNavigation<DrawerNavigationProp<any>>();
 
-  const toggleDrawer = () => {
-    if (navigation.dispatch) {
-      navigation.dispatch(DrawerActions.toggleDrawer());
-    } else {
-      console.warn("Drawer navigator is not available.");
-    }
-  };
 
   return (
     <View style={styles.container}>
       {/* App Bar */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={toggleDrawer}>
-          <Ionicons name="menu" size={24} color="#FFF" />
-        </TouchableOpacity>
+
         <Text style={styles.title}>{title}</Text>
       </View>
 
@@ -46,8 +37,8 @@ const styles = StyleSheet.create({
     marginTop: 40,
     backgroundColor: "#003366",
   },
-  title: { fontSize: 20, fontWeight: "bold", color: "#FFF", flex: 1, textAlign: "center" },
-  content: { flex: 1, padding: 10 },
+  title: { fontSize: 24, fontWeight: "bold", color: "#FFF", flex: 1, textAlign: "left" },
+  content: { flex: 1, },
 });
 
 export default AppLayout;

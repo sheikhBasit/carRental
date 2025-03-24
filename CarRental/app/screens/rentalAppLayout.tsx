@@ -24,9 +24,7 @@ const RentalAppLayout: React.FC<RentalAppLayoutProps> = ({ children, title }) =>
     <View style={styles.container}>
       {/* App Bar */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={toggleDrawer}>
-          <Ionicons name="menu" size={24} color="#FFF" />
-        </TouchableOpacity>
+
         <Text style={styles.title}>{title}</Text>
       </View>
 
@@ -40,13 +38,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#003366" },
   header: {
     flexDirection: "row",
-    alignItems: "center",
+
     justifyContent: "space-between",
-    padding: 15,
-    marginTop: 40,
+    
+    marginTop: 60,
     backgroundColor: "#003366",
   },
-  title: { fontSize: 20, fontWeight: "bold", color: "#FFF", flex: 1, textAlign: "center" },
+  title: { fontSize: 20, fontWeight: "bold", color: "#FFF", flex: 1, marginLeft: 40 },
   content: { flex: 1, padding: 10 },
 });
 

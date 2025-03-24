@@ -16,6 +16,7 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import RentalAppLayout from "@/app/screens/rentalAppLayout";
 import { AppConstants } from "@/constants/appConstants";
+import { Ionicons } from "@expo/vector-icons";
 
 // Define the navigation types
 type RootStackParamList = {
@@ -148,6 +149,9 @@ const EditDriverScreen = () => {
 
   return (
     <RentalAppLayout title="Edit Driver">
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
       <ScrollView style={styles.container}>
         <Image source={{ uri: driver.profileimg }} style={styles.driverImage} />
 
@@ -224,6 +228,11 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#003366",
     
+  },backButton:{
+    position: "absolute",
+    top: 40,
+    left: 20,
+    zIndex: 1,
   },
   loadingContainer: {
     flex: 1,

@@ -7,6 +7,7 @@ import Button from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { AppConstants } from '@/constants/appConstants';
 import { loadCompanyId, saveCompanyId } from '@/utils/storageUtil';
+// import { registerForPushNotifications}  from '@/utils/useNotification';
 
 const RentalLoginScreen: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -44,11 +45,17 @@ const RentalLoginScreen: React.FC = () => {
                 console.log('Login successful:', data);
                 await AsyncStorage.setItem('isLoggedIn', "true");
                 // Store companyId if returned from API
+            //     const expoPushToken = await registerForPushNotifications();
+            // console.log('Expo Push Token:', expoPushToken);
+            // if (expoPushToken) {
+            //   await storeExpoPushToken(data.company._id, expoPushToken);
+            // }
+      
                 if (data.company._id) {
                     await saveCompanyId(data.company._id);
                     setCompanyId(data.company._id);
                 }
-                router.push('/(rentalDrawer)/(rental-tabs)');
+                router.push('/(rental-tabs)');
             } else {
                 console.log('Login failed:', data.message);
                 alert('Login failed: ' + data.message);
@@ -58,6 +65,28 @@ const RentalLoginScreen: React.FC = () => {
             alert('Something went wrong. Please try again later.');
         }
     };
+
+    const storeExpoPushToken = async (companyId:string, expoPushToken:string) => {
+        try {
+            const fcmToken = expoPushToken;
+          const response = await fetch(`${AppConstants.LOCAL_URL}/rental-companies/${companyId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ fcmToken }),
+          });
+      
+          const data = await response.json();
+          if (response.ok) {
+            console.log('Expo push token updated successfully:', data);
+          } else {
+            console.error('Failed to update Expo push token:', data.message);
+          }
+        } catch (error) {
+          console.error('Error updating Expo push token:', error);
+        }
+      };
     
 
     const handleGoogleLogin = () => {

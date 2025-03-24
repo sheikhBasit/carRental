@@ -174,7 +174,7 @@ const SignUpScreen: React.FC = () => {
       // Store the user ID in local storage or state for future use
       console.log("User created successfully! User ID:", userId);
 
-        router.push("/(drawer)/(tabs)");
+        router.push("./verification"); // Redirect to verification screen
       } else {
         Alert.alert("Error", result.message || "Sign-up failed. Please try again.");
       }
@@ -188,7 +188,7 @@ const SignUpScreen: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <ImageBackground source={require("../../assets/images/signup.png")} style={styles.backgroundImage}>
+      <ImageBackground source={require("../../assets/images/signUp.jpg")} style={styles.backgroundImage}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
