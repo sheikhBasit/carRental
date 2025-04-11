@@ -26,7 +26,7 @@ const initializePaymentSheet = async (onSuccess: () => void): Promise<void> => {
 
     const { error } = await initPaymentSheet({
       paymentIntentClientSecret: clientSecret, // Corrected placement
-      merchantDisplayName: "Your Business Name",
+      merchantDisplayName: "Bilal",
     });
 
     if (error) {
