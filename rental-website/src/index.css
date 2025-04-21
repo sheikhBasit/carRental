@@ -1,3 +1,4 @@
+@import "tailwindcss";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -18,6 +19,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  
 }
 
 /* Links */
@@ -32,12 +34,8 @@ a:hover {
 
 /* Body Styling */
 body {
-  min-width: 320px;
-  min-height: 100vh;
-  width: 100%;
-  background-color: #646cff;
-  background: #213547;
-  color: #747bff;
+  background-color: white;
+  background: #fff;
 }
 
 /* Headings */

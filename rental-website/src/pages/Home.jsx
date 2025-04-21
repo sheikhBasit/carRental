@@ -22,8 +22,8 @@ const Home = () => {
       try {
         const city = Cookies.get("city"); // Get city from cookies
         console.log("Home City", city);
-
-        const response = await fetch(`http://192.168.100.17:5000/vehicles/getVehicle?city=${city}`);
+// http://192.168.100.17:5000
+        const response = await fetch(`https://car-rental-backend-black.vercel.app/vehicles/getVehicle?city=${city}`);
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }

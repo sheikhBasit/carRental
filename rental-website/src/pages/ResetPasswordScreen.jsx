@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AppConstants } from '@/constants/appConstants';
 
 const ResetPasswordScreen = () => {
   const navigate = useNavigate();
@@ -17,7 +16,7 @@ const ResetPasswordScreen = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`${AppConstants.LOCAL_URL}/users/reset-password/${token}`, {
+      const response = await fetch(`https://car-rental-backend-black.vercel.app/users/reset-password/${token}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

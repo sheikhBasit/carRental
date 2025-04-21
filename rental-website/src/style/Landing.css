@@ -1,0 +1,362 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .turo-landing-page {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  
+  /* Hero Section */
+  .hero-container {
+    position: relative;
+  }
+  
+  .top-menu {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 1rem;
+    display: flex;
+    gap: 1rem;
+    z-index: 10;
+  }
+  
+  .top-menu button {
+    color: white;
+    background: none;
+    border: none;
+    font-weight: 600;
+  }
+  
+  .menu-button {
+    border: 1px solid white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+  }
+  
+  .hero-image-container {
+    position: relative;
+  }
+  
+  .hero-image {
+    width: 100%;
+    height: 500px;
+    object-fit: cover;
+  }
+  
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    text-align: center;
+  }
+  
+  .hero-overlay h1 {
+    font-size: 3rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+  }
+  
+  .hero-overlay p {
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+  }
+  
+  .search-box {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 900px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  
+  .search-input-container {
+    grid-column: span 3;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 4px;
+  }
+  
+  .date-select {
+    position: relative;
+  }
+  
+  .date-select select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .date-icons {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 0.5rem;
+    color: #888;
+    pointer-events: none;
+  }
+  
+  .search-button {
+    grid-column: span 3;
+    background-color: #7c3aed;
+    color: white;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 4px;
+  }
+  
+  /* Car Gallery */
+  .car-gallery {
+    padding: 2rem;
+  }
+  
+  .car-gallery-scroll {
+    display: flex;
+    overflow-x: auto;
+    gap: 1rem;
+    padding-bottom: 1rem;
+  }
+  
+  .car-gallery-image {
+    flex-shrink: 0;
+    border-radius: 4px;
+  }
+  
+  /* Browse by Make */
+  .browse-by-make, .browse-by-destination {
+    padding: 2rem;
+  }
+  
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .section-header h2 {
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+  
+  .nav-icons {
+    display: flex;
+    gap: 0.5rem;
+    color: #888;
+  }
+  
+  .car-makes, .destinations {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .car-make, .destination {
+    text-align: center;
+  }
+  
+  .car-make img, .destination-icon {
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+  
+  .destination-icon {
+    width: 6rem;
+    height: 6rem;
+    background-color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .destination-icon img {
+    width: 4rem;
+    height: 4rem;
+  }
+  
+  /* Fuel Your Daydreams */
+  .fuel-daydreams {
+    text-align: center;
+    padding: 2rem;
+  }
+  
+  .fuel-daydreams h2 {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+  }
+  
+  .fuel-daydreams p {
+    margin-bottom: 1.5rem;
+  }
+  
+  .fuel-daydreams button {
+    background-color: #7c3aed;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+  }
+  
+  /* Blog Section */
+  .blog-section {
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+  
+  .blog-post {
+    position: relative;
+  }
+  
+  .blog-post img {
+    width: 100%;
+    border-radius: 4px;
+  }
+  
+  .blog-post-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 1.5rem;
+  }
+  
+  .blog-post-overlay h3 {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+  
+  .blog-post-overlay button {
+    background: none;
+    border: none;
+    color: white;
+    text-decoration: underline;
+    padding: 0;
+  }
+  
+  /* Book & Host Actions */
+  .book-host-actions {
+    padding: 2rem;
+    background-color: #f9fafb;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+  
+  .action-card {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .action-icon {
+    width: 6rem;
+    height: 6rem;
+    background-color: #f3e8ff;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 1rem;
+  }
+  
+  .action-icon-inner {
+    width: 4rem;
+    height: 4rem;
+    background-color: #e9d5ff;
+    border-radius: 50%;
+  }
+  
+  .action-card h3 {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Footer */
+  .site-footer {
+    padding: 2rem;
+    background-color: white;
+  }
+  
+  .footer-columns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+  }
+  
+  .footer-columns h4 {
+    font-weight: bold;
+    margin-bottom: 1rem;
+  }
+  
+  .footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .footer-links p {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+  
+  .footer-apps {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .app-stores {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .social-icons {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .social-icon {
+    width: 2rem;
+    height: 2rem;
+    background-color: #e5e7eb;
+    border-radius: 50%;
+  }
+  
+  .footer-legal {
+    font-size: 0.875rem;
+  }
+  
+  .legal-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }

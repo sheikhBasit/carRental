@@ -1,8 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import "../style/BookNow.css"; // Import the CSS file for styling
+import "../style/BookNow.css";
+import { loadStripe } from "@stripe/stripe-js";
+import { CardElement, useStripe, useElements, Elements } from "@stripe/react-stripe-js";
 
-const API_URL = "http://192.168.100.17:5000/bookings/postBooking";
+const stripePromise = loadStripe("pk_test_51RCixfPOwJcw4TunDpaIvFjYc3FWO69gD7ivHSBQKgR4vPWWzhIy0oqfvnilYSe3dlkdwQCvGMUvikRPAWw1BKYX00NnJmVGqW");
+
+const API_URL = "https://car-rental-backend-black.vercel.app/bookings/postBooking";
+
+const PaymentForm = ({ handleConfirmBooking }) => {
+  const _stripe = useStripe();
+  const _elements = useElements();
+
+  return (
+    <div className="payment-form">
+      <CardElement />
+      <button className="confirm-button" onClick={handleConfirmBooking}>
+        Confirm Booking
+      </button>
+    </div>
+  );
+};
 
 const BookNow = () => {
   const { id } = useParams();
@@ -16,19 +34,21 @@ const BookNow = () => {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   // Fetch car details
   useEffect(() => {
     const fetchCarDetails = async () => {
       try {
-        const response = await fetch(`http://192.168.100.17:5000/vehicles/${id}`);
+        const response = await fetch(`https://car-rental-backend-black.vercel.app/vehicles/${id}`);
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }
         const data = await response.json();
         setCar(data);
       } catch (error) {
-        setError("Failed to fetch car details.",error);
+        setError("Failed to fetch car details.");
+        console.error(error);
       }
     };
 
@@ -45,7 +65,7 @@ const BookNow = () => {
 
       try {
         const response = await fetch(
-          `http://192.168.100.17:5000/drivers/company?company=${car.company._id}`
+          `https://car-rental-backend-black.vercel.app/drivers/company?company=${car.company._id}`
         );
         const result = await response.json();
 
@@ -55,7 +75,8 @@ const BookNow = () => {
           setError("Failed to fetch drivers.");
         }
       } catch (error) {
-        setError("Error fetching drivers. Please try again.",error);
+        setError("Error fetching drivers. Please try again.");
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -78,49 +99,101 @@ const BookNow = () => {
     setSelectedDriver(driverId === selectedDriver ? "" : driverId);
   };
 
-  // Handle booking confirmation
+  const handlePaymentInitiation = () => {
+    setShowPaymentForm(true);
+  };
+
   const handleConfirmBooking = async () => {
     if (!car) {
       alert("Car details are missing!");
       return;
     }
 
-    const userId = localStorage.getItem("userId"); // Assuming userId is stored in localStorage
+    const userId = localStorage.getItem("userId");
     if (!userId) {
       alert("User not logged in.");
       return;
     }
 
-    const bookingData = {
-      idVehicle: car._id,
-      user: userId,
-      company: car.company._id || null,
-      driver: selectedDriver || null,
-      from: fromDate.toISOString().split("T")[0],
-      to: toDate.toISOString().split("T")[0],
-      intercity,
-      cityName: intercity ? "" : cityName,
-      status: "pending",
-    };
+    // Calculate total amount (days * rent)
+    const days = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) || 1;
+    const amount = days * car.rent;
 
     try {
-      const response = await fetch(API_URL, {
+      // 1. First create the booking
+      const bookingResponse = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookingData),
+        body: JSON.stringify({
+          idVehicle: car._id,
+          user: userId,
+          company: car.company._id || null,
+          driver: selectedDriver || null,
+          from: fromDate.toISOString().split("T")[0],
+          to: toDate.toISOString().split("T")[0],
+          intercity,
+          cityName: intercity ? "" : cityName,
+          status: "pending",
+          amount
+        }),
       });
 
-      const result = await response.json();
+      const bookingResult = await bookingResponse.json();
 
-      if (response.ok) {
-        alert("Booking Confirmed!");
-        navigate("/"); // Redirect to home page
-      } else {
-        alert(result.error || "Booking failed!");
+      if (!bookingResponse.ok) {
+        throw new Error(bookingResult.error || "Booking failed!");
+      }
+
+      // 2. Create payment intent
+      const paymentResponse = await fetch("https://car-rental-backend-black.vercel.app/stripe/create-payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: bookingResult._id,
+          amount,
+          currency: "usd"
+        }),
+      });
+
+      const paymentData = await paymentResponse.json();
+
+      if (!paymentResponse.ok) {
+        throw new Error(paymentData.message || "Payment setup failed");
+      }
+
+      // 3. Confirm payment with Stripe
+      const stripe = await stripePromise;
+      const { error, paymentIntent } = await stripe.confirmCardPayment(paymentData.clientSecret, {
+        payment_method: {
+          card: Elements.getElement(CardElement),
+          billing_details: {
+            name: "Customer Name",
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (paymentIntent.status === 'succeeded') {
+        // 4. Confirm payment on backend
+        await fetch("https://car-rental-backend-black.vercel.app/stripe/confirm-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentIntentId: paymentIntent.id,
+            bookingId: bookingResult._id,
+            userId
+          }),
+        });
+
+        alert("Booking and payment confirmed!");
+        navigate("/bookings");
       }
     } catch (error) {
       console.error("Booking Error:", error);
-      alert("Failed to confirm booking. Try again.");
+      alert(error.message || "Failed to complete booking. Please try again.");
     }
   };
 
@@ -129,15 +202,16 @@ const BookNow = () => {
 
   return (
     <div className="book-now-container">
-      
-
       <div className="book-now-content">
         {/* Car Image */}
         <img src={car.carImageUrl} alt={car.model} className="car-image" />
 
         {/* Car Details */}
         <div className="car-details">
-          <h1>{car.manufacturer} {car.model}</h1>
+          <h1>
+            {car.manufacturer.charAt(0).toUpperCase() + car.manufacturer.slice(1)}{" "}
+            {car.model.charAt(0).toUpperCase() + car.model.slice(1)}
+          </h1>
           <p>${car.rent}/day</p>
         </div>
 
@@ -210,10 +284,16 @@ const BookNow = () => {
           <p>No drivers available.</p>
         )}
 
-        {/* Confirm Booking Button */}
-        <button className="confirm-button" onClick={handleConfirmBooking}>
-          Confirm Booking
-        </button>
+        {/* Payment Section */}
+        {showPaymentForm ? (
+          <Elements stripe={stripePromise}>
+            <PaymentForm handleConfirmBooking={handleConfirmBooking} />
+          </Elements>
+        ) : (
+          <button className="confirm-button" onClick={handlePaymentInitiation}>
+            Proceed to Payment
+          </button>
+        )}
       </div>
     </div>
   );
