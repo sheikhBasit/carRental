@@ -79,7 +79,7 @@ const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment }) =
       <button 
         type="button" 
         onClick={onCancel}
-        className="w-full mt-2 bg-gray-200 text-gray-800 py-2 rounded"
+        className="w-full mt-2 bg-gray-200 text-white py-2 rounded"
       >
         Cancel
       </button>

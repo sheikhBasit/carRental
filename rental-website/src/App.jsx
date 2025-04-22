@@ -29,6 +29,9 @@ import AccountPage from "./pages/Account";
 // import BookNow from "./pages/BookNow";
 import { CookiesProvider } from 'react-cookie';
 import BookingDetail from "./pages/BookingDetail";
+import MotorwayGuide from "./pages/Guide";
+import NorthernGuide from "./pages/ReadMore";
+import ExploreRoadTrips from "./pages/Explore";
 
 function Layout() {
   const location = useLocation();
@@ -65,6 +68,12 @@ function Layout() {
           <Route path="/service" element={<Service />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/about" element={<AboutUs />} />
+          
+          <Route path="/guide" element={<MotorwayGuide />} />
+          <Route path="/explore" element={<ExploreRoadTrips />} />
+
+          <Route path="/readmore" element={<NorthernGuide />} />
+
           <Route path="/auth/reset-password/:token" element={<ResetPasswordScreen />} />
         </Routes>
       </main>

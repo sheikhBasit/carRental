@@ -46,9 +46,6 @@ const SideMenu = ({ isOpen, onClose }) => {
       case 'Contact support':
         navigate('/contact');
         break;
-      case 'Legal':
-        navigate('/legal');
-        break;
       case 'Log out':
         // Handle logout logic here
         console.log('Logging out');

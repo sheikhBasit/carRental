@@ -8,18 +8,19 @@ const LandingPage = () => {
   const navigate = useNavigate();
 
   const carMakes = [
-    { name: 'Toyota', image: './assets/toyotasuv.jpeg' },
-    { name: 'Audi', image: './assets/signup.jpg' },
-    { name: 'Suzuki', image: './assets/toyotasuv.jpeg' },
-    { name: 'Jeep', image: './assets/login.jpg' },
-    { name: 'Ford', image: './assets/login.jpg' }
+    { name: 'Toyota', image: './assets/toyota.jpg' },
+    { name: 'Honda', image: './assets/honda.jpeg' },
+    { name: 'Suzuki', image: './assets/suzuki.jpeg' },
+    { name: 'Kia', image: './assets/kia.jpeg' },
+    { name: 'Hyundai', image: './assets/hyundai.jpeg' },
+    { name: 'Changan', image: './assets/changan.jpeg' }
   ];
 
   const destinations = [
     { name: 'Lahore', icon: './assets/lahore.jpeg' },
     { name: 'Islamabad', icon: './assets/islamabad.jpg' },
     { name: 'Karachi', icon: './assets/karachi.jpeg' },
-    { name: 'Faislabad', icon: './assets/faislabad.jpeg' },
+    { name: 'Faisalabad', icon: './assets/faislabad.jpeg' },
     { name: 'Rawalpindi', icon: './assets/rawalpindi.jpeg' },
     { name: 'Sialkot', icon: './assets/sialkot.jpeg' },
   ];
@@ -27,57 +28,47 @@ const LandingPage = () => {
   const faqItems = [
     { 
       question: 'What do I need to book a car on Drive Fleet?', 
-      answer: 'To book a car on drive fleet, you need a valid driver\'s license, meet age requirements, and have a verified profile. You\'ll also need a payment method on file.'
+      answer: 'You need a valid CNIC or driver\'s license, must be over 18, and have an account. Payment can be made via JazzCash, Easypaisa, or credit/debit cards.'
     },
     { 
-      question: 'What are the cleaning and safety policies on Drive Fleet?', 
-      answer: 'drive fleet hosts are required to clean and disinfect their vehicles before each trip. Our safety policies include regular maintenance checks and adherence to local regulations.'
+      question: 'Are there any age restrictions for renting?', 
+      answer: 'Yes, you must be at least 18 years old with a valid Pakistani driver\'s license to rent a car in Pakistan.'
     },
     { 
-      question: 'Do I need my own insurance?',  
-      answer: 'While you may use your own insurance, drive fleet offers protection plans that can be selected during the booking process. These plans provide varying levels of coverage.'
+      question: 'Can I pay in Pakistani Rupees?', 
+      answer: 'Yes, all transactions are in PKR. We accept all major Pakistani payment methods including bank transfers, JazzCash, and Easypaisa.'
     },
     { 
-      question: 'Can I get my car delivered to me?', 
-      answer: 'Yes, many hosts offer delivery services to your location for an additional fee, which varies by host and delivery distance.'
+      question: 'Is airport pickup available?', 
+      answer: 'Yes, we offer convenient pickup options at all major Pakistani airports including Jinnah International (KHI), Allama Iqbal (LHE), and Islamabad International (ISB).'
     },
     { 
-      question: 'Can other people drive a car that I rented?', 
-      answer: 'Additional drivers must be approved and added to the trip before they can drive the car. They must meet the same eligibility requirements as the primary driver.'
+      question: 'Can I take the car to another city?', 
+      answer: 'Yes, intercity travel is permitted. Please check the mileage policy and discuss with your host about any additional charges.'
     },
     { 
-      question: 'How can I drive unlimited miles during my trip?', 
-      answer: 'Some hosts offer unlimited mileage as an option. You can filter for cars with unlimited miles when searching or discuss custom mileage packages with the host.'
+      question: 'What if the car breaks down?', 
+      answer: 'We provide 24/7 roadside assistance across Pakistan. Emergency contact numbers will be provided at booking.'
     },
     { 
-      question: 'How do I get discounts when booking a car?', 
-      answer: 'Discounts are automatically applied for weekly and monthly rentals. You may also find promotional offers or discount codes periodically.'
+      question: 'Are there any seasonal discounts?', 
+      answer: 'Yes, we offer special Eid, summer, and winter promotions. Check our website regularly for ongoing offers.'
     },
     { 
-      question: 'Are there cars available near the airport?', 
-      answer: 'Yes, many hosts offer their cars near major airports. You can search by airport code to find available vehicles nearby.'
+      question: 'Can I rent a car with a driver?', 
+      answer: 'Absolutely! Many hosts offer chauffeur-driven options perfect for weddings or business trips.'
     },
     { 
-      question: 'What payment methods does drive fleet accept?', 
-      answer: 'drive fleet accepts major credit cards, debit cards, and some digital payment methods. Specific requirements may vary by region.'
+      question: 'What\'s included in the rental price?', 
+      answer: 'The base price includes the vehicle and basic insurance. Additional options like GPS or child seats may incur extra charges.'
     },
     { 
-      question: 'Is drive fleet a rental car company?', 
-      answer: 'drive fleet is a peer-to-peer car sharing marketplace that connects car owners with people who need a vehicle, rather than a traditional rental car company.'
-    },
-    { 
-      question: 'What is the cancellation policy for guests on Drive Fleet?', 
-      answer: 'Cancellation policies vary by host. Each listing displays the applicable policy, which may be flexible, moderate, or strict, with different refund schedules.'
-    },
-    { 
-      question: 'What is the cancellation policy for guests on Drive Fleet?', 
-      answer: 'Cancellation policies vary by host. Each listing displays the applicable policy, which may be flexible, moderate, or strict, with different refund schedules.'
+      question: 'How does fuel policy work?', 
+      answer: 'Most rentals follow the "full-to-full" policy where you receive the car with a full tank and should return it full.'
     }
   ];
 
-
   useEffect(() => {
-    // Check if user has already accepted cookies
     const cookiesAccepted = localStorage.getItem('cookiesAccepted');
     if (cookiesAccepted !== 'true') {
       setShowCookieBanner(true);
@@ -100,14 +91,14 @@ const LandingPage = () => {
     });
   };
 
-  // const handleDestinationClick = (destination) => {
-  //   navigate(`/car-rental/location/${destination.name.toLowerCase()}`, { 
-  //     state: { locationName: destination.name } 
-  //   });
-  // };
-
+  const handleGuideMore = () => {
+    navigate(`/guide`);
+  };
   const handleReadMore = () => {
-    navigate(`/about`);
+    navigate(`/readmore`);
+  };
+  const handleExplore = () => {
+    navigate(`/explore`);
   };
 
   const toggleAccordion = (index) => {
@@ -122,7 +113,7 @@ const LandingPage = () => {
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between">
             <div className="mb-4 md:mb-0">
               <p className="text-sm">
-                We use cookies to enhance your experience. By continuing to visit this site you agree to our use of cookies.
+                We use cookies to enhance your experience on Drive Fleet. By continuing, you agree to our use of cookies.
               </p>
             </div>
             <div className="flex space-x-4">
@@ -146,13 +137,16 @@ const LandingPage = () => {
       {/* Hero Section */}
       <div className="relative w-full">
         <img 
-          src="./assets/hero-bg.jpg" 
-          alt="Couple holding hands by a red car" 
-          className="w-full h-[600px] object-cover" 
+          src="./assets/hero-bg.png" 
+          alt="Family road trip in Northern Pakistan" 
+          className="w-full h-[700px] object-cover" 
         />
-        <div className="inset-0 bg-opacity-30 flex flex-col justify-center items-center text-black">
-          <h1 className="text-5xl font-bold mb-4 text-center">Skip the rental car counter</h1>
-          <p className="text-xl mb-8 text-center">Rent just about any car, just about anywhere</p>
+        <div className="absolute mt-110 inset-0 bg-opacity-30 flex flex-col justify-center items-center text-white">
+          <h1 className="text-5xl font-bold mb-1 text-center">Explore Pakistan Your Way</h1>
+          <p className="text-xl mb-8 text-center">Rent trusted vehicles across Pakistan's beautiful landscapes</p>
+          <p className="bg-purple-400 text-white px-8 py-3 rounded-lg text-3xl font-medium">
+            Find Your Perfect Ride
+          </p>
         </div>
       </div>
 
@@ -160,155 +154,167 @@ const LandingPage = () => {
         {/* Browse by Make */}
         <div className="p-8 text-black">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Browse by make</h2>
+            <h2 className="text-2xl font-bold">Popular Car Brands in Pakistan</h2>
             <div className="flex space-x-2">
-              <ChevronLeft size={24} className="text-gray-400" />
-              <ChevronRight size={24} className="text-gray-400" />
+              <ChevronLeft size={24} className="text-gray-400 cursor-pointer" />
+              <ChevronRight size={24} className="text-gray-400 cursor-pointer" />
             </div>
           </div>
-          <div className="flex space-x-4 overflow-x-auto">
+          <div className="flex space-x-4 overflow-x-auto pb-4">
             {carMakes.map((make) => (
               <div 
                 key={make.name} 
-                className="text-center flex-shrink-0 w-[250px] cursor-pointer"
+                className="text-center flex-shrink-0 w-[250px] cursor-pointer hover:scale-105 transition-transform"
                 onClick={() => handleMakeClick(make)}
               >
                 <img 
                   src={make.image} 
                   alt={make.name} 
-                  className="w-full h-[170px] object-cover rounded-lg mb-2" 
+                  className="w-full h-[170px] object-cover rounded-lg mb-2 border border-gray-200" 
                 />
-                <p className="text-center">{make.name}</p>
+                <p className="text-center font-medium">{make.name}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Browse by Destination */}
-<div className="p-8 text-black">
-  <div className="flex justify-between items-center mb-6">
-    <h2 className="text-2xl font-bold">Browse by destination</h2>
-    <div className="flex space-x-2">
-      <ChevronLeft size={24} className="text-gray-400 cursor-pointer" />
-      <ChevronRight size={24} className="text-gray-400 cursor-pointer" />
-    </div>
-  </div>
-  <div className="flex space-x-4 overflow-x-auto pb-4">
-    {destinations.map((destination) => (
-      <div
-        key={destination.name}
-        className="text-center flex-shrink-0 w-[320px] cursor-pointer"
-        // onClick={() => handleDestinationClick(destination)}
-      >
-        <div className="border border-gray-200 rounded-lg p-4 mb-2">
-          <img
-            src={destination.icon}
-            alt={destination.name}
-            className="w-full h-[200px] rounded-lg mb-2"
-          />
+        <div className="p-8 text-black">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">Top Destinations in Pakistan</h2>
+            <div className="flex space-x-2">
+              <ChevronLeft size={24} className="text-gray-400 cursor-pointer" />
+              <ChevronRight size={24} className="text-gray-400 cursor-pointer" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {destinations.map((destination) => (
+              <div
+                key={destination.name}
+                className="cursor-pointer group"
+              >
+                <div className="relative overflow-hidden rounded-lg h-64">
+                  <img
+                    src={destination.icon}
+                    alt={destination.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
+                    <h3 className="text-white text-xl font-bold">{destination.name}</h3>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="text-center">{destination.name}</p>
-      </div>
-    ))}
-  </div>
-</div>
 
-        {/* Get your gearhead fix */}
+        {/* Featured Experience */}
         <div className="p-8 text-center text-black">
-          <h2 className="text-6xl font-bold mb-4">Get your gearhead fix</h2>
-          <p className="mb-6">Peruse the latest features and photos of the best cars from around the marketplace.</p>
-          <button className="bg-purple-600 text-white px-6 py-3 rounded">
-            Explore the blog
+          <h2 className="text-4xl font-bold mb-4">Pakistani Road Trip Adventures</h2>
+          <p className="mb-6 text-lg max-w-2xl mx-auto">
+            Discover the beauty of Pakistan with Drive Fleet's curated road trip itineraries - from the Karakoram Highway to coastal drives along Gwadar.
+          </p>
+          <button className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-medium hover:bg-purple-700 transition-colors"
+          onClick={handleExplore}
+          >
+            Explore Road Trips
           </button>
         </div>
 
         {/* Featured Post */}
         <div className="p-8">
-          <div className="relative">
+          <div className="relative rounded-xl overflow-hidden">
             <img 
-              src="./assets/vintages.jpeg" 
-              alt="1956 Cadillac Coupe de Ville" 
-              className="w-full h-[400px] object-cover" 
+              src="./assets/northern.jpeg" 
+              alt="Hunza Valley landscape" 
+              className="w-full h-[500px] object-cover" 
             />
-            <div className="absolute top-0 left-0 bg-black text-white p-2">
-              <span>FEATURED POST</span>
+            <div className="absolute top-0 left-0 bg-black text-white p-3 text-sm font-medium">
+              <span>FEATURED DESTINATION</span>
             </div>
-            <div className="absolute bottom-0 left-0 bg-black bg-opacity-75 p-6 text-white max-w-md">
-              <h3 className="text-2xl font-bold mb-2">March car of the month: 1956 Cadillac Coupe de Ville</h3>
-              <button className="text-white underline">Read more</button>
+            <div className="absolute bottom-0 left-0 bg-gradient-to-t from-black to-transparent p-8 text-white w-full">
+              <h3 className="text-3xl font-bold mb-4">Northern Pakistan Road Trip Guide</h3>
+              <p className="text-lg mb-4 max-w-2xl">
+                Everything you need to know for an unforgettable journey through Gilgit-Baltistan and KPK with Drive Fleet.
+              </p>
+              <button className="bg-white text-purple-600 px-6 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+                onClick={handleGuideMore }
+              >
+                Read Guide
+              </button>
             </div>
           </div>
         </div>
 
         {/* Blog Section */}
         <div className="p-8 grid md:grid-cols-2 gap-8">
-          <div className="relative group">
+          <div className="relative group rounded-xl overflow-hidden">
             <img 
-              src="./assets/explore.jpg" 
-              alt="Isle of Skye landscape" 
-              className="w-full h-[600px] object-cover rounded" 
+              src="./assets/motorway.jpeg" 
+              alt="Pakistan Motorway" 
+              className="w-full h-[500px] object-cover" 
             />
             <div className="absolute top-0 left-0 p-4">
-              <span className="bg-black text-white px-2 py-1 text-sm font-medium">FEATURED BLOG</span>
+              <span className="bg-black text-white px-2 py-1 text-sm font-medium">TRAVEL TIPS</span>
             </div>
-            <div className="absolute bottom-0 left-0 p-6 bg-black bg-opacity-50 text-white w-full">
-              <h3 className="text-xl font-bold mb-2">An epic Isle of Skye road trip</h3>
+            <div className="absolute mt-3 bottom-0 left-0 p-6 bg-gradient-to-t from-black to-transparent text-white w-full">
+              <h3 className="text-2xl mt-3 font-bold ">Pakistan's Motorway Network Guide</h3>
+              <p className="mb-4">Navigate Pakistan's expanding motorway system like a pro with Drive Fleet</p>
               <button className="text-white underline" onClick={handleReadMore}>Read more</button>
             </div>
           </div>
-          <div className="relative group">
-            <div className="bottom-0 left-0 p-6 text-black w-full">
-              <h3 className="text-2xl font-bold mb-2">2024 car ownership Index</h3>
-              <p className="text-gray-700 mb-4">Explore drive fleet's nationwide study, uncovering the key trends and opinions shaping the future of car ownership in the UK.</p>
-              <button className="bg-black text-white px-4 py-2 rounded" onClick={handleReadMore}>Read more</button>
+          <div className="flex flex-col justify-between">
+            <div>
+              <h3 className="text-3xl text-black font-bold mb-4">2024 Car Rental Trends in Pakistan</h3>
+              <p className="text-gray-700  mt-3">
+                Discover how Pakistanis are embracing car sharing and what it means for your next Drive Fleet rental experience across major cities.
+              </p>
             </div>
             <img 
-              src="./assets/blog-bg.jpg" 
-              alt="Car ownership study" 
-              className="w-full h-[500px] object-cover rounded" 
+              src="./assets/majorRoads.jpeg" 
+              alt="Car rental trends" 
+              className="w-full h-[300px] object-cover rounded-xl" 
             />
           </div>
         </div>
 
-
-
         {/* Book & Host Actions */}
-        <div className="p-8 bg-gray-50 grid md:grid-cols-2 gap-8 text-black">
-          <div className="bg-white p-6 rounded-lg text-center">
-            <h3 className="text-xl font-bold mb-2 text-purple-600">Book a car &gt;</h3>
-            <p className="text-gray-600">Down the street or across the country, find the perfect vehicle for your next adventure.</p>
-            <div className="relative w-80 h-80 rounded-full mx-auto mb-4 flex items-center justify-end">
-              <img 
-                src="./assets/rentACar.png" 
-                alt="Book a car" 
-                className="w-80 h-80 object-contain" 
-              />
-            </div>
+        <div className="p-8 bg-gray-50 grid md:grid-cols-2 gap-8 text-black rounded-xl">
+          <div className="bg-white p-8 rounded-xl shadow-sm text-center hover:shadow-md transition-shadow">
+            <h3 className="text-2xl font-bold mb-4 text-purple-600">Book Your Perfect Ride</h3>
+            <p className="text-gray-600 mb-6">
+              From city commutes to cross-country adventures, find the ideal vehicle for your Pakistani journey with Drive Fleet.
+            </p>
+            <img 
+              src="./assets/rentACar.png" 
+              alt="Book a car" 
+              className="w-full max-w-md mx-auto h-auto object-contain" 
+            />
           </div>
-          <div className="bg-white p-6 rounded-lg text-center">
-            <div className="relative w-80 h-80 rounded-full mx-auto mb-4 flex items-center justify-start">
-              <img 
-                src="./assets/becomeAHost.png" 
-                alt="Become a host" 
-                className="w-80 h-80 object-contain" 
-              />
-            </div>
-            <h3 className="text-xl font-bold mb-2 text-purple-600">Become a host &gt;</h3>
-            <p className="text-gray-600">Accelerate your entrepreneurship and start building a small car sharing business on drive fleet.</p>
+          <div className="bg-white p-8 rounded-xl shadow-sm text-center hover:shadow-md transition-shadow">
+            <h3 className="text-2xl font-bold mb-4 text-purple-600">Earn With Your Car</h3>
+            <p className="text-gray-600 mb-6">
+              Turn your idle car into income by sharing it with trusted travelers through Drive Fleet.
+            </p>
+            <img 
+              src="./assets/becomeAHost.png" 
+              alt="Become a host" 
+              className="w-full max-w-md mx-auto h-auto object-contain" 
+            />
           </div>
         </div>
 
-                {/* FAQ Section */}
-                <div className="p-8 ">
-          <h2 className="text-5xl text-black font-bold mb-12 text-center">
-            <span className="bg-purple-100 px-4">Frequently asked questions</span>
+        {/* FAQ Section */}
+        <div className="p-8">
+          <h2 className="text-4xl text-black font-bold mb-12 text-center">
+            <span className="bg-purple-100 px-4 py-2 rounded-lg">Drive Fleet Pakistan FAQs</span>
           </h2>
           
-          <div className="grid  md:grid-cols-2 gap-x-8">
+          <div className="grid md:grid-cols-2 gap-6">
             {faqItems.map((item, index) => (
-              <div key={index} className="border-t  border-gray-200 py-4">
+              <div key={index} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                 <button 
-                  className="flex  justify-between items-center w-full text-left font-medium"
+                  className="flex justify-between items-center w-full text-left font-medium text-lg"
                   onClick={() => toggleAccordion(index)}
                 >
                   <span>{item.question}</span>
@@ -318,7 +324,7 @@ const LandingPage = () => {
                   />
                 </button>
                 {activeAccordion === index && (
-                  <div className="mt-2 text-gray-600">
+                  <div className="mt-4 text-gray-600">
                     {item.answer}
                   </div>
                 )}
@@ -326,19 +332,6 @@ const LandingPage = () => {
             ))}
           </div>
         </div>
-
-        {/* Insurance Info */}
-        {/* <div className="p-8 text-xs text-gray-600 bg-gray-50">
-          <p className="mb-4">* Any personal insurance you may have that covers damage to the host's vehicle would kick in before your protection plan, except in limited situations for trips booked in Maryland, but this protects your own wallet. In the US, liability insurance is provided under a policy issued to drive fleet by Travelers Excess and Surplus Lines Company. Terms, conditions, and exclusions apply. The policy does not provide coverage for damage to a host's vehicle.</p>
-          <p className="mb-4">
-            For questions or information about the third party liability insurance for trips in the US, consumers in Maryland and the licensed states listed 
-            <a href="#" className="text-blue-600"> here </a>
-            may contact drive fleet Insurance Agency at (415) 508-0283 or claims@drive fleet.agency. For questions about how damage to a host's vehicle is handled, visit the 
-            <a href="#" className="text-blue-600"> drive fleet Support site</a>
-            . When a trip is booked in the state of Washington, physical damage to the host's vehicle is covered by insurance purchased by drive fleet, but the drive fleet insurance does not change the contractual responsibilities of hosts or guests with respect to physical damage to a host's vehicle.
-          </p>
-        </div> */}
-
       </div>
     </div>
   );
