@@ -144,7 +144,7 @@ const LandingPage = () => {
         <div className="absolute mt-110 inset-0 bg-opacity-30 flex flex-col justify-center items-center text-white">
           <h1 className="text-5xl font-bold mb-1 text-center">Explore Pakistan Your Way</h1>
           <p className="text-xl mb-8 text-center">Rent trusted vehicles across Pakistan's beautiful landscapes</p>
-          <p className="bg-purple-400 text-white px-8 py-3 rounded-lg text-3xl font-medium">
+          <p className="bg-grey-800 text-white px-8 py-3 rounded-lg text-3xl font-medium">
             Find Your Perfect Ride
           </p>
         </div>

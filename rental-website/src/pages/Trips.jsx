@@ -112,7 +112,7 @@ const UserTripsPage = () => {
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex -mb-px">
           {['confirmed', 'pending', 'completed', 'cancelled'].map((tab) => (
-            <button
+            <p
               key={tab}
               onClick={() => handleTabChange(tab)}
               className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
@@ -122,7 +122,7 @@ const UserTripsPage = () => {
               } transition-colors`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
+            </p>
           ))}
         </nav>
       </div>
@@ -176,7 +176,7 @@ const UserTripsPage = () => {
               </p>
               <div className="mt-6">
                 <button
-                  onClick={() => navigate('/explore')}
+                  onClick={() => navigate('/')}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
                 >
                   Explore Destinations
