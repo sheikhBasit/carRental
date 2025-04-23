@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaGoogle } from "react-icons/fa";
+import { FaGoogle, FaEnvelope, FaLock, FaBuilding } from "react-icons/fa";
 import Cookies from "js-cookie";
-import "../style/Login.css";
 import { useGoogleAuth } from "../components/GoogleAuth";
 
 const CompanyLogin = () => {
@@ -68,76 +67,106 @@ const CompanyLogin = () => {
   };
 
   return (
-    <div className="login-box text-black">
-      <h2 className="fw-bold mb-3">Company Login</h2>
-      <p className="text-secondary mb-4">Please enter your company login details</p>
-
-      <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <input
-            type="email"
-            className="form-control text-black"
-            placeholder="Enter company email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          {error && <small className="text-danger">{error}</small>}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-100 px-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="bg-indigo-600 p-6 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white mb-4">
+            <FaBuilding className="text-indigo-600 text-xl" />
+          </div>
+          <h2 className="text-2xl font-bold text-white">Company Portal</h2>
+          <p className="text-indigo-200 mt-1">Manage your rental business</p>
         </div>
-        <div className="mb-3">
-          <input
-            type="password"
-            className="form-control text-black"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <div className="d-flex justify-content-between text-black align-items-center mb-4">
-          <a href="#" className="text-primary text-decoration-none">Forgot Password?</a>
-        </div>
-        <button 
-          type="submit" 
-          className="btn btn-primary text-white py-2 mb-3"
-          disabled={isLoading}
-        >
-          {isLoading ? "Please wait..." : "Log in"}
-        </button>
         
-        <div 
-          id="google-login-button" 
-          ref={googleButtonRef}
-          className="mb-3"
-        >
-          <button 
-            type="button"
-            className="btn btn-outline-secondary py-2 d-flex align-items-center justify-content-center"
-            onClick={signInWithGoogle}
-          >
-            <FaGoogle className="me-2 text-danger" />
-            Continue with Google
-          </button>
-        </div>
-      </form>
+        <div className="p-8">
+          <h3 className="text-xl font-semibold text-gray-800 mb-1">Welcome back</h3>
+          <p className="text-gray-500 mb-6 text-sm">Please enter your company credentials</p>
+          
+          {error && (
+            <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm">
+              {error}
+            </div>
+          )}
 
-      <div className="mt-4">
-        <p>
-          Don't have an account?{" "}
-          <a href="/rental-signup" className="text-primary text-decoration-none">
-            Register your company
-          </a>
-        </p>
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4 relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaEnvelope className="text-gray-400" />
+              </div>
+              <input
+                type="email"
+                className="pl-10 pr-3 py-3 w-full text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                placeholder="Company Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="mb-4 relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaLock className="text-gray-400" />
+              </div>
+              <input
+                type="password"
+                className="pl-10 pr-3 py-3 text-black w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="flex justify-end mb-6">
+              <a href="#" className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors">
+                Forgot Password?
+              </a>
+            </div>
+            
+            <button
+              type="submit"
+              className={`w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+              disabled={isLoading}
+            >
+              {isLoading ? "Please wait..." : "Sign In"}
+            </button>
+            
+            <div className="my-6 flex items-center">
+              <div className="flex-grow h-px bg-gray-300"></div>
+              <span className="px-4 text-sm text-gray-500">OR</span>
+              <div className="flex-grow h-px bg-gray-300"></div>
+            </div>
+            
+            <div id="google-login-button" ref={googleButtonRef}>
+              <button
+                type="button"
+                onClick={signInWithGoogle}
+                className="w-full text-black bg-white flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <FaGoogle className="text-red-500" />
+                <span className="text-gray-700">Continue with Google</span>
+              </button>
+            </div>
+          </form>
+          
+          <div className="mt-8 text-center">
+            <p className="text-gray-600 text-sm">
+              Don't have an account?{" "}
+              <a href="/rental-signup" className="text-indigo-600 hover:underline font-medium">
+                Register your company
+              </a>
+            </p>
+            <p className="text-gray-600 mt-3 text-sm">
+              Are you a user?{" "}
+              <button
+                className="text-white  hover:underline font-medium bg-black border-0 p-0 cursor-pointer"
+                onClick={() => navigate('/login')}
+              >
+                User Login
+              </button>
+            </p>
+          </div>
+        </div>
       </div>
-      <p>
-        Are you a user?{" "}
-        <button 
-          className="text-primary text-white text-decoration-none btn btn-link p-0"
-          onClick={() => navigate('login')}
-        >
-          User Login
-        </button>
-      </p>
     </div>
   );
 };

@@ -15,9 +15,9 @@ import CarRentalMarket from "./pages/CarMarket";
 import AboutUs from "./pages/AboutUs";
 import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import CarRentalMarketWrapper from "./components/CarRentalMarketWrapper";
-import RentalCompanyDashboard from './pages/HostDashboard'
+import RentalCompanyDashboard from './pages/HostDashboard';
 import LandingPage from "./pages/Landing";
-import AdminDashboard  from "./pages/AdminDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import ChatApplication from "./pages/Inbox";
 import FavoritesPage from "./pages/Favorites";
 import UserTripsPage from "./pages/Trips";
@@ -26,7 +26,6 @@ import CompanyLogin from "./pages/RentalLogin";
 import DriveFleetHomepage from "./pages/Work";
 import LegalMattersPage from "./pages/Legal";
 import AccountPage from "./pages/Account";
-// import BookNow from "./pages/BookNow";
 import { CookiesProvider } from 'react-cookie';
 import BookingDetail from "./pages/BookingDetail";
 import MotorwayGuide from "./pages/Guide";
@@ -35,7 +34,14 @@ import ExploreRoadTrips from "./pages/Explore";
 
 function Layout() {
   const location = useLocation();
-  const hideHeaderFooter = location.pathname === "/login" || location.pathname === "/signup";
+  // Updated condition to include rental-login and rental-signup pages
+  const hideHeaderFooter = [
+    "/login", 
+    "/signup", 
+    "/rental-login", 
+    "/rental-signup",
+    "/auth/reset-password"
+  ].some(path => location.pathname.includes(path));
 
   return (
     <div className="">
@@ -51,9 +57,7 @@ function Layout() {
           <Route path="/booking/:id" element={<BookNow />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/car-detail/:vehicleId" element={<CarDetail />} />
-          <Route 
-          path="/car-rental/:brand" 
-          element={<CarRentalMarketWrapper />} />
+          <Route path="/car-rental/:brand" element={<CarRentalMarketWrapper />} />
           <Route path="/company-dashboard" element={<RentalCompanyDashboard />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/inbox" element={<ChatApplication />} />
@@ -62,18 +66,15 @@ function Layout() {
           <Route path="/rental-login" element={<CompanyLogin />} />
           <Route path="/how-it-works" element={<DriveFleetHomepage />} />
           <Route path="/favorites" element={<FavoritesPage />} />
-             <Route path="/legal" element={<LegalMattersPage />} />
+          <Route path="/legal" element={<LegalMattersPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/booking-confirmation/:bookingId" element={<BookingDetail />} />
           <Route path="/service" element={<Service />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/about" element={<AboutUs />} />
-          
           <Route path="/guide" element={<MotorwayGuide />} />
           <Route path="/explore" element={<ExploreRoadTrips />} />
-
           <Route path="/readmore" element={<NorthernGuide />} />
-
           <Route path="/auth/reset-password/:token" element={<ResetPasswordScreen />} />
         </Routes>
       </main>
@@ -86,7 +87,7 @@ function App() {
   return (
     <Router>
       <CookiesProvider>
-      <Layout />
+        <Layout />
       </CookiesProvider>
     </Router>
   );

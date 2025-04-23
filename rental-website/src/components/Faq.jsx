@@ -3,8 +3,8 @@ import { ChevronDown } from 'lucide-react';
 const FAQItem = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <div className="border-b border-gray-200 py-4">
-      <button 
+    <div className="border-b text-black border-gray-200 py-4">
+      <p 
         onClick={() => setIsOpen(!isOpen)} 
         className="flex justify-between items-center w-full text-left"
       >
@@ -12,7 +12,7 @@ const FAQItem = ({ question, answer }) => {
         <ChevronDown 
           className={`w-6 h-6 transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
         />
-      </button>
+      </p>
       {isOpen && (
         <div className="mt-4 text-gray-600">
           {answer}

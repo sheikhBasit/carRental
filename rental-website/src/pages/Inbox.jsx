@@ -16,7 +16,7 @@ const ChatApplication = () => {
       time: '12:23 PM', 
       unread: 0, 
       avatar: 'https://via.placeholder.com/40',
-      branch: 'Karachi' 
+      branch: 'Lahore' 
     },
     { 
       id: 2, 
@@ -87,7 +87,7 @@ const ChatApplication = () => {
           time: new Date(chat.messages[chat.messages.length - 1]?.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           unread: 0,
           avatar: 'https://via.placeholder.com/40',
-          branch: 'Karachi',
+          branch: 'Lahore',
           rawMessages: chat.messages
         }));
 
@@ -210,7 +210,7 @@ const ChatApplication = () => {
             className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
-        <div className="overflow-y-auto h-full pb-20">
+        <div className="overflow-y-auto text-black h-full pb-20">
           {chats.map(chat => (
             <div 
               key={chat.id}
@@ -218,14 +218,7 @@ const ChatApplication = () => {
               onClick={() => handleSelectChat(chat.id)}
             >
               <div className="flex items-center">
-                <img 
-                  src={chat.avatar} 
-                  alt={chat.name} 
-                  className="w-10 h-10 rounded-full mr-3"
-                  onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/40';
-                  }}
-                />
+                
                 <div className="flex-1">
                   <div className="flex justify-between items-center">
                     <h3 className={`font-medium ${chat.unread > 0 ? 'font-bold' : ''}`}>
@@ -257,11 +250,7 @@ const ChatApplication = () => {
           <>
             {/* Chat Header */}
             <div className="p-4 border-b bg-white flex items-center">
-              <img 
-                src="https://via.placeholder.com/40" 
-                alt="Chat avatar" 
-                className="w-10 h-10 rounded-full mr-3"
-              />
+              
               <div className="flex-1">
                 <h2 className="font-bold">
                   {chats.find(c => c.id === selectedChat)?.name}
@@ -272,11 +261,6 @@ const ChatApplication = () => {
                     'Online Support'}
                 </p>
               </div>
-              <button className="p-2 text-gray-500 hover:text-green-600">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-              </button>
             </div>
 
             {/* Messages */}
@@ -308,15 +292,7 @@ const ChatApplication = () => {
             {/* Message Input */}
             <div className="p-4 bg-white border-t">
               <form onSubmit={handleSendMessage} className="flex space-x-2">
-                <button 
-                  type="button" 
-                  className="p-2 text-gray-500 hover:text-green-600 focus:outline-none"
-                  aria-label="Attach file"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                  </svg>
-                </button>
+                
                 <input
                   type="text"
                   placeholder="Type your message..."

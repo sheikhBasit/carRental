@@ -312,8 +312,8 @@ const LandingPage = () => {
           
           <div className="grid md:grid-cols-2 gap-6">
             {faqItems.map((item, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                <button 
+              <div key={index} className="border text-black border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                <p 
                   className="flex justify-between items-center w-full text-left font-medium text-lg"
                   onClick={() => toggleAccordion(index)}
                 >
@@ -322,7 +322,7 @@ const LandingPage = () => {
                     size={20} 
                     className={`transform transition-transform ${activeAccordion === index ? 'rotate-90' : ''}`} 
                   />
-                </button>
+                </p>
                 {activeAccordion === index && (
                   <div className="mt-4 text-gray-600">
                     {item.answer}

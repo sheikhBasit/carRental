@@ -35,7 +35,7 @@ const Footer = () => {
         
         <div className="flex justify-between items-center border-t pt-4">
           <div className="text-sm text-gray-500">
-            ©2025 Rental Fleet
+            ©2025 Drive Fleet
           </div>
           
           <div className="flex space-x-4">

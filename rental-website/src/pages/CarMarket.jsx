@@ -385,7 +385,7 @@ const CarRentalMarket = ({
                         <p className="text-gray-700 mb-8 max-w-2xl mx-auto">
                             Whether you're planning a weekend escape, a cross-country road trip, or simply want to experience the thrill of driving a {brandName}, we have the perfect vehicle for your needs. Our well-maintained fleet of {brandName} vehicles gives you the freedom to explore with confidence.
                         </p>
-                        <button className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300">
+                        <button className="bg-black hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300">
                             Book Your {brandName} Today
                         </button>
                     </div>

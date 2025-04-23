@@ -50,7 +50,7 @@ const SideMenu = ({ isOpen, onClose }) => {
         // Handle logout logic here
         console.log('Logging out');
         // Then navigate to home or login page
-        navigate('/');
+        navigate('/login');
         break;
       default:
         break;
@@ -66,7 +66,6 @@ const SideMenu = ({ isOpen, onClose }) => {
     { icon: CarFront, text: 'Become a host' },
     { icon: HelpCircle, text: 'How Drive Fleet works' },
     { icon: HelpCircle, text: 'Contact support' },
-    { icon: FileText, text: 'Legal' },
     { icon: LogOut, text: 'Log out' }
   ];
 

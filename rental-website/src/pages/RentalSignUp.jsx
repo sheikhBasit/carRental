@@ -623,7 +623,7 @@ const RentalCompanySignUp = () => {
           <p className="text-sm text-gray-600">
             Already have an account?{' '}
             <a
-              href="/login"
+              href="/rental-login"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               Sign in
