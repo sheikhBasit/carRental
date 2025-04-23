@@ -82,7 +82,7 @@ const RentalFleetCars = () => {
 
               <button 
                 onClick={() => navigate(`/reservations/new?carId=${car.id}`)}
-                className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                className="w-full bg-black text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
               >
                 Reserve Now
               </button>
