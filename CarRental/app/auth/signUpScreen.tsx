@@ -8,12 +8,14 @@ import {
   StyleSheet,
   Text,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import InputField from "../../components/ui/InputField";
 import { loadCity, loadUserId, saveCity } from "@/utils/storageUtil";
+import * as Notifications from "expo-notifications";
 
 type ImageUri = string | null;
 
@@ -27,17 +29,46 @@ const SignUpScreen: React.FC = () => {
   const [province, setProvince] = useState("");
   const [accountNo, setAccountNo] = useState("");
   const [cnic, setCnic] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState(""); // New state for license number
+  const [licenseNumber, setLicenseNumber] = useState("");
   const [licenseFront, setLicenseFront] = useState<ImageUri>(null);
   const [licenseBack, setLicenseBack] = useState<ImageUri>(null);
   const [cnicFront, setCnicFront] = useState<ImageUri>(null);
   const [cnicBack, setCnicBack] = useState<ImageUri>(null);
-  const [isLoading, setIsLoading] = useState(false); // State for loader
+  const [profilePic, setProfilePic] = useState<ImageUri>(null); // Added for profile picture
+  const [fcmToken, setFcmToken] = useState<string | null>(null); // Added for FCM token
+  const [isLoading, setIsLoading] = useState(false);
 
   // Load city from AsyncStorage when the component mounts
   useEffect(() => {
     loadCity().then(setCity);
+    
+    // Request notification permissions and get FCM token
+    registerForPushNotifications();
   }, []);
+
+  // Function to register for push notifications and get FCM token
+  const registerForPushNotifications = async () => {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
+        console.log('Failed to get push token for push notification!');
+        return;
+      }
+      
+      // Get the token
+      const token = (await Notifications.getExpoPushTokenAsync()).data;
+      setFcmToken(token);
+    } catch (error) {
+      console.log('Error getting push token:', error);
+    }
+  };
 
   // Function to pick an image
   const pickImage = async (setImage: React.Dispatch<React.SetStateAction<ImageUri>>) => {
@@ -69,54 +100,54 @@ const SignUpScreen: React.FC = () => {
 
     if (!nameRegex.test(name)) {
       Alert.alert("Invalid Input", "Name must contain only letters.");
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
       return;
     }
     if (!nameRegex.test(city)) {
       Alert.alert("Invalid Input", "City must contain only letters.");
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
       return;
     }
     if (!nameRegex.test(province)) {
       Alert.alert("Invalid Input", "Province must contain only letters.");
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
       return;
     }
     if (!phoneRegex.test(phNum)) {
       Alert.alert("Invalid Input", "Phone number must be 11 digits and start with 03XXXXXXXXX.");
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
       return;
     }
     if (!cnicRegex.test(cnic)) {
       Alert.alert("Invalid Input", "CNIC must be exactly 13 digits.");
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
       return;
     }
     if (!accountNumberRegex.test(accountNo)) {
       Alert.alert("Invalid Input", "Account number must be between 11 and 20 digits.");
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
       return;
     }
     if (!emailRegex.test(email)) {
       Alert.alert("Invalid Input", "Please enter a valid email address.");
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
       return;
     }
     if (!passwordRegex.test(password)) {
       Alert.alert("Invalid Input", "Password must be between 8 and 20 characters.");
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
       return;
     }
     if (!licenseNumberRegex.test(licenseNumber)) {
       Alert.alert("Invalid Input", "License number must be alphanumeric and 6-20 characters long.");
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
       return;
     }
 
     // Check if all required images are selected
     if (!cnicFront || !cnicBack || !licenseFront || !licenseBack) {
       Alert.alert("Error", "Please upload all required images (CNIC & License front and back).");
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
       return;
     }
 
@@ -131,7 +162,21 @@ const SignUpScreen: React.FC = () => {
     formData.append("province", province);
     formData.append("accountNo", accountNo);
     formData.append("cnic", cnic);
-    formData.append("license", licenseNumber); // Add license number to FormData
+    formData.append("license", licenseNumber);
+    
+    // Add FCM token if available
+    if (fcmToken) {
+      formData.append("fcmToken", fcmToken);
+    }
+
+    // Append profile picture if selected
+    if (profilePic) {
+      formData.append("profilePic", {
+        uri: profilePic,
+        name: "profilePic.jpg",
+        type: "image/jpeg",
+      } as any);
+    }
 
     // Append images to FormData
     formData.append("cnicFront", {
@@ -171,8 +216,8 @@ const SignUpScreen: React.FC = () => {
         const { user } = result;
         const userId = user._id; // Document ID of the newly created user
         loadUserId().then(userId);
-      // Store the user ID in local storage or state for future use
-      console.log("User created successfully! User ID:", userId);
+        // Store the user ID in local storage or state for future use
+        console.log("User created successfully! User ID:", userId);
 
         router.push("./verification"); // Redirect to verification screen
       } else {
@@ -196,6 +241,22 @@ const SignUpScreen: React.FC = () => {
       </ImageBackground>
 
       <View style={styles.formContainer}>
+        {/* Profile Picture Upload */}
+        <Text style={styles.imageLabel}>Profile Picture (Optional)</Text>
+        <TouchableOpacity 
+          style={styles.profilePicContainer} 
+          onPress={() => pickImage(setProfilePic)}
+        >
+          {profilePic ? (
+            <Image source={{ uri: profilePic }} style={styles.profilePic} />
+          ) : (
+            <View style={styles.profilePicPlaceholder}>
+              <Ionicons name="person" size={40} color="#003366" />
+              <Text style={{ color: "#003366", marginTop: 5 }}>Add Photo</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
         <InputField label="Name" placeholder="Enter your name" value={name} onChangeText={setName} />
         <InputField label="Email" placeholder="Enter your email" value={email} onChangeText={setEmail} keyboardType="email-address" />
         <InputField label="Password" placeholder="Enter password" value={password} onChangeText={setPassword} secureTextEntry />
@@ -213,7 +274,7 @@ const SignUpScreen: React.FC = () => {
         <InputField label="Province" placeholder="Enter province" value={province} onChangeText={setProvince} />
         <InputField label="Account Number" placeholder="Enter account number" value={accountNo} onChangeText={setAccountNo} keyboardType="numeric" />
         <InputField label="CNIC Number" placeholder="Enter CNIC number" value={cnic} onChangeText={setCnic} keyboardType="numeric" />
-        <InputField label="License Number" placeholder="Enter license number" value={licenseNumber} onChangeText={setLicenseNumber} keyboardType="numeric" />
+        <InputField label="License Number" placeholder="Enter license number" value={licenseNumber} onChangeText={setLicenseNumber} />
 
         {/* Image Upload Sections */}
         <Text style={styles.imageLabel}>CNIC Front</Text>
@@ -277,6 +338,27 @@ const styles = StyleSheet.create({
   imageLabel: { marginTop: 10, fontSize: 16, fontWeight: "bold" },
   imageUploadButton: { marginTop: 5, padding: 10, backgroundColor: "#003366", borderRadius: 5, alignItems: "center" },
   imageUploadText: { color: "white", fontSize: 16 },
+  profilePicContainer: {
+    alignSelf: "center",
+    marginVertical: 15,
+  },
+  profilePic: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: "#003366",
+  },
+  profilePicPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: "#003366",
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });
 
 export default SignUpScreen;

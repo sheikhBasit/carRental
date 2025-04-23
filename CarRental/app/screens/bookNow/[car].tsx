@@ -12,7 +12,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 const API_URL = `${AppConstants.LOCAL_URL}/bookings/postBooking`;
-const STRIPE_PUBLIC_KEY = "your_stripe_public_key"; // Replace with your Stripe public key
+const STRIPE_PUBLIC_KEY = "pk_test_51QGDbHC1170CwYd9Y3Xz2uZx3Z4Q7X9Z8Z3Z4Q7X9Z8Z3Z4Q7X9Z8Z3Z4Q7X9Z8"; // Replace with your Stripe public key
 
 const stripePromise = loadStripe(STRIPE_PUBLIC_KEY);
 import { usePaymentSheet } from "@stripe/stripe-react-native";

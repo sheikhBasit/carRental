@@ -39,7 +39,7 @@ const ProfileScreen = () => {
     console.log("User logged out");
 
     // Navigate to the login or start screen
-    router.replace("/auth/loginScreen");
+    router.replace("/auth/startScreen");
   };
 
   const navigateToScreen = (screenName: string) => {
@@ -74,18 +74,7 @@ const ProfileScreen = () => {
           <Ionicons name="person-outline" size={24} color="rgba(72, 156, 240, 0.9)" />
           <Text style={styles.optionText}>Account</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`./screens/about`)}>
-          <Ionicons name="information-circle-outline" size={24} color="rgba(72, 156, 240, 0.9)" />
-          <Text style={styles.optionText}>How We works</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`./screens/contact`)}>
-          <Ionicons name="call-outline" size={24} color="rgba(72, 156, 240, 0.9)" />
-          <Text style={styles.optionText}>Contact Support</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`./screens/terms`)}>
-          <Ionicons name="document-text-outline" size={24} color="rgba(72, 156, 240, 0.9)" />
-          <Text style={styles.optionText}>Legal</Text>
-        </TouchableOpacity>
+
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
