@@ -7,6 +7,81 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 import { loadStripe } from '@stripe/stripe-js';
 import { useCookies } from 'react-cookie';
 
+// Image Modal Component
+const ImageModal = ({ images, currentIndex, onClose, onNext, onPrev }) => {
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'ArrowRight') {
+        onNext();
+      } else if (e.key === 'ArrowLeft') {
+        onPrev();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, onNext, onPrev]);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+      <button 
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white text-4xl z-50 hover:text-gray-300 transition-colors"
+        aria-label="Close image modal"
+      >
+        &times;
+      </button>
+      
+      <button 
+        onClick={onPrev}
+        className="absolute left-4 text-white text-4xl z-50 hover:text-gray-300 transition-colors"
+        disabled={currentIndex === 0}
+        aria-label="Previous image"
+      >
+        &#10094;
+      </button>
+      
+      <div className="relative w-full h-full max-w-4xl max-h-screen flex items-center justify-center">
+        <img 
+          src={images[currentIndex]} 
+          alt={`Car image ${currentIndex + 1}`}
+          className="max-w-full max-h-full object-contain"
+        />
+      </div>
+      
+      <button 
+        onClick={onNext}
+        className="absolute right-4 text-white text-4xl z-50 hover:text-gray-300 transition-colors"
+        disabled={currentIndex === images.length - 1}
+        aria-label="Next image"
+      >
+        &#10095;
+      </button>
+      
+      <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
+        {images.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => {
+              const step = index - currentIndex;
+              if (step > 0) {
+                for (let i = 0; i < step; i++) onNext();
+              } else if (step < 0) {
+                for (let i = 0; i < -step; i++) onPrev();
+              }
+            }}
+            className={`w-3 h-3 rounded-full transition-colors ${currentIndex === index ? 'bg-white' : 'bg-gray-500 hover:bg-gray-300'}`}
+            aria-label={`Go to image ${index + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // Initialize Stripe outside the component
 const stripePromise = loadStripe('pk_test_51QGDbHC1170CwYd9Y3Xz2uZx3Z4Q7X9Z8Z3Z4Q7X9Z8Z3Z4Q7X9Z8Z3Z4Q7X9Z8');
 
@@ -14,6 +89,7 @@ const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment }) =
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState(null);
+  const [cardComplete, setCardComplete] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -46,47 +122,121 @@ const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment }) =
 
   return (
     <form onSubmit={handleSubmit} className="p-4">
-      <div className="mb-4">
-        <CardElement 
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                  color: '#aab7c4',
+      {/* Card details section */}
+      <div className="mb-6">
+        <h3 className="font-medium text-gray-700 mb-2">Card details</h3>
+        <div className="border border-gray-300 rounded-lg p-4 focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-transparent transition-all">
+          <CardElement 
+            options={{
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#424770',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  '::placeholder': {
+                    color: '#aab7c4',
+                  },
+                  iconColor: '#6b46c1',
+                },
+                invalid: {
+                  color: '#e53e3e',
+                  iconColor: '#e53e3e',
                 },
               },
-              invalid: {
-                color: '#9e2146',
-              },
-            },
-          }}
-        />
+              hidePostalCode: true,
+            }}
+            onChange={(e) => setCardComplete(e.complete)}
+          />
+        </div>
+        <div className="flex items-center mt-2 text-xs text-gray-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <span>Payments are secured with 256-bit SSL encryption</span>
+        </div>
       </div>
       
+      {/* Order summary */}
+      <div className="mb-6 bg-gray-50 rounded-lg p-4">
+        <h3 className="font-medium text-gray-700 mb-2">Order summary</h3>
+        <div className="flex justify-between mb-2">
+          <span className="text-gray-600">Booking price</span>
+          <span className="font-medium">Rs.XXX</span>
+        </div>
+        <div className="flex justify-between mb-2">
+          <span className="text-gray-600">Service fee</span>
+          <span className="font-medium">Rs.XXX</span>
+        </div>
+        <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
+          <span className="font-medium">Total</span>
+          <span className="font-bold">Rs.XXX</span>
+        </div>
+      </div>
+      
+      {/* Error message */}
       {error && (
-        <div className="text-red-500 mb-4">{error}</div>
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">
+                {error}
+              </p>
+            </div>
+          </div>
+        </div>
       )}
       
-      <button 
-        type="submit" 
-        disabled={!stripe || processingPayment}
-        className="w-full bg-purple-600 text-white py-2 rounded disabled:opacity-50"
-      >
-        {processingPayment ? 'Processing...' : 'Pay Now'}
-      </button>
-      <button 
-        type="button" 
-        onClick={onCancel}
-        className="w-full mt-2 bg-gray-200 text-white py-2 rounded"
-      >
-        Cancel
-      </button>
+      {/* Action buttons */}
+      <div className="space-y-3">
+        <button 
+          type="submit" 
+          disabled={!stripe || processingPayment || !cardComplete}
+          className="w-full bg-purple-600 text-white py-3 rounded-lg disabled:opacity-50 hover:bg-purple-700 transition-colors flex items-center justify-center"
+        >
+          {processingPayment ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Processing...
+            </>
+          ) : (
+            'Complete Payment'
+          )}
+        </button>
+        <button 
+          type="button" 
+          onClick={onCancel}
+          className="w-full bg-gray-100 text-gray-800 py-3 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+      
+      {/* Payment methods icons */}
+      <div className="mt-6 flex justify-center space-x-2">
+        <div className="text-gray-400 text-xs flex items-center">
+          <span className="mr-2">Supported payment methods:</span>
+          <span className="flex space-x-2">
+            <svg viewBox="0 0 24 24" width="24" height="16" className="text-gray-600">
+              <path d="M21.5,5h-19C1.673,5,1,5.673,1,6.5v11C1,18.327,1.673,19,2.5,19h19c0.827,0,1.5-0.673,1.5-1.5v-11C23,5.673,22.327,5,21.5,5z" fill="#1A1F71"></path>
+            </svg>
+            <svg viewBox="0 0 24 24" width="24" height="16" className="text-gray-600">
+              <path d="M22,5H2C1.447,5,1,5.448,1,6v12c0,0.552,0.447,1,1,1h20c0.553,0,1-0.448,1-1V6C23,5.448,22.553,5,22,5z" fill="#3F51B5"></path>
+            </svg>
+            <svg viewBox="0 0 24 24" width="24" height="16" className="text-gray-600">
+              <path d="M22,5H2C1.447,5,1,5.448,1,6v12c0,0.552,0.447,1,1,1h20c0.553,0,1-0.448,1-1V6C23,5.448,22.553,5,22,5z" fill="#F44336"></path>
+            </svg>
+          </span>
+        </div>
+      </div>
     </form>
   );
 };
-
 const DriverSelection = ({ drivers, selectedDriver, onSelectDriver, loading, error }) => {
   if (loading) {
     return (
@@ -185,11 +335,34 @@ const CarDetailPage = () => {
   // Success modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   
+  // Image modal state
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
   const { vehicleId } = useParams();
   const navigate = useNavigate();
 
   const getUserId = () => {
     return cookies.user?.id || '67d338f3f22c60ec8701405a';
+  };
+
+  // Open image modal at specific index
+  const openImageModal = (index) => {
+    setCurrentImageIndex(index);
+    setShowImageModal(true);
+  };
+
+  // Close image modal
+  const closeImageModal = () => {
+    setShowImageModal(false);
+  };
+
+  // Navigate between images
+  const navigateImages = (step) => {
+    const newIndex = currentImageIndex + step;
+    if (newIndex >= 0 && newIndex < (vehicle?.carImageUrls?.length || 0)) {
+      setCurrentImageIndex(newIndex);
+    }
   };
 
   useEffect(() => {
@@ -448,8 +621,8 @@ const CarDetailPage = () => {
   
   const handlePaymentSuccess = async (paymentIntent) => {
     try {
-      console.log('🔍 Payment Intent Received:', paymentIntent); // Debug statement
-  
+      console.log('🔍 Payment Intent Received:', paymentIntent);
+
       // Confirm payment on backend
       await axios.post(
         'https://car-rental-backend-black.vercel.app/stripe/confirm-payment',
@@ -461,98 +634,19 @@ const CarDetailPage = () => {
           paymentMethod: 'card'
         }
       );
-  
+
       // Show success message and redirect
       setShowSuccessModal(true);
       setTimeout(() => {
         setShowSuccessModal(false);
         navigate(`/booking-confirmation/${bookingId}`);
       }, 3000);
-  
+
     } catch (error) {
       console.error('❌ Error confirming payment:', error);
       setPaymentError('Payment confirmation failed. Please contact support.');
     }
   };
-  
-  // const handleContinue = async () => {
-  //   if (!vehicle) return;
-    
-  //   setProcessingPayment(true);
-    
-  //   try {
-  //     const diffTime = Math.abs(endDate - startDate);
-  //     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
-  //     const totalAmount = vehicle.rent * diffDays;
-
-  //     const bookingData = {
-  //       idVehicle: vehicle._id,
-  //       user: getUserId(),
-  //       company: vehicle.company._id,
-  //       driver: selectedDriver?._id || null,
-  //       from: location,
-  //       to: location,
-  //       fromTime: startTime,
-  //       toTime: endTime,
-  //       intercity: false,
-  //       cityName: vehicle.company.city.toLowerCase(),
-  //       status: 'pending',
-  //       totalAmount
-  //     };
-
-  //     console.log("Submitting booking data:", bookingData);
-      
-  //     const bookingResponse = await axios.post(
-  //       'https://car-rental-backend-black.vercel.app/bookings/postBooking', 
-  //       bookingData
-  //     );
-
-  //     if (bookingResponse.data.success) {
-  //       setBookingId(bookingResponse.data.booking._id);
-  //       setShowSuccessModal(true);
-        
-  //       setTimeout(() => {
-  //         setShowSuccessModal(false);
-  //         navigate(`/booking-confirmation/${bookingResponse.data.booking._id}`);
-  //       }, 3000);
-  //     } else {
-  //       throw new Error(bookingResponse.data.message || 'Booking failed');
-  //     }
-
-  //   } catch (error) {
-  //     console.error('Booking Error:', error);
-  //     let errorMessage = 'Failed to create booking. Please try again.';
-      
-  //     if (error.response) {
-  //       errorMessage = error.response.data.error || 
-  //                    error.response.data.message || 
-  //                    `Server responded with status ${error.response.status}`;
-  //     } else if (error.request) {
-  //       errorMessage = 'No response received from server. Please check your connection.';
-  //     }
-      
-  //     setPaymentError(errorMessage);
-  //   } finally {
-  //     setProcessingPayment(false);
-  //   }
-  // };
-
-  // const handlePaymentSuccess = async (paymentIntent) => {
-  //   try {
-  //     await axios.post('https://car-rental-backend-black.vercel.app/payments/confirm-payment', {
-  //       paymentIntentId: paymentIntent.id,
-  //       bookingId,
-  //       userId: getUserId(),
-  //       amount: paymentIntent.amount / 100,
-  //       paymentMethod: 'card'
-  //     });
-
-  //     navigate(`/booking-confirmation/${bookingId}`);
-  //   } catch (error) {
-  //     console.error('Error confirming payment:', error);
-  //     setPaymentError('Payment confirmation failed. Please contact support.');
-  //   }
-  // };
 
   const handlePaymentCancel = () => {
     setShowPaymentForm(false);
@@ -579,6 +673,17 @@ const CarDetailPage = () => {
 
   return (
     <div className="max-w-2xl text-black mx-auto bg-white relative">
+      {/* Image Modal */}
+      {showImageModal && vehicle?.carImageUrls && (
+        <ImageModal
+          images={vehicle.carImageUrls}
+          currentIndex={currentImageIndex}
+          onClose={closeImageModal}
+          onNext={() => navigateImages(1)}
+          onPrev={() => navigateImages(-1)}
+        />
+      )}
+
       {/* Floating Chat Button */}
       {!chatOpen && (
         <button 
@@ -592,22 +697,36 @@ const CarDetailPage = () => {
       )}
 
       {/* Image Gallery */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="col-span-2 row-span-2">
+      <div className="grid grid-cols-3 gap-2 relative">
+        {/* Main Image */}
+        <div 
+          className="col-span-2 row-span-2 cursor-pointer"
+          onClick={() => openImageModal(0)}
+        >
           <img 
             src={vehicle.carImageUrls[0]} 
             alt={`${vehicle.manufacturer} ${vehicle.model}`} 
             className="w-full h-full object-cover"
           />
         </div>
-        <div>
+        
+        {/* Side View */}
+        <div 
+          className="cursor-pointer"
+          onClick={() => openImageModal(1)}
+        >
           <img 
             src={vehicle.carImageUrls[1]} 
             alt={`${vehicle.manufacturer} ${vehicle.model} side view`} 
             className="w-full h-full object-cover"
           />
         </div>
-        <div className="relative">
+        
+        {/* Rear View with overlay */}
+        <div 
+          className="relative cursor-pointer"
+          onClick={() => openImageModal(2)}
+        >
           <img 
             src={vehicle.carImageUrls[2]} 
             alt={`${vehicle.manufacturer} ${vehicle.model} rear view`} 
@@ -617,8 +736,10 @@ const CarDetailPage = () => {
             View {vehicle.carImageUrls.length} photos
           </div>
         </div>
+        
+        {/* Favorite Button */}
         <div className="absolute top-4 right-4">
-          <button className="bg-white p-2 rounded-full shadow">
+          <button className="bg-white p-2 rounded-full shadow hover:bg-gray-100 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-800">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
             </svg>
@@ -630,11 +751,10 @@ const CarDetailPage = () => {
       <div className="p-6">
         <div className="flex justify-between text-black items-start mb-4">
           <div>
-          <h1 className="text-2xl font-bold">
-  {vehicle.manufacturer.charAt(0).toUpperCase() + vehicle.manufacturer.slice(1)}{" "}
-  {vehicle.model.charAt(0).toUpperCase() + vehicle.model.slice(1)}
-</h1>
-
+            <h1 className="text-2xl font-bold">
+              {vehicle.manufacturer.charAt(0).toUpperCase() + vehicle.manufacturer.slice(1)}{" "}
+              {vehicle.model.charAt(0).toUpperCase() + vehicle.model.slice(1)}
+            </h1>
             <div className="flex items-center mt-1">
               <div className="flex text-yellow-500">
                 {[...Array(5)].map((_, i) => <span key={i} className="text-xl">★</span>)}
@@ -783,7 +903,7 @@ const CarDetailPage = () => {
 
         {/* Continue Button */}
         <button 
-          className="w-full bg-purple-600 text-white py-3 rounded-lg mb-20"
+          className="w-full bg-purple-600 text-white py-3 rounded-lg mb-20 hover:bg-purple-700 transition-colors"
           onClick={handleContinue}
           disabled={processingPayment}
         >
@@ -800,7 +920,7 @@ const CarDetailPage = () => {
               <div className="mb-4 p-4 bg-purple-50 rounded-lg">
                 <div className="flex items-start">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
                   </svg>
                   <div>
                     <p className="font-medium text-purple-800">Booking request sent!</p>
@@ -853,7 +973,7 @@ const CarDetailPage = () => {
               <p className="mb-4">{paymentError}</p>
               <button 
                 onClick={() => setPaymentError(null)}
-                className="w-full bg-purple-600 text-white py-2 rounded"
+                className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transition-colors"
               >
                 OK
               </button>
@@ -902,7 +1022,7 @@ const CarDetailPage = () => {
               />
               <button 
                 type="submit"
-                className="bg-purple-600 text-white px-4 py-2 rounded-r-lg hover:bg-purple-700"
+                className="bg-purple-600 text-white px-4 py-2 rounded-r-lg hover:bg-purple-700 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
