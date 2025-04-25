@@ -17,7 +17,7 @@ import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import CarRentalMarketWrapper from "./components/CarRentalMarketWrapper";
 import RentalCompanyDashboard from './pages/HostDashboard';
 import LandingPage from "./pages/Landing";
-import AdminDashboard from "./pages/AdminDashboard";
+// import AdminDashboard from "./pages/AdminDashboard";
 import ChatApplication from "./pages/Inbox";
 import FavoritesPage from "./pages/Favorites";
 import UserTripsPage from "./pages/Trips";
@@ -40,7 +40,8 @@ function Layout() {
     "/signup", 
     "/rental-login", 
     "/rental-signup",
-    "/auth/reset-password"
+    "/auth/reset-password",
+    // "/admin-dashboard",
   ].some(path => location.pathname.includes(path));
 
   return (
@@ -59,7 +60,7 @@ function Layout() {
           <Route path="/car-detail/:vehicleId" element={<CarDetail />} />
           <Route path="/car-rental/:brand" element={<CarRentalMarketWrapper />} />
           <Route path="/company-dashboard" element={<RentalCompanyDashboard />} />
-          <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          {/* <Route path="/admin-dashboard" element={<AdminDashboard />} /> */}
           <Route path="/inbox" element={<ChatApplication />} />
           <Route path="/trips" element={<UserTripsPage />} />
           <Route path="/rental-signup" element={<RentalCompanySignUp />} />

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate hook
 
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState([]);
@@ -9,6 +10,7 @@ const FavoritesPage = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate(); // Initialize navigate
 
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -22,6 +24,7 @@ const FavoritesPage = () => {
         if (!res.ok) throw new Error('Failed to fetch favorite vehicles');
         
         const data = await res.json();
+        console.log("Data",data); 
         // Validate and clean the data
         const validatedData = Array.isArray(data) 
           ? data.filter(item => item && typeof item === 'object')
@@ -38,6 +41,10 @@ const FavoritesPage = () => {
 
     fetchFavorites();
   }, []);
+
+  const goToHome = () => {
+    navigate('/');
+  };
 
   const removeFavorite = async (vehicleId, event) => {
     event?.stopPropagation();
@@ -109,17 +116,22 @@ const FavoritesPage = () => {
 
   const renderFavoriteItem = (item) => {
     if (!item || typeof item !== 'object') return null;
-    
+  
+    const imageUrl = item.carImageUrls?.[0] || '/placeholder-car.jpg';
+    const name = `${item.manufacturer || 'Unknown'} ${item.model || ''}`.trim();
+    const rent = item.rent ? `Rs. ${item.rent}/day` : 'Price not available';
+    const transmission = item.transmission || 'N/A';
+  
     return (
       <div
-        key={item._id || Math.random().toString(36).substr(2, 9)}
+        key={item._id}
         className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all bg-white cursor-pointer transform hover:scale-[1.02] duration-300"
         onClick={() => navigateToDetails(item._id)}
       >
         <div className="relative h-52">
           <img
-            src={item.imageUrl || '/placeholder-car.jpg'}
-            alt={item.name || 'Car image'}
+            src={imageUrl}
+            alt={name}
             className="w-full h-full object-cover"
             onError={(e) => {
               e.target.onerror = null;
@@ -146,62 +158,17 @@ const FavoritesPage = () => {
           </button>
         </div>
         <div className="p-4">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 line-clamp-1">
-                {item.name || 'Unnamed Vehicle'}
-              </h3>
-              <div className="flex items-center mt-1">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {item.category || 'Unknown'}
-                </span>
-              </div>
-            </div>
-            {item.rating && (
-              <div className="flex items-center bg-yellow-50 px-2 py-1 rounded">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 text-yellow-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                <span className="ml-1 text-sm font-medium text-gray-900">
-                  {item.rating}
-                </span>
-              </div>
-            )}
-          </div>
-          {item.features?.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1 mb-3">
-              {item.features.slice(0, 3).map((feature, index) => (
-                <span 
-                  key={`feature-${index}`} 
-                  className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded"
-                >
-                  {feature}
-                </span>
-              ))}
-            </div>
-          )}
+          <h3 className="text-lg font-semibold text-gray-900">{name}</h3>
+          <p className="text-sm text-gray-500 mt-1">Transmission: {transmission}</p>
+          <p className="text-sm text-gray-700 font-medium mt-2">{rent}</p>
           <p className="mt-2 text-xs text-gray-500">
-            Added {item.dateAdded ? new Date(item.dateAdded).toLocaleDateString(undefined, { 
-              month: 'short', 
-              day: 'numeric', 
-              year: 'numeric' 
-            }) : 'N/A'}
+            Added: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}
           </p>
-          <div className="mt-4">
-            <button className="w-full bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md py-2 px-3 text-sm font-medium text-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              View Details
-            </button>
-          </div>
         </div>
       </div>
     );
   };
-
+  
   return (
     <ErrorBoundary>
       <div className="container mx-auto px-4 py-8 text-gray-800 max-w-6xl">
@@ -284,7 +251,9 @@ const FavoritesPage = () => {
             <h3 className="mt-2 text-xl font-semibold text-gray-900">No favorite cars yet</h3>
             <p className="mt-1 text-gray-500 max-w-sm mx-auto">Start exploring our selection of vehicles and add your favorites to this list.</p>
             <div className="mt-6">
-              <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              onClick={goToHome}
+              >
                 Explore Cars
               </button>
             </div>

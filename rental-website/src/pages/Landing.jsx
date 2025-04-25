@@ -191,13 +191,13 @@ const LandingPage = () => {
             {destinations.map((destination) => (
               <div
                 key={destination.name}
-                className="cursor-pointer group"
+                className=" group"
               >
                 <div className="relative overflow-hidden rounded-lg h-64">
                   <img
                     src={destination.icon}
                     alt={destination.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    className="w-full h-full object-cover  duration-300"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
                     <h3 className="text-white text-xl font-bold">{destination.name}</h3>

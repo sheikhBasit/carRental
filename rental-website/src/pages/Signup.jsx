@@ -12,7 +12,7 @@ const Signup = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    fullName: "",       // Maps to 'name' in the schema
+    name: "",       // Maps to 'name' in the schema
     email: "",
     password: "",
     confirmPassword: "",
@@ -81,8 +81,8 @@ const Signup = () => {
 
     // Validate all required fields
     const requiredFields = [
-      'fullName', 'email', 'password', 'confirmPassword', 'phone', 
-      'cnic', 'licenseNumber', 'address', 'accountNo', 'city', 'province'
+      'name', 'email', 'password', 'confirmPassword', 'phone', 
+      'cnic', 'licenseNumber', 'address', 'city', 'province'
     ];
     
     for (let key of requiredFields) {
@@ -188,7 +188,7 @@ const Signup = () => {
 
       const data = await response.json();
       console.log("Signup successful:", data);
-      
+
       navigate("/", { state: { successMessage: "Registration successful! Please verify your email." } });
     } catch (error) {
       console.error("Signup error:", error);
@@ -218,7 +218,7 @@ const Signup = () => {
               <input 
                 type="text" 
                 id="fullName"
-                name="fullName" 
+                name="name" 
                 className="form-control" 
                 placeholder="Enter Full Name" 
                 value={formData.fullName} 
@@ -320,7 +320,7 @@ const Signup = () => {
               </div>
             </div>
 
-            <div className="form-group">
+            {/* <div className="form-group">
               <label htmlFor="accountNo">Bank Account Number</label>
               <input 
                 type="text" 
@@ -332,7 +332,7 @@ const Signup = () => {
                 onChange={handleChange} 
                 required 
               />
-            </div>
+            </div> */}
 
             <div className="form-group">
               <label htmlFor="cnic">CNIC Number</label>
@@ -348,7 +348,7 @@ const Signup = () => {
               />
             </div>
 
-            <div className="form-group">
+            {/* <div className="form-group">
               <label htmlFor="licenseNumber">License Number</label>
               <input 
                 type="text" 
@@ -360,7 +360,7 @@ const Signup = () => {
                 onChange={handleChange} 
                 required 
               />
-            </div>
+            </div> */}
 
             <div className="form-group">
               <label htmlFor="address">Address</label>
