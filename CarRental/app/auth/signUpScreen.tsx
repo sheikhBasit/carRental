@@ -27,7 +27,6 @@ const SignUpScreen: React.FC = () => {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [province, setProvince] = useState("");
-  const [accountNo, setAccountNo] = useState("");
   const [cnic, setCnic] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
   const [licenseFront, setLicenseFront] = useState<ImageUri>(null);
@@ -93,7 +92,6 @@ const SignUpScreen: React.FC = () => {
     const nameRegex = /^[a-zA-Z\s]+$/;
     const phoneRegex = /^03\d{9}$/; // 11-digit number starting with 03
     const cnicRegex = /^\d{13}$/; // Exactly 13 digits
-    const accountNumberRegex = /^\d{11,20}$/; // 11 to 20 digits
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/; // Standard email format
     const passwordRegex = /^.{8,20}$/; // Password must be between 8-20 characters
     const licenseNumberRegex = /^[A-Za-z0-9]{6,20}$/; // Alphanumeric, 6-20 characters
@@ -123,11 +121,7 @@ const SignUpScreen: React.FC = () => {
       setIsLoading(false);
       return;
     }
-    if (!accountNumberRegex.test(accountNo)) {
-      Alert.alert("Invalid Input", "Account number must be between 11 and 20 digits.");
-      setIsLoading(false);
-      return;
-    }
+    
     if (!emailRegex.test(email)) {
       Alert.alert("Invalid Input", "Please enter a valid email address.");
       setIsLoading(false);
@@ -160,7 +154,6 @@ const SignUpScreen: React.FC = () => {
     formData.append("address", address);
     formData.append("city", city);
     formData.append("province", province);
-    formData.append("accountNo", accountNo);
     formData.append("cnic", cnic);
     formData.append("license", licenseNumber);
     
@@ -272,7 +265,6 @@ const SignUpScreen: React.FC = () => {
           }}
         />
         <InputField label="Province" placeholder="Enter province" value={province} onChangeText={setProvince} />
-        <InputField label="Account Number" placeholder="Enter account number" value={accountNo} onChangeText={setAccountNo} keyboardType="numeric" />
         <InputField label="CNIC Number" placeholder="Enter CNIC number" value={cnic} onChangeText={setCnic} keyboardType="numeric" />
         <InputField label="License Number" placeholder="Enter license number" value={licenseNumber} onChangeText={setLicenseNumber} />
 
