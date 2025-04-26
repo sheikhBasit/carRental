@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+// import axios from 'axios';
 
 const RentalCompanySignUp = () => {
   const navigate = useNavigate();
@@ -171,48 +171,65 @@ const RentalCompanySignUp = () => {
     if (!validateForm()) return;
     
     setLoading(true);
-    
+    setError('');
+  
     try {
       const formDataToSend = new FormData();
       
+      // Append all form data except confirmPassword
       Object.entries(formData).forEach(([key, value]) => {
-        if (key !== 'confirmPassword') {
+        if (key !== 'confirmPassword' && value !== undefined) {
           formDataToSend.append(key, value);
         }
       });
-      
-      formDataToSend.append('cnicFront', files.cnicFront);
-      formDataToSend.append('cnicBack', files.cnicBack);
-      
-      // Using the response properly
-      const { data } = await axios.post(
-        'https://car-rental-backend-black.vercel.app/api/rental-companies/postRental', 
-        formDataToSend,
+  
+      // Append files
+      if (files.cnicFront) formDataToSend.append('cnicFront', files.cnicFront);
+      if (files.cnicBack) formDataToSend.append('cnicBack', files.cnicBack);
+  
+      // Debug: Log FormData contents
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(key, value);
+      }
+  
+      const response = await fetch(
+        'https://car-rental-backend-black.vercel.app/rental-companies/postRental',
         {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+          method: 'POST',
+          body: formDataToSend,
+          // Don't set Content-Type header - browser will set it with boundary
         }
       );
-      
-      navigate('/login', { 
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Registration failed');
+      }
+  
+      navigate('/company-dashboard', { 
         state: { 
-          message: data?.message || 'Registration successful! Please login.',
-          success: true 
+          message: data.message || 'Registration successful!',
+          success: true,
+          company: data.company
         } 
       });
-      
+  
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 
-                         err.message || 
-                         'Registration failed. Please try again later.';
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (err.message.includes('NetworkError')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else {
+        errorMessage = err.message || errorMessage;
+      }
+      
       setError(errorMessage);
       console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }
   };
-  
   const provinceOptions = [
     'Punjab',
     'Sindh',
@@ -450,7 +467,7 @@ const RentalCompanySignUp = () => {
                     required
                     value={formData.bankName}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="mt-1 block text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </div>
                 
@@ -465,7 +482,7 @@ const RentalCompanySignUp = () => {
                     required
                     value={formData.bankTitle}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="mt-1 text-black block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </div>
                 
@@ -480,7 +497,7 @@ const RentalCompanySignUp = () => {
                     required
                     value={formData.accountNo}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="mt-1 block w-full px-3 text-black py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </div>
                 
@@ -590,7 +607,7 @@ const RentalCompanySignUp = () => {
                 <button
                   type="button"
                   onClick={handlePrevStep}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="inline-flex items-center text-white px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   <svg className="mr-2 -ml-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />

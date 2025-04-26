@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, Heart, Calendar, Inbox, User, CreditCard, CarFront, HelpCircle, FileText, LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate hook
+import { useNavigate } from 'react-router-dom';
+import { useCookies } from 'react-cookie';
+import Cookies from 'js-cookie';
 
 const SideMenu = ({ isOpen, onClose }) => {
   const menuRef = useRef(null);
-  const navigate = useNavigate(); // Initialize navigate
+  const navigate = useNavigate();
+  const [, , removeCookie] = useCookies(['user', 'city']);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -12,17 +15,32 @@ const SideMenu = ({ isOpen, onClose }) => {
         onClose();
       }
     };
-    // Add event listener when menu is open
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-    // Cleanup the event listener
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onClose]);
 
-  // Handler for menu item clicks
+  const handleLogout = () => {
+    // Remove cookies using both methods for compatibility
+    removeCookie('user', { path: '/' });
+    removeCookie('city', { path: '/' });
+    Cookies.remove('user');
+    Cookies.remove('city');
+    
+    // Clear other storage
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    navigate('/login');
+    onClose();
+    window.location.reload();
+  };
+
   const handleMenuItemClick = (itemText) => {
     switch (itemText) {
       case 'Become a host':
@@ -47,15 +65,12 @@ const SideMenu = ({ isOpen, onClose }) => {
         navigate('/contact');
         break;
       case 'Log out':
-        // Handle logout logic here
-        console.log('Logging out');
-        // Then navigate to home or login page
-        navigate('/login');
-        break;
+        handleLogout();
+        return;
       default:
         break;
     }
-    onClose(); // Close menu after navigation
+    onClose();
   };
 
   const menuItems = [
@@ -93,7 +108,7 @@ const SideMenu = ({ isOpen, onClose }) => {
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const navigate = useNavigate(); // Initialize navigate
+  const navigate = useNavigate();
   
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -111,7 +126,6 @@ const Header = () => {
     <>
       <header className="bg-white border-b border-gray-200">
         <div className="flex justify-between items-center px-4 py-3">
-          {/* Drive Fleet Logo - Navigate to Home */}
           <div 
             className="text-2xl font-bold text-black cursor-pointer" 
             onClick={goToHome}
@@ -119,7 +133,6 @@ const Header = () => {
             Drive Fleet
           </div>
           
-          {/* Navigation and Actions */}
           <div className="flex items-center space-x-4">
             <button 
               className="text-sm font-medium hover:bg-gray-100 px-3 py-2 rounded"
@@ -137,14 +150,10 @@ const Header = () => {
         </div>
       </header>
       
-      {/* Sliding Side Menu */}
       <SideMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
       
-      {/* Overlay when menu is open */}
       {isMenuOpen && (
-        <div
-          className="fixed inset-0  bg-opacity-50 z-40"
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40" />
       )}
     </>
   );
