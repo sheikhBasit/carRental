@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Cookies from "js-cookie";
+
 // import axios from 'axios';
 
 const RentalCompanySignUp = () => {
@@ -187,17 +189,11 @@ const RentalCompanySignUp = () => {
       if (files.cnicFront) formDataToSend.append('cnicFront', files.cnicFront);
       if (files.cnicBack) formDataToSend.append('cnicBack', files.cnicBack);
   
-      // Debug: Log FormData contents
-      for (let [key, value] of formDataToSend.entries()) {
-        console.log(key, value);
-      }
-  
       const response = await fetch(
         'https://car-rental-backend-black.vercel.app/rental-companies/postRental',
         {
           method: 'POST',
           body: formDataToSend,
-          // Don't set Content-Type header - browser will set it with boundary
         }
       );
   
@@ -206,6 +202,22 @@ const RentalCompanySignUp = () => {
       if (!response.ok) {
         throw new Error(data.error || data.message || 'Registration failed');
       }
+  
+      // Store company data in cookies
+      const companyData = {
+        id: data.company._id,
+        name: data.company.companyName,
+        email: data.company.email,
+        status: data.company.status,
+        // Add other relevant fields you want to store
+      };
+  
+      // Set cookie with 7-day expiration
+      Cookies.set('rentalCompany', JSON.stringify(companyData), {
+        expires: 7, // days
+        secure: true,
+        sameSite: 'strict'
+      });
   
       navigate('/company-dashboard', { 
         state: { 

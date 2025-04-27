@@ -142,7 +142,7 @@ const Header = () => {
             </button>
             <button
               onClick={toggleMenu}
-              className="text-white hover:bg-gray-800 bg-black p-2 rounded"
+              className="text-white hover:bg-gray-800  p-2 rounded"
             >
               <Menu size={24} />
             </button>
@@ -153,7 +153,7 @@ const Header = () => {
       <SideMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
       
       {isMenuOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40" />
+        <div className="fixed inset-0  bg-opacity-50 z-40" />
       )}
     </>
   );

@@ -7,14 +7,27 @@ const BookingDetail = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
+  const [fallbackVehicle, setFallbackVehicle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchBookingDetails = async () => {
       try {
-        const response = await axios.get(`https://car-rental-backend-black.vercel.app/bookings/${bookingId}`);
-        setBooking(response.data);
+        const response = await axios.get(`https://car-rental-backend-black.vercel.app/bookings/getBookingById/${bookingId}`);
+        const bookingData = response.data;
+        
+        // If idVehicle is null, fetch the fallback vehicle
+        if (!bookingData.idVehicle) {
+          try {
+            const fallbackResponse = await axios.get(`https://car-rental-backend-black.vercel.app/vehicles/68055935385a645f78086de3`);
+            setFallbackVehicle(fallbackResponse.data);
+          } catch (fallbackError) {
+            console.error('Failed to fetch fallback vehicle:', fallbackError);
+          }
+        }
+        
+        setBooking(bookingData);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch booking details');
       } finally {
@@ -43,6 +56,9 @@ const BookingDetail = () => {
         return <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">{status}</span>;
     }
   };
+
+  // Get the vehicle to display (either the booking's vehicle or the fallback)
+  const displayVehicle = booking?.idVehicle || fallbackVehicle;
 
   if (loading) {
     return (
@@ -102,48 +118,54 @@ const BookingDetail = () => {
           </div>
 
           <div className="p-6">
-            {/* Vehicle Information */}
-            <div className="mb-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <FaCar className="text-purple-600" /> Vehicle Details
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-center gap-4">
-                  <img 
-                    src={booking.idVehicle.carImageUrls?.[0] || '/default-car.jpg'} 
-                    alt={`${booking.idVehicle.manufacturer} ${booking.idVehicle.model}`}
-                    className="w-32 h-24 object-cover rounded-lg"
-                  />
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{booking.idVehicle.manufacturer} {booking.idVehicle.model}</h4>
-                    <p className="text-gray-600 text-sm">Year: {booking.idVehicle.year}</p>
-                    <p className="text-gray-600 text-sm">Color: {booking.idVehicle.color}</p>
-                    <p className="text-gray-600 text-sm">Seats: {booking.idVehicle.capacity}</p>
+            {/* Vehicle Information - Only show if we have a vehicle to display */}
+            {displayVehicle && (
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <FaCar className="text-purple-600" /> Vehicle Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex items-center gap-4">
+                    <img 
+                      src={displayVehicle.carImageUrls?.[0] || '/default-car.jpg'} 
+                      alt={`${displayVehicle.manufacturer} ${displayVehicle.model}`}
+                      className="w-32 h-24 object-cover rounded-lg"
+                    />
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{displayVehicle.manufacturer} {displayVehicle.model}</h4>
+                      <p className="text-gray-600 text-sm">Year: {displayVehicle.year}</p>
+                      <p className="text-gray-600 text-sm">Color: {displayVehicle.color}</p>
+                      <p className="text-gray-600 text-sm">Seats: {displayVehicle.capacity}</p>
+                      {!booking.idVehicle && (
+                        <p className="text-xs text-yellow-600 mt-1">Default vehicle shown as original was not available</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Daily Rate</p>
-                      <p className="font-medium">Rs. {booking.idVehicle.rent}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Transmission</p>
-                      <p className="font-medium">{booking.idVehicle.transmission}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Fuel Type</p>
-                      <p className="font-medium">{booking.idVehicle.fuelType || 'Diesel'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Mileage</p>
-                      <p className="font-medium">{booking.idVehicle.mileage || 'Unlimited'} km</p>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500">Daily Rate</p>
+                        <p className="font-medium">Rs. {displayVehicle.rent}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Transmission</p>
+                        <p className="font-medium">{displayVehicle.transmission}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Fuel Type</p>
+                        <p className="font-medium">{displayVehicle.fuelType || 'Diesel'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Mileage</p>
+                        <p className="font-medium">{displayVehicle.mileage || 'Unlimited'} km</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
+            {/* Rest of the booking details remain the same */}
             {/* Booking Timeline */}
             <div className="mb-8">
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">

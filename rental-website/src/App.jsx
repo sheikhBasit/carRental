@@ -42,6 +42,7 @@ function Layout() {
     "/rental-signup",
     "/auth/reset-password",
     // "/admin-dashboard",
+    "/company-dashboard",
   ].some(path => location.pathname.includes(path));
 
   return (

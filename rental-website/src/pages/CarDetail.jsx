@@ -85,7 +85,8 @@ const ImageModal = ({ images, currentIndex, onClose, onNext, onPrev }) => {
 // Initialize Stripe outside the component
 const stripePromise = loadStripe('pk_test_51QGDbHC1170CwYd9Y3Xz2uZx3Z4Q7X9Z8Z3Z4Q7X9Z8Z3Z4Q7X9Z8Z3Z4Q7X9Z8');
 
-const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment }) => {
+// Payment Form Component with fixed price display
+const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment, bookingDetails }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState(null);
@@ -119,6 +120,9 @@ const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment }) =
       setError(err.message);
     }
   };
+
+  // Ensure bookingDetails has proper default values
+  const { bookingPrice = 5000, serviceFee = 100, totalAmount = 5100 } = bookingDetails || {};
 
   return (
     <form onSubmit={handleSubmit} className="p-4">
@@ -162,15 +166,15 @@ const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment }) =
         <h3 className="font-medium text-gray-700 mb-2">Order summary</h3>
         <div className="flex justify-between mb-2">
           <span className="text-gray-600">Booking price</span>
-          <span className="font-medium">Rs.XXX</span>
+          <span className="font-medium">Rs.{bookingPrice.toFixed(2)}</span>
         </div>
         <div className="flex justify-between mb-2">
           <span className="text-gray-600">Service fee</span>
-          <span className="font-medium">Rs.XXX</span>
+          <span className="font-medium">Rs.{serviceFee.toFixed(2)}</span>
         </div>
         <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
           <span className="font-medium">Total</span>
-          <span className="font-bold">Rs.XXX</span>
+          <span className="font-bold">Rs.{totalAmount.toFixed(2)}</span>
         </div>
       </div>
       
@@ -341,6 +345,41 @@ const CarDetailPage = () => {
 
   const { vehicleId } = useParams();
   const navigate = useNavigate();
+  const handlePaymentSuccess = async (paymentIntent) => {
+    try {
+      console.log('🔍 Payment Intent Received:', paymentIntent);
+
+      // Confirm payment on backend
+      await axios.post(
+        'https://car-rental-backend-black.vercel.app/stripe/confirm-payment',
+        {
+          paymentIntentId: paymentIntent.id,
+          bookingId,
+          userId: getUserId(),
+          amount: paymentIntent.amount / 100,
+          paymentMethod: 'card'
+        }
+      );
+
+      // Show success message and redirect
+      setShowSuccessModal(true);
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        navigate(`/booking-confirmation/${bookingId}`);
+      }, 3000);
+
+    } catch (error) {
+      console.error('❌ Error confirming payment:', error);
+      setPaymentError('Payment confirmation failed. Please contact support.');
+    }
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPaymentForm(false);
+    setClientSecret('');
+    setBookingId(null);
+    setPaymentError(null);
+  };
 
   const getUserId = () => {
     return cookies.user?.id || '67d338f3f22c60ec8701405a';
@@ -543,118 +582,152 @@ const CarDetailPage = () => {
     );
   };
 
-  const handleContinue = async () => {
-    if (!vehicle) return;
-    
-    setProcessingPayment(true);
-    
-    try {
-      // Calculate rental duration and total amount
-      const diffTime = Math.abs(endDate - startDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
-      const totalAmount = vehicle.rent * diffDays;
-  
-      // Prepare booking data
-      const bookingData = {
-        idVehicle: vehicle._id,
-        user: getUserId(),
-        company: vehicle.company._id,
-        driver: selectedDriver?._id || null,
-        from: location,
-        to: location,
-        fromTime: startTime,
-        toTime: endTime,
-        intercity: false,
-        cityName: vehicle.company.city.toLowerCase(),
-        status: 'pending',
-        totalAmount
-      };
-  
-      // 1. First create the booking
-      const bookingResponse = await axios.post(
-        'https://car-rental-backend-black.vercel.app/bookings/postBooking', 
-        bookingData
-      );
-  
-      if (!bookingResponse.data.success) {
-        throw new Error(bookingResponse.data.message || 'Booking failed');
-      }
-  
-      const bookingId = bookingResponse.data.booking._id;
-      setBookingId(bookingId);
-  
-      // 2. Create payment intent with Stripe
-      const paymentResponse = await axios.post(
-        'https://car-rental-backend-black.vercel.app/stripe/create-payment-intent',
-        {
-          bookingId,
-          amount: totalAmount,
-          currency: "usd"
-        }
-      );
-  
-      if (!paymentResponse.data.clientSecret) {
-        throw new Error(paymentResponse.data.message || 'Payment setup failed');
-      }
-  
-      // 3. Show payment form with the client secret
-      setClientSecret(paymentResponse.data.clientSecret);
-      setShowPaymentForm(true);
-  
-    } catch (error) {
-      console.error('Booking Error:', error);
-      let errorMessage = 'Failed to create booking. Please try again.';
+  // Inside the CarDetailPage component
+// When creating the payment form:
+
+
+// Add this to your state variables at the top
+const [bookingDetails, setBookingDetails] = useState({
+  bookingPrice: 0,
+  serviceFee: 0,
+  totalAmount: 0
+});
+
+// Then update the Elements section in your JSX:
+{showPaymentForm && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <h2 className="text-xl font-bold mb-4">Complete Payment</h2>
       
-      if (error.response) {
-        errorMessage = error.response.data.error || 
-                     error.response.data.message || 
-                     `Server responded with status ${error.response.status}`;
-      } else if (error.request) {
-        errorMessage = 'No response received from server. Please check your connection.';
-      }
+      {/* Confirmation Message */}
+      <div className="mb-4 p-4 bg-purple-50 rounded-lg">
+        <div className="flex items-start">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
+          </svg>
+          <div>
+            <p className="font-medium text-purple-800">Booking request sent!</p>
+            <p className="text-sm text-purple-600">Complete your payment to confirm your booking for {vehicle.manufacturer} {vehicle.model}.</p>
+          </div>
+        </div>
+      </div>
       
-      setPaymentError(errorMessage);
-    } finally {
-      setProcessingPayment(false);
-    }
-  };
+      <Elements stripe={stripePromise}>
+        <PaymentForm 
+          clientSecret={clientSecret}
+          onSuccess={handlePaymentSuccess}
+          onCancel={handlePaymentCancel}
+          processingPayment={processingPayment}
+          bookingDetails={bookingDetails} // Pass the booking details
+        />
+      </Elements>
+    </div>
+  </div>
+)}
+
+
+// Inside the CarDetailPage component
+// When creating the payment form:
+const handleContinue = async () => {
+  if (!vehicle) return;
   
-  const handlePaymentSuccess = async (paymentIntent) => {
-    try {
-      console.log('🔍 Payment Intent Received:', paymentIntent);
+  setProcessingPayment(true);
+  
+  try {
+    // Calculate rental duration in days
+    const timeDiff = Math.abs(endDate - startDate);
+    const diffDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) || 1; // Ensure at least 1 day
+    
+    // Calculate prices
+    const bookingPrice = vehicle.rent * diffDays;
+    const serviceFee = bookingPrice * 0.10; // 10% service fee
+    const totalAmount = bookingPrice + serviceFee;
 
-      // Confirm payment on backend
-      await axios.post(
-        'https://car-rental-backend-black.vercel.app/stripe/confirm-payment',
-        {
-          paymentIntentId: paymentIntent.id,
-          bookingId,
-          userId: getUserId(),
-          amount: paymentIntent.amount / 100,
-          paymentMethod: 'card'
-        }
-      );
+    // Update booking details state
+    setBookingDetails({
+      bookingPrice,
+      serviceFee,
+      totalAmount
+    });
 
-      // Show success message and redirect
-      setShowSuccessModal(true);
-      setTimeout(() => {
-        setShowSuccessModal(false);
-        navigate(`/booking-confirmation/${bookingId}`);
-      }, 3000);
+    console.log('Vehicle rent:', vehicle.rent);
+console.log('Start date:', startDate);
+console.log('End date:', endDate);
+console.log('Days difference:', diffDays);
+console.log('Calculated booking price:', bookingPrice);
+console.log('Booking details:', bookingDetails);
+    // Prepare booking data
+    const bookingData = {
+      idVehicle: vehicle._id,
+      user: getUserId(),
+      company: vehicle.company._id,
+      driver: selectedDriver?._id || null,
+      from: location,
+      to: location,
+      fromTime: startTime,
+      toTime: endTime,
+      intercity: false,
+      cityName: vehicle.company.city.toLowerCase(),
+      status: 'pending',
+      totalAmount,
+      duration: diffDays // Add duration to booking data
+    };
 
-    } catch (error) {
-      console.error('❌ Error confirming payment:', error);
-      setPaymentError('Payment confirmation failed. Please contact support.');
+    // Rest of the function remains the same...
+    // 1. First create the booking
+    const bookingResponse = await axios.post(
+      'https://car-rental-backend-black.vercel.app/bookings/postBooking', 
+      bookingData
+    );
+
+    if (!bookingResponse.data.success) {
+      throw new Error(bookingResponse.data.message || 'Booking failed');
     }
-  };
 
-  const handlePaymentCancel = () => {
-    setShowPaymentForm(false);
-    setClientSecret('');
-    setBookingId(null);
-    setPaymentError(null);
-  };
+    const bookingId = bookingResponse.data.booking._id;
+    setBookingId(bookingId);
 
+    // 2. Create payment intent with Stripe
+    const paymentResponse = await axios.post(
+      'https://car-rental-backend-black.vercel.app/stripe/create-payment-intent',
+      {
+        bookingId,
+        amount: totalAmount * 100, // Convert to cents
+        currency: "usd",
+        description: `Booking for ${vehicle.manufacturer} ${vehicle.model} (${diffDays} days)`
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${cookies.user?.token || ''}`
+        }
+      }
+    );
+
+    if (!paymentResponse.data.clientSecret) {
+      throw new Error(paymentResponse.data.message || 'Payment setup failed');
+    }
+
+    // 3. Show payment form with the client secret
+    setClientSecret(paymentResponse.data.clientSecret);
+    setShowPaymentForm(true);
+
+  } catch (error) {
+    console.error('Booking Error:', error);
+    let errorMessage = 'Failed to create booking. Please try again.';
+    
+    if (error.response) {
+      errorMessage = error.response.data.error || 
+                   error.response.data.message || 
+                   `Server responded with status ${error.response.status}`;
+    } else if (error.request) {
+      errorMessage = 'No response received from server. Please check your connection.';
+    }
+    
+    setPaymentError(errorMessage);
+  } finally {
+    setProcessingPayment(false);
+  }
+};
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
