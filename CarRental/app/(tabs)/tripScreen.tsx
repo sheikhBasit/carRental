@@ -233,7 +233,7 @@ const TripScreen = () => {
               setActiveTab("confirmed");
             }}
           >
-            <Text style={styles.tabText}>Confirmed</Text>
+            <Text style={styles.tabText}>Upcoming</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === "completed" && styles.activeTab]}
@@ -242,7 +242,7 @@ const TripScreen = () => {
               setActiveTab("completed");
             }}
           >
-            <Text style={styles.tabText}>Completed</Text>
+            <Text style={styles.tabText}>Previous</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === "cancelled" && styles.activeTab]}

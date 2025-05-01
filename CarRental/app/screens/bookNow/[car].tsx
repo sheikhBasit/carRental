@@ -1129,7 +1129,7 @@ const BookNowScreen = () => {
               <View style={styles.detailRow}>
                 <Ionicons name="alert-circle" size={16} color="#FF6B6B" />
                 <Text style={styles.blackoutText}>
-                  Blackout Dates: {car.blackoutDates.map((date: string | Date) => 
+                  Not Available on: {car.blackoutDates.map((date: string | Date) => 
                     new Date(date).toLocaleDateString()
                   ).join(', ')}
                 </Text>
@@ -1769,7 +1769,7 @@ const styles = StyleSheet.create({
   blackoutText: {
     fontSize: 14,
     color: "#FF6B6B",
-    marginLeft: 8,
+    marginLeft: 5,
   },
 });
 

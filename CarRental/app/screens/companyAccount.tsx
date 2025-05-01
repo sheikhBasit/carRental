@@ -21,6 +21,7 @@ const CompanyAccountScreen = () => {
     const fetchCompanyData = async () => {
       try {
         const companyId = await loadCompanyId();
+        console.log('Company ID:', companyId);
         if (!companyId) {
           router.push('/(rental-tabs)');
           return;
@@ -28,14 +29,15 @@ const CompanyAccountScreen = () => {
 
         const response = await fetch(`${AppConstants.LOCAL_URL}/rental-companies/${companyId}`);
         const data = await response.json();
+        console.log('Company Data:', data.company);
+        if (data) {
+          setCompanyData(data);
 
-        if (response.ok) {
-          setCompanyData(data.company);
         } else {
-          console.error('Error fetching company data:', data.message);
+          console.log('Error fetching company data:', data.message);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.log('Error:', error);
       } finally {
         setIsLoading(false);
       }
@@ -55,7 +57,7 @@ const CompanyAccountScreen = () => {
   if (!companyData) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>No company data found</Text>
+        <Text style={styles.errorText}>No company data found </Text>
       </View>
     );
   }
@@ -152,7 +154,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 20,
+    top: 45,
     left: 20,
     zIndex: 1,
   },
@@ -162,6 +164,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   title: {
+    marginTop: 20,
+    marginLeft: 30,
     fontSize: 24,
     fontWeight: 'bold',
     color: '#003366',
