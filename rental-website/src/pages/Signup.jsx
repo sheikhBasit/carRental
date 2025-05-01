@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaGoogle, FaUpload, FaCheck } from "react-icons/fa";
 import { useGoogleAuth } from "../components/GoogleAuth";
+import Cookies from 'js-cookie';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -21,7 +22,8 @@ const Signup = () => {
     accountNo: "",  // Added missing field
     city: "",       // Added missing field
     province: "",   // Added missing field
-    fcmToken: "",   // Added missing field (optional)
+    fcmToken: "",
+    isVerified:true   // Added missing field (optional)
   });
 
   const [files, setFiles] = useState({
@@ -181,6 +183,23 @@ const Signup = () => {
       const data = await response.json();
       console.log("Signup successful:", data);
 
+      // ---------- SAVE USER DATA TO COOKIES ----------
+  
+  if (data.user?._id) {
+        Cookies.set("user", JSON.stringify({
+          id: data.user._id,
+          email: data.user.email,
+          name: data.user.name,
+          city: data.user.city
+        }), { expires: 7 });
+
+        if (data.token) {
+          Cookies.set("token", data.token, { expires: 7 });
+        }
+
+       }  
+      // ---------- NAVIGATE TO HOME ----------
+   
       navigate("/", { state: { successMessage: "Registration successful! Please verify your email." } });
     } catch (error) {
       console.error("Signup error:", error);

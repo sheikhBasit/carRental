@@ -16,7 +16,10 @@ const FavoritesPage = () => {
     const fetchFavorites = async () => {
       setIsLoading(true);
       setError(null);
-      const userId = Cookies.get('userId') || '67d338f3f22c60ec8701405a';
+      console.log(`cookiiess ${Cookies.get('user')}`)
+      const user = Cookies.get('user')
+      console.log(typeof(user))
+      const userId = JSON.parse(user).id
       const url = `https://car-rental-backend-black.vercel.app/likes/liked-vehicles/${userId}`;
 
       try {
@@ -49,10 +52,10 @@ const FavoritesPage = () => {
   const removeFavorite = async (vehicleId, event) => {
     event?.stopPropagation();
     if (!vehicleId) return;
-
-    const userId = Cookies.get('userId') || '67d338f3f22c60ec8701405a';
+  
+    const user = Cookies.get('user');
+    const userId = JSON.parse(user).id || '67d338f3f22c60ec8701405a';
     
-    // Optimistic update
     const previousFavorites = [...favorites];
     setFavorites(prev => prev.filter(item => item?._id !== vehicleId));
     
@@ -61,18 +64,18 @@ const FavoritesPage = () => {
         `https://car-rental-backend-black.vercel.app/likes/unlike/${vehicleId}/${userId}`,
         { method: 'DELETE' }
       );
-
+  console.log(res)
       if (!res.ok) {
         throw new Error('Failed to unlike vehicle');
       }
     } catch (error) {
       console.error('Error unliking vehicle:', error);
-      // Restore previous state if operation failed
       setFavorites(previousFavorites);
       setError('Failed to remove from favorites. Please try again.');
       setTimeout(() => setError(null), 3000);
     }
   };
+  
 
   const navigateToDetails = (vehicleId) => {
     if (!vehicleId) return;
@@ -190,39 +193,6 @@ const FavoritesPage = () => {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row justify-between mb-8 bg-gray-50 p-4 rounded-lg shadow-sm">
-          <div className="mb-4 sm:mb-0">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Filter by category:</label>
-            <div className="relative">
-              <select
-                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm"
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-              >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category.charAt(0).toUpperCase() + category.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sort by:</label>
-            <div className="relative">
-              <select
-                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-              >
-                <option value="date">Most Recent</option>
-                <option value="name">Name (A-Z)</option>
-                <option value="rating">Highest Rating</option>
-              </select>
-            </div>
-          </div>
-        </div>
 
         {isLoading ? (
           <div className="flex justify-center py-12">

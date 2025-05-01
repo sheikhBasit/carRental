@@ -9,7 +9,6 @@ import { useCookies } from 'react-cookie';
 
 // Image Modal Component
 const ImageModal = ({ images, currentIndex, onClose, onNext, onPrev }) => {
-  // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -83,25 +82,46 @@ const ImageModal = ({ images, currentIndex, onClose, onNext, onPrev }) => {
 };
 
 // Initialize Stripe outside the component
-const stripePromise = loadStripe('pk_test_51QGDbHC1170CwYd9Y3Xz2uZx3Z4Q7X9Z8Z3Z4Q7X9Z8Z3Z4Q7X9Z8Z3Z4Q7X9Z8');
+const stripePromise = loadStripe('pk_test_51RCixfPOwJcw4TunDpaIvFjYc3FWO69gD7ivHSBQKgR4vPWWzhIy0oqfvnilYSe3dlkdwQCvGMUvikRPAWw1BKYX00NnJmVGqW');
 
 // Payment Form Component with fixed price display
-const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment, bookingDetails }) => {
+const PaymentForm = ({ 
+  clientSecret, 
+  onSuccess, 
+  onCancel, 
+  processingPayment, 
+  bookingDetails,
+  amount,
+  vehicle,
+  startDate,
+  endDate,
+  location,
+  startTime,
+  endTime,
+  selectedDriver,
+  cookies
+}) => {
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState(null);
-  const [cardComplete, setCardComplete] = useState(false);
+  const [isCardComplete, setIsCardComplete] = useState(false);
+  const [bookingId, setBookingId] = useState(null);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const getUserId = () => {
+    return cookies.user?.id || '67d338f3f22c60ec8701405a';
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
     if (!stripe || !elements) {
       return;
     }
 
-    setError(null);
-
     try {
+      setError(null);
+
+      // Confirm the payment with Stripe
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -109,20 +129,22 @@ const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment, boo
       });
 
       if (stripeError) {
-        setError(stripeError.message);
-        return;
+        throw stripeError;
       }
 
       if (paymentIntent.status === 'succeeded') {
+        // Call the success handler with the payment intent
         onSuccess(paymentIntent);
       }
     } catch (err) {
-      setError(err.message);
+      console.error('Payment error:', err);
+      setError(err.message || 'Payment failed. Please try again.');
     }
   };
 
-  // Ensure bookingDetails has proper default values
-  const { bookingPrice = 5000, serviceFee = 100, totalAmount = 5100 } = bookingDetails || {};
+  // Set booking price equal to the total amount (car rent)
+  // Service fee has been removed
+  const bookingPrice = amount;
 
   return (
     <form onSubmit={handleSubmit} className="p-4">
@@ -149,7 +171,7 @@ const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment, boo
               },
               hidePostalCode: true,
             }}
-            onChange={(e) => setCardComplete(e.complete)}
+            onChange={(e) => setIsCardComplete(e.complete)}
           />
         </div>
         <div className="flex items-center mt-2 text-xs text-gray-500">
@@ -166,15 +188,11 @@ const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment, boo
         <h3 className="font-medium text-gray-700 mb-2">Order summary</h3>
         <div className="flex justify-between mb-2">
           <span className="text-gray-600">Booking price</span>
-          <span className="font-medium">Rs.{bookingPrice.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between mb-2">
-          <span className="text-gray-600">Service fee</span>
-          <span className="font-medium">Rs.{serviceFee.toFixed(2)}</span>
+          <span className="font-medium">Rs.{bookingPrice}</span>
         </div>
         <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
           <span className="font-medium">Total</span>
-          <span className="font-bold">Rs.{totalAmount.toFixed(2)}</span>
+          <span className="font-bold">Rs.{amount}</span>
         </div>
       </div>
       
@@ -200,7 +218,7 @@ const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment, boo
       <div className="space-y-3">
         <button 
           type="submit" 
-          disabled={!stripe || processingPayment || !cardComplete}
+          disabled={!stripe || processingPayment || !isCardComplete}
           className="w-full bg-purple-600 text-white py-3 rounded-lg disabled:opacity-50 hover:bg-purple-700 transition-colors flex items-center justify-center"
         >
           {processingPayment ? (
@@ -241,6 +259,7 @@ const PaymentForm = ({ clientSecret, onSuccess, onCancel, processingPayment, boo
     </form>
   );
 };
+
 const DriverSelection = ({ drivers, selectedDriver, onSelectDriver, loading, error }) => {
   if (loading) {
     return (
@@ -322,6 +341,7 @@ const CarDetailPage = () => {
   const [bookingId, setBookingId] = useState(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
+  const [amount, setAmount] = useState(0);
 
   // Driver state
   const [drivers, setDrivers] = useState([]);
@@ -343,21 +363,29 @@ const CarDetailPage = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  
+
   const { vehicleId } = useParams();
   const navigate = useNavigate();
+
+  const getUserId = () => {
+    return cookies.user?.id || '67d338f3f22c60ec8701405a';
+  };
+
   const handlePaymentSuccess = async (paymentIntent) => {
     try {
       console.log('🔍 Payment Intent Received:', paymentIntent);
 
       // Confirm payment on backend
       await axios.post(
-        'https://car-rental-backend-black.vercel.app/stripe/confirm-payment',
+        'https://car-rental-backend-black.vercel.app/transaction/post',
         {
-          paymentIntentId: paymentIntent.id,
+          transactionId: paymentIntent.id,
           bookingId,
           userId: getUserId(),
-          amount: paymentIntent.amount / 100,
-          paymentMethod: 'card'
+          amount: paymentIntent.amount ,
+          paymentMethod: 'card',
+          paymentStatus:"completed"
         }
       );
 
@@ -379,10 +407,6 @@ const CarDetailPage = () => {
     setClientSecret('');
     setBookingId(null);
     setPaymentError(null);
-  };
-
-  const getUserId = () => {
-    return cookies.user?.id || '67d338f3f22c60ec8701405a';
   };
 
   // Open image modal at specific index
@@ -581,153 +605,138 @@ const CarDetailPage = () => {
       </div>
     );
   };
-
-  // Inside the CarDetailPage component
-// When creating the payment form:
-
-
-// Add this to your state variables at the top
-const [bookingDetails, setBookingDetails] = useState({
-  bookingPrice: 0,
-  serviceFee: 0,
-  totalAmount: 0
-});
-
-// Then update the Elements section in your JSX:
-{showPaymentForm && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-      <h2 className="text-xl font-bold mb-4">Complete Payment</h2>
-      
-      {/* Confirmation Message */}
-      <div className="mb-4 p-4 bg-purple-50 rounded-lg">
-        <div className="flex items-start">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
-          </svg>
-          <div>
-            <p className="font-medium text-purple-800">Booking request sent!</p>
-            <p className="text-sm text-purple-600">Complete your payment to confirm your booking for {vehicle.manufacturer} {vehicle.model}.</p>
-          </div>
-        </div>
-      </div>
-      
-      <Elements stripe={stripePromise}>
-        <PaymentForm 
-          clientSecret={clientSecret}
-          onSuccess={handlePaymentSuccess}
-          onCancel={handlePaymentCancel}
-          processingPayment={processingPayment}
-          bookingDetails={bookingDetails} // Pass the booking details
-        />
-      </Elements>
-    </div>
-  </div>
-)}
-
-
-// Inside the CarDetailPage component
-// When creating the payment form:
-const handleContinue = async () => {
-  if (!vehicle) return;
   
-  setProcessingPayment(true);
+  const handleCarFavorites = async (carId) => {
+    try {
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [name, value] = cookie.split('=').map(c => c.trim());
+        acc[name] = value;
+        return acc;
+      }, {});
   
-  try {
-    // Calculate rental duration in days
-    const timeDiff = Math.abs(endDate - startDate);
-    const diffDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) || 1; // Ensure at least 1 day
-    
-    // Calculate prices
-    const bookingPrice = vehicle.rent * diffDays;
-    const serviceFee = bookingPrice * 0.10; // 10% service fee
-    const totalAmount = bookingPrice + serviceFee;
-
-    // Update booking details state
-    setBookingDetails({
-      bookingPrice,
-      serviceFee,
-      totalAmount
-    });
-
-    console.log('Vehicle rent:', vehicle.rent);
-console.log('Start date:', startDate);
-console.log('End date:', endDate);
-console.log('Days difference:', diffDays);
-console.log('Calculated booking price:', bookingPrice);
-console.log('Booking details:', bookingDetails);
-    // Prepare booking data
-    const bookingData = {
-      idVehicle: vehicle._id,
-      user: getUserId(),
-      company: vehicle.company._id,
-      driver: selectedDriver?._id || null,
-      from: location,
-      to: location,
-      fromTime: startTime,
-      toTime: endTime,
-      intercity: false,
-      cityName: vehicle.company.city.toLowerCase(),
-      status: 'pending',
-      totalAmount,
-      duration: diffDays // Add duration to booking data
-    };
-
-    // Rest of the function remains the same...
-    // 1. First create the booking
-    const bookingResponse = await axios.post(
-      'https://car-rental-backend-black.vercel.app/bookings/postBooking', 
-      bookingData
-    );
-
-    if (!bookingResponse.data.success) {
-      throw new Error(bookingResponse.data.message || 'Booking failed');
-    }
-
-    const bookingId = bookingResponse.data.booking._id;
-    setBookingId(bookingId);
-
-    // 2. Create payment intent with Stripe
-    const paymentResponse = await axios.post(
-      'https://car-rental-backend-black.vercel.app/stripe/create-payment-intent',
-      {
-        bookingId,
-        amount: totalAmount * 100, // Convert to cents
-        currency: "usd",
-        description: `Booking for ${vehicle.manufacturer} ${vehicle.model} (${diffDays} days)`
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${cookies.user?.token || ''}`
-        }
+      console.log("Parsed Cookies:", cookies);
+  
+      const userCookie = cookies.user;
+      if (!userCookie) {
+        console.error('User not logged in');
+        return;
       }
-    );
-
-    if (!paymentResponse.data.clientSecret) {
-      throw new Error(paymentResponse.data.message || 'Payment setup failed');
+  
+      const user = JSON.parse(decodeURIComponent(userCookie));
+      const userId = user.id;
+  
+      const isLiked = likedVehicles.includes(carId);
+  
+      if (isLiked) {
+        await fetch(`https://car-rental-backend-black.vercel.app/likes/unlike/${carId}/${userId}`, {
+          method: 'DELETE'
+        });
+        setLikedVehicles(likedVehicles.filter(id => id !== carId));
+      } else {
+        await fetch('https://car-rental-backend-black.vercel.app/likes/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            vehicleId: carId,
+            userId: userId
+          })
+        });
+        setLikedVehicles([...likedVehicles, carId]);
+      }
+    } catch (error) {
+      console.error('Error handling favorites:', error);
     }
+  };
+  
 
-    // 3. Show payment form with the client secret
-    setClientSecret(paymentResponse.data.clientSecret);
-    setShowPaymentForm(true);
-
-  } catch (error) {
-    console.error('Booking Error:', error);
-    let errorMessage = 'Failed to create booking. Please try again.';
+  const handleContinue = async () => {
+    if (!vehicle) return;
     
-    if (error.response) {
-      errorMessage = error.response.data.error || 
-                   error.response.data.message || 
-                   `Server responded with status ${error.response.status}`;
-    } else if (error.request) {
-      errorMessage = 'No response received from server. Please check your connection.';
+    setProcessingPayment(true);
+    
+    try {
+      // Calculate rental duration in days
+      const timeDiff = Math.abs(endDate - startDate);
+      const diffDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) || 1; // Ensure at least 1 day
+      
+      // Calculate prices
+      const bookingPrice = vehicle.rent * diffDays;
+       console.log(bookingPrice)
+      setAmount(bookingPrice)
+          // Prepare booking data
+      const bookingData = {
+        idVehicle: vehicle._id,
+        user: getUserId(),
+        company: vehicle.company._id,
+        driver: selectedDriver?._id || null,
+        from: location,
+        to: location,
+        fromTime: startTime,
+        toTime: endTime,
+        intercity: false,
+        cityName: vehicle.company.city.toLowerCase(),
+        status: 'confirmed',
+        amount,
+        duration: diffDays
+      };
+
+      // 1. First create the booking
+      const bookingResponse = await axios.post(
+        'https://car-rental-backend-black.vercel.app/bookings/postBooking', 
+        bookingData
+      );
+
+      if (!bookingResponse.data.success) {
+        throw new Error(bookingResponse.data.message || 'Booking failed');
+      }
+
+      const bookingId = bookingResponse.data.booking._id;
+      setBookingId(bookingId);
+
+      // 2. Create payment intent with Stripe
+      const paymentResponse = await axios.post(
+        'https://car-rental-backend-black.vercel.app/stripe/create-payment-intent',
+        {
+          bookingId,
+          amount: amount , // Convert to cents
+          currency: "pkr",
+          description: `Booking for ${vehicle.manufacturer} ${vehicle.model} (${diffDays} days)`
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${cookies.user?.token || ''}`
+          }
+        }
+      );
+
+      if (!paymentResponse.data.clientSecret) {
+        throw new Error(paymentResponse.data.message || 'Payment setup failed');
+      }
+
+      // 3. Show payment form with the client secret
+      setClientSecret(paymentResponse.data.clientSecret);
+      setShowPaymentForm(true);
+
+    } catch (error) {
+      console.error('Booking Error:', error);
+      let errorMessage = 'Failed to create booking. Please try again.';
+      
+      if (error.response) {
+        errorMessage = error.response.data.error || 
+                     error.response.data.message || 
+                     `Server responded with status ${error.response.status}`;
+      } else if (error.request) {
+        errorMessage = 'No response received from server. Please check your connection.';
+      }
+      
+      setPaymentError(errorMessage);
+    } finally {
+      setProcessingPayment(false);
     }
-    
-    setPaymentError(errorMessage);
-  } finally {
-    setProcessingPayment(false);
-  }
-};
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -811,13 +820,13 @@ console.log('Booking details:', bookingDetails);
         </div>
         
         {/* Favorite Button */}
-        <div className="absolute top-4 right-4">
+        {/* <div className="absolute top-4 right-4">
           <button className="bg-white p-2 rounded-full shadow hover:bg-gray-100 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-800">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
             </svg>
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Vehicle Details Container */}
@@ -1008,6 +1017,7 @@ console.log('Booking details:', bookingDetails);
                   onSuccess={handlePaymentSuccess}
                   onCancel={handlePaymentCancel}
                   processingPayment={processingPayment}
+                  amount={amount}
                 />
               </Elements>
             </div>

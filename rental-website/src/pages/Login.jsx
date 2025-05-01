@@ -10,7 +10,6 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isCompanyLogin, setIsCompanyLogin] = useState(false);
   const { isLoading, renderGoogleButton, signInWithGoogle } = useGoogleAuth();
   const googleButtonRef = useRef(null);
 
@@ -37,7 +36,7 @@ const Login = () => {
 
     try {
       // First try user login
-      let response = await fetch("https://car-rental-backend-black.vercel.app/users/login", {
+      const response = await fetch("https://car-rental-backend-black.vercel.app/users/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -45,26 +44,10 @@ const Login = () => {
         body: JSON.stringify({ email, password }),
       });
 
-      let data = await response.json();
-
+      const data = await response.json();
+      
       if (!response.ok) {
-        // If user login fails, try company login
-        response = await fetch("https://car-rental-backend-black.vercel.app/rental-companies/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
-        });
-
-        data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Login failed. Please try again.");
-        }
-
-        // Company login successful
-        setIsCompanyLogin(true);
+        throw new Error(`Error ${data.message}` || "Login failed. Please try again.");
       }
 
       // Store user/company data in cookies with 7-day expiration
@@ -75,29 +58,15 @@ const Login = () => {
           name: data.user.name,
           city: data.user.city
         }), { expires: 7 });
-        
-        if (data.token) {
-          Cookies.set("token", data.token, { expires: 7 });
-        }
-      } else if (data.company?._id) {
-        Cookies.set("company", JSON.stringify({
-          id: data.company._id,
-          email: data.company.email,
-          companyName: data.company.companyName,
-          isCompany: true
-        }), { expires: 7 });
-        
-        if (data.token) {
-          Cookies.set("token", data.token, { expires: 7 });
-        }
-      }
 
-      // Redirect based on user type
-      if (isCompanyLogin) {
-        navigate("/company-dashboard");
-      } else {
-        navigate("/");
-      }
+        if (data.token) {
+          Cookies.set("token", data.token, { expires: 7 });
+        }
+
+       }
+
+      // Redirect after login
+      navigate("/");
 
     } catch (error) {
       setError(error.message || "An error occurred. Please try again.");
@@ -150,23 +119,23 @@ const Login = () => {
             >
               {isLoading ? "Please wait..." : "Log in"}
             </button>
-            
-            {/* Google Sign In */}
-            <div 
-              id="google-login-button" 
-              ref={googleButtonRef}
-              className="mb-3"
-            >
-              <button 
-                type="button"
-                className="btn btn-outline-secondary py-2 d-flex align-items-center justify-content-center"
-                onClick={signInWithGoogle}
-              >
-                <FaGoogle className="me-2 text-danger" />
-                Continue with Google
-              </button>
-            </div>
           </form>
+
+          {/* Google Sign In */}
+          <div 
+            id="google-login-button" 
+            ref={googleButtonRef}
+            className="mb-3"
+          >
+            <button 
+              type="button"
+              className="btn btn-outline-secondary py-2 d-flex align-items-center justify-content-center"
+              onClick={signInWithGoogle}
+            >
+              <FaGoogle className="me-2 text-danger" />
+              Continue with Google
+            </button>
+          </div>
 
           {/* Sign Up & Terms */}
           <div className="mt-4">

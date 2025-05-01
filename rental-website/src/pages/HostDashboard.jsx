@@ -23,14 +23,6 @@ const RentalCompanyDashboard = () => {
   });
   const [company, setCompany] = useState(null);
 
-  // Fetch company from cookies on component mount
-  useEffect(() => {
-    const companyData = Cookies.get('company');
-    if (companyData) {
-      setCompany(JSON.parse(companyData));
-    }
-  }, []);
-
   // Form states
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [showDriverForm, setShowDriverForm] = useState(false);
@@ -55,41 +47,29 @@ const RentalCompanyDashboard = () => {
   });
   const [imageUploading, setImageUploading] = useState(false);
 
-  // Fetch dashboard data
+  // Fetch company from cookies on component mount
   useEffect(() => {
     const companyData = Cookies.get('company');
     if (companyData) {
-      const parsedData = JSON.parse(companyData);
-      // Ensure we have a company ID, fallback to default if empty
-      setCompany({
-        ...parsedData,
-        _id: parsedData._id || '67d35fd70dd2e0010e615f4b'
-      });
-    } else {
-      // If no company data in cookies, use the default ID
-      setCompany({
-        _id: '67d35fd70dd2e0010e615f4b',
-        companyName: 'Default Company'
-      });
+      setCompany(JSON.parse(companyData));
     }
   }, []);
 
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
-      // Ensure we always have a company ID to work with
-      const companyId = company?._id || '67d35fd70dd2e0010e615f4b';
+      if (!company?.id) return;
 
       try {
         const [vehiclesRes, driversRes, bookingsRes] = await Promise.all([
           axios.get(`${BASE_URL}/vehicles/company`, { 
-            params: { company: companyId }
+            params: { company: company.id }
           }),
           axios.get(`${BASE_URL}/drivers/company`, { 
-            params: { company: companyId }
+            params: { company: company.id }
           }),
           axios.get(`${BASE_URL}/bookings/companyBookings`, { 
-            params: { company: companyId }
+            params: { company: company.id }
           })
         ]);
         
@@ -516,6 +496,7 @@ const RentalCompanyDashboard = () => {
         </div>
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-2 gap-4 mb-4">
+            {/* Existing fields */}
             <div>
               <label className="block text-black text-sm font-medium mb-1">Manufacturer</label>
               <input
@@ -584,7 +565,148 @@ const RentalCompanyDashboard = () => {
                 <option value="Manual">Manual</option>
               </select>
             </div>
+            
+            {/* New fields */}
+            <div>
+              <label className="block text-black text-sm font-medium mb-1">Initial Trip Count</label>
+              <input
+                type="number"
+                name="trips"
+                value={formData.trips || 0}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded text-black"
+              />
+            </div>
+            <div>
+              <label className="block text-black text-sm font-medium mb-1">Availability</label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    name="availability.startTime"
+                    value={formData.availability?.startTime || '08:00'}
+                    onChange={handleInputChange}
+                    className="w-full p-2 border rounded text-black"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">End Time</label>
+                  <input
+                    type="time"
+                    name="availability.endTime"
+                    value={formData.availability?.endTime || '20:00'}
+                    onChange={handleInputChange}
+                    className="w-full p-2 border rounded text-black"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Days</label>
+                  <select
+                    name="availability.days"
+                    multiple
+                    value={formData.availability?.days || []}
+                    onChange={(e) => {
+                      const options = [...e.target.selectedOptions].map(opt => opt.value);
+                      setFormData(prev => ({
+                        ...prev,
+                        availability: {
+                          ...prev.availability,
+                          days: options
+                        }
+                      }));
+                    }}
+                    className="w-full p-2 border rounded text-black"
+                  >
+                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-black text-sm font-medium mb-1">Cities</label>
+              <div className="space-y-2">
+                {formData.cities?.map((city, index) => (
+                  <div key={index} className="flex space-x-2">
+                    <input
+                      type="text"
+                      placeholder="City name"
+                      value={city.name}
+                      onChange={(e) => {
+                        const newCities = [...formData.cities];
+                        newCities[index].name = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          cities: newCities
+                        }));
+                      }}
+                      className="flex-1 p-2 border rounded text-black"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Additional fee"
+                      value={city.additionalFee}
+                      onChange={(e) => {
+                        const newCities = [...formData.cities];
+                        newCities[index].additionalFee = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          cities: newCities
+                        }));
+                      }}
+                      className="w-32 p-2 border rounded text-black"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newCities = [...formData.cities];
+                        newCities.splice(index, 1);
+                        setFormData(prev => ({
+                          ...prev,
+                          cities: newCities
+                        }));
+                      }}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      cities: [...(prev.cities || []), { name: '', additionalFee: 0 }]
+                    }));
+                  }}
+                  className="text-blue-500 hover:text-blue-700 flex items-center text-sm"
+                >
+                  <Plus size={16} className="mr-1" /> Add City
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-black text-sm font-medium mb-1">Availability Status</label>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isAvailable"
+                  checked={formData.isAvailable || false}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    isAvailable: e.target.checked
+                  }))}
+                  className="mr-2"
+                />
+                <span>Vehicle is available</span>
+              </div>
+            </div>
           </div>
+          
+          {/* Image upload section remains the same */}
           <div className="mb-4">
             <label className="block text-black text-sm font-medium mb-1">Vehicle Images</label>
             <div className="flex items-center space-x-4">
@@ -606,6 +728,7 @@ const RentalCompanyDashboard = () => {
               ))}
             </div>
           </div>
+          
           <div className="flex justify-end space-x-3">
             <button 
               type="button" 
@@ -717,10 +840,12 @@ const RentalCompanyDashboard = () => {
                 name="cnic"
                 value={formData.cnic}
                 onChange={handleInputChange}
+                placeholder="XXXXX-XXXXXXX-X"
                 className="w-full p-2 border rounded text-black"
                 required
               />
             </div>
+
           </div>
           <div className="flex justify-end space-x-3">
             <button 
@@ -741,7 +866,6 @@ const RentalCompanyDashboard = () => {
       </div>
     </div>
   );
-
   const renderVehicles = () => (
     <div className="bg-white shadow-md rounded-lg p-6">
       <div className="flex justify-between items-center mb-6">

@@ -105,21 +105,32 @@ const SideMenu = ({ isOpen, onClose }) => {
     </div>
   );
 };
-
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [hasUser, setHasUser] = useState(false);
   const navigate = useNavigate();
-  
+  const [cookies] = useCookies(['user']); // Get cookies
+
+  // Check if user cookie exists on component mount and cookie changes
+  useEffect(() => {
+    const userCookie = cookies.user || Cookies.get('user');
+    setHasUser(!!userCookie); // Set to true if cookie exists
+  }, [cookies.user]);
+
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
-  
+
   const goToHome = () => {
     navigate('/');
   };
-  
+
   const goToBecomeHost = () => {
     navigate('/rental-signup');
+  };
+
+  const goToLogin = () => {
+    navigate('/login');
   };
 
   return (
@@ -140,17 +151,34 @@ const Header = () => {
             >
               Become a host
             </button>
-            <button
-              onClick={toggleMenu}
-              className="text-white hover:bg-gray-800  p-2 rounded"
-            >
-              <Menu size={24} />
-            </button>
+            
+            {/* Show Login Button if no user cookie exists */}
+            {!hasUser && (
+              <button
+                className="text-sm font-medium hover:bg-gray-100 px-3 py-2 rounded"
+                onClick={goToLogin}
+              >
+                Login
+              </button>
+            )}
+            
+            {/* Show Menu Button only if user is logged in */}
+            {hasUser && (
+              <button
+                onClick={toggleMenu}
+                className=" hover:bg-gray-100 p-2 rounded"
+              >
+                <Menu size={24} />
+              </button>
+            )}
           </div>
         </div>
       </header>
       
-      <SideMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+      {/* Only render SideMenu if user is logged in */}
+      {hasUser && (
+        <SideMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+      )}
       
       {isMenuOpen && (
         <div className="fixed inset-0  bg-opacity-50 z-40" />

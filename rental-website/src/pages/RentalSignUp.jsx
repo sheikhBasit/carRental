@@ -198,7 +198,7 @@ const RentalCompanySignUp = () => {
       );
   
       const data = await response.json();
-  
+      console.log(data)
       if (!response.ok) {
         throw new Error(data.error || data.message || 'Registration failed');
       }
@@ -213,12 +213,12 @@ const RentalCompanySignUp = () => {
       };
   
       // Set cookie with 7-day expiration
-      Cookies.set('rentalCompany', JSON.stringify(companyData), {
+      Cookies.set('company', JSON.stringify(companyData), {
         expires: 7, // days
         secure: true,
         sameSite: 'strict'
-      });
-  
+      });
+
       navigate('/company-dashboard', { 
         state: { 
           message: data.message || 'Registration successful!',

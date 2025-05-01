@@ -15,7 +15,7 @@ import CarRentalMarket from "./pages/CarMarket";
 import AboutUs from "./pages/AboutUs";
 import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import CarRentalMarketWrapper from "./components/CarRentalMarketWrapper";
-import RentalCompanyDashboard from './pages/HostDashboard';
+import RentalCompanyDashboard from './pages/RentalCompanyDashboard';
 import LandingPage from "./pages/Landing";
 // import AdminDashboard from "./pages/AdminDashboard";
 import ChatApplication from "./pages/Inbox";
@@ -31,6 +31,7 @@ import BookingDetail from "./pages/BookingDetail";
 import MotorwayGuide from "./pages/Guide";
 import NorthernGuide from "./pages/ReadMore";
 import ExploreRoadTrips from "./pages/Explore";
+import BookingDetails from "./pages/BookingDetails";
 
 function Layout() {
   const location = useLocation();
@@ -60,6 +61,7 @@ function Layout() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/car-detail/:vehicleId" element={<CarDetail />} />
           <Route path="/car-rental/:brand" element={<CarRentalMarketWrapper />} />
+          <Route path="/bookings/:id" element={<BookingDetails />} />
           <Route path="/company-dashboard" element={<RentalCompanyDashboard />} />
           {/* <Route path="/admin-dashboard" element={<AdminDashboard />} /> */}
           <Route path="/inbox" element={<ChatApplication />} />

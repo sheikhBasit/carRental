@@ -6,7 +6,7 @@ const UserTripsPage = () => {
   const [trips, setTrips] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('confirmed');
+  const [activeTab, setActiveTab] = useState('upcoming');
   const navigate = useNavigate();
 
   const getUserIdFromCookies = () => {
@@ -19,6 +19,63 @@ const UserTripsPage = () => {
     } catch (err) {
       console.error('Error parsing user cookie:', err);
       return null;
+    }
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+  };
+
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'confirmed': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-blue-100 text-blue-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const viewTripDetails = (tripId) => {
+    navigate(`/booking-confirmation/${tripId}`);
+  };
+
+  const cancelTrip = async (tripId) => {
+    if (!window.confirm('Are you sure you want to cancel this trip?')) return;
+    
+    try {
+      const response = await fetch(
+        `https://car-rental-backend-black.vercel.app/bookings/cancelBooking/${tripId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+  
+      const responseText = await response.text();
+      
+      if (!response.ok) {
+        throw new Error(responseText || 'Failed to cancel trip');
+      }
+  
+      const updatedBooking = JSON.parse(responseText).booking;
+  
+      setTrips(trips.map(trip => 
+        trip._id === tripId ? updatedBooking : trip
+      ));
+  
+      setActiveTab('cancelled');
+      
+      alert('Booking cancelled successfully');
+    } catch (err) {
+      console.error('Error cancelling trip:', err);
+      alert(err.message || 'Failed to cancel your trip. Please try again later.');
     }
   };
 
@@ -37,8 +94,14 @@ const UserTripsPage = () => {
           return;
         }
         
+        const statusMapping = {
+          upcoming: 'confirmed',
+          previous: 'completed',
+          cancelled: 'cancelled'
+        };
+
         const response = await fetch(
-          `https://car-rental-backend-black.vercel.app/bookings/userBookings?userId=${userId}&status=${activeTab}`,
+          `https://car-rental-backend-black.vercel.app/bookings/userBookings?userId=${userId}&status=${statusMapping[activeTab]}`,
           {
             headers: {
               'Accept': 'application/json',
@@ -47,25 +110,44 @@ const UserTripsPage = () => {
           }
         );
 
-        // First get the response as text
-        const responseText = await response.text();
+        const data = await response.json();
         
-        if (!response.ok) {
-          // Try to parse error message if it's JSON
-          try {
-            const errorData = JSON.parse(responseText);
-            throw new Error(errorData.message || `Error ${response.status}`);
-          } catch {
-            throw new Error(responseText || `Error ${response.status}`);
-          }
+        // Handle case where response is an object with message property
+        if (data && data.message) {
+          const tabSpecificMessage = {
+            upcoming: "You don't have any upcoming trips",
+            previous: "You don't have any previous trips",
+            cancelled: "You don't have any cancelled trips"
+          };
+          setError(data.message || tabSpecificMessage[activeTab]);
+          setTrips([]);
+          return;
         }
 
-        // Parse the successful response
-        const data = responseText ? JSON.parse(responseText) : [];
+        // Handle case where response is not an array
+        if (!Array.isArray(data)) {
+          console.error('Invalid response format:', data);
+          throw new Error('Invalid response format from server');
+        }
+
+        // Handle empty array case
+        if (data.length === 0) {
+          const tabSpecificMessage = {
+            upcoming: "No upcoming trips found",
+            previous: "No previous trips found",
+            cancelled: "No cancelled trips found"
+          };
+          setError(tabSpecificMessage[activeTab]);
+          setTrips([]);
+          return;
+        }
+
         setTrips(data);
+        setError(null);
       } catch (err) {
         console.error('Failed to fetch trips:', err);
         setError(err.message || 'Failed to load your trips. Please try again later.');
+        setTrips([]);
       } finally {
         setIsLoading(false);
       }
@@ -74,60 +156,6 @@ const UserTripsPage = () => {
     fetchUserTrips();
   }, [activeTab, navigate]);
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-  };
-  
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-  
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      case 'completed': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-  
-  const viewTripDetails = (tripId) => {
-    navigate(`/booking-confirmation/${tripId}`);
-  };
-  
-  const cancelTrip = async (tripId) => {
-    if (!window.confirm('Are you sure you want to cancel this trip?')) return;
-    
-    try {
-      const userId = getUserIdFromCookies();
-      if (!userId) {
-        navigate('/login');
-        return;
-      }
-
-      const response = await fetch('https://car-rental-backend-black.vercel.app/bookings/cancelBooking', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, bookingId: tripId }),
-      });
-
-      const responseText = await response.text();
-      
-      if (!response.ok) {
-        throw new Error(responseText || 'Failed to cancel trip');
-      }
-
-      setTrips(trips.filter(trip => trip._id !== tripId));
-    } catch (err) {
-      console.error('Error cancelling trip:', err);
-      alert(err.message || 'Failed to cancel your trip. Please try again later.');
-    }
-  };
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">My Trips</h1>
@@ -135,7 +163,7 @@ const UserTripsPage = () => {
       {/* Tab navigation */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex -mb-px">
-          {['confirmed', 'pending', 'completed', 'cancelled'].map((tab) => (
+          {['upcoming', 'previous', 'cancelled'].map((tab) => (
             <button
               key={tab}
               onClick={() => handleTabChange(tab)}
@@ -150,22 +178,6 @@ const UserTripsPage = () => {
           ))}
         </nav>
       </div>
-      
-      {/* Error message */}
-      {error && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
       
       {/* Loading state */}
       {isLoading ? (
@@ -184,16 +196,19 @@ const UserTripsPage = () => {
             ))}
           </div>
         </div>
-      ) : trips.length === 0 ? (
+      ) : error || trips.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <h3 className="mt-2 text-lg font-medium text-gray-900">No {activeTab} trips</h3>
           <p className="mt-1 text-gray-500">
-            {activeTab === 'confirmed' 
-              ? "You don't have any upcoming trips." 
-              : `You don't have any ${activeTab} trips.`}
+            {error || 
+              (activeTab === 'upcoming' 
+                ? "You don't have any upcoming trips." 
+                : activeTab === 'previous'
+                ? "You don't have any previous trips."
+                : `You don't have any ${activeTab} trips.`)}
           </p>
           <div className="mt-6">
             <button
@@ -227,7 +242,7 @@ const UserTripsPage = () => {
                     </p>
                   </div>
                   <div className="mt-4 md:mt-0 text-right">
-                    <p className="text-lg font-bold text-gray-900">${trip.totalAmount?.toFixed(2) || '5000.00'}</p>
+                    <p className="text-lg font-bold text-gray-900">Rs.{trip.totalAmount?.toFixed(2) || '5000.00'}</p>
                     <p className="text-sm text-gray-500">Booked on {formatDate(trip.bookingDate)}</p>
                   </div>
                 </div>
@@ -246,15 +261,6 @@ const UserTripsPage = () => {
                       className="flex-1 bg-white border border-red-300 rounded-md py-2 px-4 text-sm font-medium text-red-700 hover:bg-red-50"
                     >
                       Cancel Trip
-                    </button>
-                  )}
-                  
-                  {trip.status === 'completed' && (
-                    <button
-                      onClick={() => navigate(`/trips/${trip._id}/review`)}
-                      className="flex-1 bg-white border border-blue-300 rounded-md py-2 px-4 text-sm font-medium text-blue-700 hover:bg-blue-50"
-                    >
-                      Write Review
                     </button>
                   )}
                   

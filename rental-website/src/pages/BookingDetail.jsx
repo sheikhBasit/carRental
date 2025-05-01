@@ -324,11 +324,8 @@ const BookingDetail = () => {
                   <div>
                     <p className="text-sm text-gray-500">Payment Status</p>
                     <p className="font-medium">
-                      {booking.paymentStatus === 'paid' ? (
-                        <span className="text-green-600">Paid</span>
-                      ) : (
-                        <span className="text-yellow-600">Pending</span>
-                      )}
+                      <span className="text-green-600">Paid</span>
+                      
                     </p>
                   </div>
                   <div>
