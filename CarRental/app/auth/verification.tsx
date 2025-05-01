@@ -34,7 +34,7 @@ const VerificationCodeScreen: React.FC = () => {
 
       if (response.ok) {
         Alert.alert("Success", "Verification successful! Redirecting...");
-        router.push("/(drawer)/(tabs)"); // Navigate to the next screen
+        router.push("/(tabs)"); // Navigate to the next screen
       } else {
         Alert.alert("Error", result.message || "Verification failed. Please try again.");
       }
@@ -68,9 +68,9 @@ const VerificationCodeScreen: React.FC = () => {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator color="blue" />
                 ) : (
-                  <Text style={styles.buttonText}>Sign Up</Text>
+                  <Text style={styles.buttonText}>Verify</Text>
                 )}
               </TouchableOpacity>
 
@@ -90,9 +90,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   buttonText: {
-    color: "white",
+    color: "blue",
     fontSize: 16,
     fontWeight: "bold",
+    marginLeft: 140,
   },
   title: {
     fontSize: 24,

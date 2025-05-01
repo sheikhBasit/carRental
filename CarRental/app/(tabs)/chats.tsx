@@ -14,6 +14,7 @@ import { getStoredUserId } from "@/utils/storageUtil";
 import { AppConstants } from "@/constants/appConstants";
 import AppLayout from "../screens/AppLayout";
 import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
 
 type ChatItem = {
   id: string;
@@ -22,6 +23,7 @@ type ChatItem = {
   lastMessage: string;
   timestamp: string;
   unreadCount?: number;
+  otherUserId: string;
 };
 
 const ChatScreen = () => {
@@ -41,14 +43,12 @@ const ChatScreen = () => {
         return;
       }
 
-      const response = await fetch(`${AppConstants.SOCKETS_URL}/chat/chats/${userId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch chats.");
-      }
+      const response = await axios.get(`${AppConstants.SOCKETS_URL}/chat/chats/${userId}`);
+      const chatData = response.data;
 
-      const data = await response.json();
-      const groupedChats = await groupChatsByUser(data, userId); // Await the grouped chats
-      setChats(groupedChats);
+      // Process the chat data from backend
+      const processedChats = await processChatData(chatData, userId);
+      setChats(processedChats);
     } catch (error) {
       console.error("Error fetching chats:", error);
       Alert.alert("Error", "Failed to fetch chats.");
@@ -57,62 +57,76 @@ const ChatScreen = () => {
     }
   };
 
-  const groupChatsByUser = async (chats: any[], userId: string): Promise<ChatItem[]> => {
-    const grouped: { [key: string]: ChatItem } = {};
+  const processChatData = async (chatData: any[], userId: string): Promise<ChatItem[]> => {
+    const processedChats: ChatItem[] = [];
 
-    for (const chat of chats) {
-      const [senderId, receiverId] = chat.chatId.split("_");
-      const otherUserId = senderId === userId ? receiverId : senderId;
+    for (const chat of chatData) {
+      // Extract the other user's ID from the chatId
+      const [id1, id2] = chat.chatId.split("_");
+      const otherUserId = id1 === userId ? id2 : id1;
 
-      if (!grouped[otherUserId]) {
-        // Fetch company details for the otherUserId
-        const companyDetails = await fetchCompanyDetails(otherUserId);
-        console.log("Company details:", companyDetails);
+      // Get the last message (if any)
+      const lastMessage = chat.messages.length > 0 
+        ? chat.messages[chat.messages.length - 1] 
+        : null;
 
-        // Use the company name if available, otherwise fall back to `otherUserId`
-        const companyName = companyDetails?.companyName || `User ${otherUserId}`;
+      // Fetch user/company details
+      const userDetails = await fetchUserDetails(otherUserId);
 
-        grouped[otherUserId] = {
-          id: chat.chatId,
-          name: companyName, // Use the company name
-          profilePhoto: companyDetails?.profilePhoto || "https://via.placeholder.com/150", // Use company profile photo if available
-          lastMessage: chat.messages[chat.messages.length - 1]?.message || "No messages",
-          timestamp: chat.messages[chat.messages.length - 1]?.timestamp || "N/A",
-          unreadCount: 0,
-        };
-      }
+      processedChats.push({
+        id: chat.chatId,
+        name: userDetails?.name || `User ${otherUserId}`,
+        profilePhoto: userDetails?.profilePhoto || "https://via.placeholder.com/150",
+        lastMessage: lastMessage?.message || "No messages yet",
+        timestamp: lastMessage?.timestamp || new Date().toISOString(),
+        unreadCount: chat.messages.filter((msg: any) => 
+          msg.senderId !== userId && !msg.read
+        ).length,
+        otherUserId: otherUserId,
+      });
     }
 
-    return Object.values(grouped) as ChatItem[];
+    // Sort chats by most recent message
+    return processedChats.sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
   };
 
-  const fetchCompanyDetails = async (companyId: string) => {
+  const fetchUserDetails = async (userId: string) => {
     try {
-      const response = await fetch(`${AppConstants.LOCAL_URL}/rental-companies/${companyId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch company details.");
+      // First try to fetch as a rental company
+      try {
+        const response = await axios.get(`${AppConstants.LOCAL_URL}/rental-companies/${userId}`);
+        return {
+          name: response.data.companyName,
+          profilePhoto: response.data.profilePhoto,
+        };
+      } catch (companyError) {
+        // If not a company, try to fetch as a regular user
+        const userResponse = await axios.get(`${AppConstants.LOCAL_URL}/users/${userId}`);
+        return {
+          name: `${userResponse.data.firstName} ${userResponse.data.lastName}`,
+          profilePhoto: userResponse.data.profilePhoto,
+        };
       }
-      return await response.json();
     } catch (error) {
-      console.error("Error fetching company details:", error);
+      console.error("Error fetching user details:", error);
       return null;
     }
   };
 
   const renderChatItem = ({ item }: { item: ChatItem }) => {
-    const [userId, receiverId] = item.id.split("_");
-
     return (
       <TouchableOpacity
         style={styles.chatItem}
-        onPress={() =>
+        onPress={async () =>
           router.push({
             pathname: "/screens/chat/[chat]",
             params: {
-              chat: item.id, // Use the chatId directly
-              userId,
-              receiverId,
-              companyName: item.name, // Pass the company name
+              chat: item.id,
+              userId: await getStoredUserId(),
+              receiverId: item.otherUserId,
+              companyName: item.name,
             },
           })
         }
@@ -120,24 +134,59 @@ const ChatScreen = () => {
         <Ionicons name="person-circle-outline" size={60} color="white" />
         <View style={styles.chatContent}>
           <Text style={styles.chatName}>{item.name}</Text>
-          <Text style={styles.lastMessage}>{item.lastMessage}</Text>
+          <Text 
+            style={[
+              styles.lastMessage,
+              item.unreadCount ? styles.unreadMessage : null
+            ]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {item.lastMessage}
+          </Text>
         </View>
         <View style={styles.chatMeta}>
-          <Text style={styles.timestamp}>{item.timestamp.split('T')[0]}</Text>
-          {item.unreadCount && (
+          <Text style={styles.timestamp}>
+            {formatDate(item.timestamp)}
+          </Text>
+          {item.unreadCount ? (
             <View style={styles.unreadBadge}>
               <Text style={styles.unreadCount}>{item.unreadCount}</Text>
             </View>
-          )}
+          ) : null}
         </View>
       </TouchableOpacity>
     );
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    
+    // If today, show time
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // If yesterday, show "Yesterday"
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    }
+    
+    // Otherwise show date
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
   const NoResultsComponent = () => (
     <View style={styles.noResultsContainer}>
-      <Image source={require('../../assets/images/chat.jpg')} style={styles.image} />
-      <Text style={styles.noResultsText}>No chats found</Text>
+      <Image 
+        source={require('../../assets/images/chat.jpg')} 
+        style={styles.image} 
+        resizeMode="contain"
+      />
+      <Text style={styles.noResultsText}>No chats yet</Text>
       <View style={styles.rowContainer}>
         <Text style={styles.noResultsSubText}>Start a new conversation!</Text>
         <Ionicons name="chatbubbles-outline" size={24} color="#ADD8E6" style={styles.icon} />
@@ -161,7 +210,7 @@ const ChatScreen = () => {
         data={chats}
         keyExtractor={(item) => item.id}
         renderItem={renderChatItem}
-        contentContainerStyle={styles.container}
+        contentContainerStyle={styles.listContainer}
         ListEmptyComponent={<NoResultsComponent />}
       />
     </AppLayout>
@@ -169,20 +218,21 @@ const ChatScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  listContainer: {
+    flexGrow: 1,
     backgroundColor: "#003366",
-    padding: 16,
+    paddingVertical: 8,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#003366",
   },
   image: {
-    width: '100%',
-    height: 150,
-    borderRadius: 10,
+    width: 200,
+    height: 200,
+    marginBottom: 20,
   },
   icon: {
     marginLeft: 8,
@@ -196,65 +246,68 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#1E5A82",
-  },
-  profilePhoto: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
   },
   chatContent: {
     flex: 1,
     justifyContent: "center",
-    paddingLeft: 15,
+    marginLeft: 12,
   },
   chatName: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#FFF",
+    marginBottom: 4,
   },
   lastMessage: {
     fontSize: 14,
     color: "#ADD8E6",
-    marginTop: 4,
+  },
+  unreadMessage: {
+    fontWeight: 'bold',
+    color: '#FFF',
   },
   chatMeta: {
     alignItems: "flex-end",
+    minWidth: 70,
   },
   timestamp: {
     fontSize: 12,
     color: "#ADD8E6",
+    marginBottom: 4,
   },
   unreadBadge: {
     backgroundColor: "#FF3B30",
     borderRadius: 12,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    marginTop: 4,
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   unreadCount: {
     fontSize: 12,
     color: "#FFF",
+    fontWeight: 'bold',
   },
   noResultsContainer: {
     flex: 1,
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
+    backgroundColor: '#003366',
   },
   noResultsText: {
-    fontSize: 24,
+    fontSize: 20,
     color: "#FFF",
-    textAlign: "center",
-    marginTop: 16,
     fontWeight: "bold",
+    marginBottom: 8,
   },
   noResultsSubText: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#ADD8E6",
-    textAlign: "center",
-    marginTop: 8,
   },
 });
 

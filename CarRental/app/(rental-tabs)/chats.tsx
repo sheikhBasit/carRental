@@ -51,7 +51,7 @@ const ChatScreen = () => {
       const groupedChats = await groupChatsByUser(data, companyId); // Await the grouped chats
       setChats(groupedChats);
     } catch (error) {
-      console.error("Error fetching chats:", error);
+      console.log("Error fetching chats:", error);
       Alert.alert("Error", "Failed to fetch chats.");
     } finally {
       setLoading(false);
@@ -89,13 +89,15 @@ const ChatScreen = () => {
 
   const fetchCompanyDetails = async (companyId: string) => {
     try {
+      console.log("Fetching company details for:", companyId);
+      console.log(`${AppConstants.LOCAL_URL}/rental-companies/${companyId}`);
       const response = await fetch(`${AppConstants.LOCAL_URL}/rental-companies/${companyId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch company details.");
       }
       return await response.json();
     } catch (error) {
-      console.error("Error fetching company details:", error);
+      console.log("Error fetching company details:", error);
       return null;
     }
   };

@@ -7,88 +7,231 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Dimensions,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { AppConstants } from "@/constants/appConstants";
 import { Ionicons } from "@expo/vector-icons";
 
 interface Booking {
   _id: string;
-  idVehicle: {
-    manufacturer: string;
-    model: string;
-    carImageUrls: string[];
-    rent: number;
+  idVehicle?: {
+    manufacturer?: string;
+    model?: string;
+    carImageUrls?: string[];
+    rent?: number;
   };
-  company: {
-    companyName: string;
-    address: string;
-    city: string;
-    phNum: string;
+  company?: {
+    companyName?: string;
+    address?: string;
+    city?: string;
+    phNum?: string;
   };
-  from: string;
-  to: string;
-  totalPrice: number;
-  status: string;
+  from?: string;
+  to?: string;
+  fromTime?: string;
+  toTime?: string;
+  totalPrice?: number;
+  status?: string;
+}
+
+interface Transaction {
+  _id: string;
+  transactionId: string;
+  bookingId: string;
+  amount: number;
+  paymentStatus: string;
+  paymentMethod: string;
+  createdAt: string;
 }
 
 const BookingDetailsScreen = () => {
   const navigation = useNavigation();
-  const { booking: bookingString } = useLocalSearchParams<{ booking: string }>();
-  const parsedBooking = JSON.parse(bookingString || "{}") as Booking;
-
-  const [booking, setBooking] = useState<Booking | null>(parsedBooking);
-  const [loading, setLoading] = useState(false); // Set to false since we already have the booking data
+  const { booking: bookingString, id } = useLocalSearchParams<{ booking: string; id: string }>();
+  
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
-  // If you need to fetch booking details from the server, uncomment this useEffect
-  /*
+  // Load booking and transaction data
   useEffect(() => {
-    const fetchBookingDetails = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${AppConstants.LOCAL_URL}/bookings/${parsedBooking._id}`);
-        const result = await response.json();
-
-        if (response.ok) {
-          setBooking(result);
-        } else {
-          setError("Failed to fetch booking details.");
+        
+        // Load booking data
+        if (bookingString) {
+          try {
+            const decodedString = decodeURIComponent(bookingString);
+            const parsedBooking = JSON.parse(decodedString) as Booking;
+            setBooking(parsedBooking);
+            
+            // Fetch transaction data after booking is loaded
+            if (parsedBooking._id) {
+              await fetchTransactionData(parsedBooking._id);
+            }
+            
+            return;
+          } catch (parseError) {
+            console.log("Parsing error:", parseError);
+          }
         }
-      } catch (error) {
-        setError("Error fetching booking details. Please try again.");
+
+        if (id) {
+          const bookingResponse = await fetch(
+            `https://car-rental-backend-black.vercel.app/bookings/getBookingById/${id}`
+          );
+          
+          if (!bookingResponse.ok) {
+            throw new Error("Failed to fetch booking details");
+          }
+          
+          const bookingData = await bookingResponse.json();
+          console.log("Booking API Response:", bookingData);
+          setBooking(bookingData);
+          
+          // Fetch transaction data
+          await fetchTransactionData(bookingData._id);
+        } else if (!bookingString) {
+          setError("No booking information provided");
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unknown error occurred");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBookingDetails();
-  }, [parsedBooking._id]);
-  */
+    const fetchTransactionData = async (bookingId: string) => {
+      try {
+        const response = await fetch(
+          `https://car-rental-backend-black.vercel.app/transaction/booking/${bookingId}`
+        );
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch transaction details");
+        }
+        
+        const data = await response.json();
+        console.log("Transaction API Response:", data);
+        if (data.success && data.transaction) {
+          setTransaction(data.transaction);
+        }
+      } catch (err) {
+        console.log("Error fetching transaction:", err);
+      }
+    };
+
+    loadData();
+  }, [bookingString, id]);
+
+  const handleCancelBooking = async () => {
+    if (!booking?._id) return;
+
+    setIsCancelling(true);
+    try {
+      const response = await fetch(
+        `https://car-rental-backend-black.vercel.app/bookings/updateBooking/${booking._id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: 'cancelled' })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to cancel booking. Status: ${response.status}`);
+      }
+
+      const updatedBooking = await response.json();
+      setBooking(updatedBooking);
+      
+      Alert.alert(
+        "Booking Cancelled",
+        "Your booking has been successfully cancelled.",
+        [
+          { 
+            text: "OK", 
+            onPress: () => {
+              // Navigate back to trips screen
+              navigation.goBack();
+            }
+          }
+        ]
+      );
+    } catch (err) {
+      Alert.alert(
+        "Error",
+        err instanceof Error ? err.message : "Failed to cancel booking",
+        [
+          { text: "OK" }
+        ]
+      );
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const confirmCancel = () => {
+    Alert.alert(
+      "Confirm Cancellation",
+      "Are you sure you want to cancel this booking?",
+      [
+        {
+          text: "No",
+          style: "cancel",
+        },
+        {
+          text: "Yes",
+          onPress: handleCancelBooking,
+        },
+      ]
+    );
+  };
+
+  const handleError = () => {
+    Alert.alert("Error", error || "Something went wrong", [
+      { text: "Go Back", onPress: () => navigation.goBack() }
+    ]);
+  };
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FFF" />
+        <Text style={styles.loadingText}>Loading booking details...</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.button} onPress={handleError}>
+          <Text style={styles.buttonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   if (!booking) {
     return (
-      <View style={styles.container}>
+      <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Booking details not available.</Text>
+        <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
+          <Text style={styles.buttonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
+
+  const { width } = Dimensions.get("window");
+  const imageWidth = width - 40;
 
   return (
     <View style={styles.container}>
@@ -97,113 +240,273 @@ const BookingDetailsScreen = () => {
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Booking ID */}
+        <Text style={styles.heading}>Booking Details</Text>
+        
         <Text style={styles.sectionTitle}>Booking ID</Text>
         <Text style={styles.value}>{booking._id}</Text>
 
-        {/* Rental Car Image */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-  {booking.idVehicle.carImageUrls.map((url, index) => (
-    <Image key={index} source={{ uri: url }} style={styles.image} />
-  ))}
-</ScrollView>
-        {/* Rental Company */}
-        <Text style={styles.sectionTitle}>Rental Company</Text>
-        <Text style={styles.value}>{booking.company.companyName}</Text>
-        <Text style={styles.value}>{booking.company.address}, {booking.company.city}</Text>
-        <Text style={styles.value}>📞 {booking.company.phNum}</Text>
+        {booking.idVehicle && (
+          <>
+            <Text style={styles.sectionTitle}>Vehicle</Text>
+            <Text style={styles.value}>
+              {booking.idVehicle.manufacturer} {booking.idVehicle.model}
+            </Text>
+          </>
+        )}
 
-        {/* Booking Dates */}
+        {booking.idVehicle?.carImageUrls && booking.idVehicle.carImageUrls.length > 0 && (
+          <View style={styles.imageContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {booking.idVehicle.carImageUrls.map((url, index) => (
+                <Image 
+                  key={index} 
+                  source={{ uri: url }} 
+                  style={[styles.image, { width: imageWidth }]} 
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+            <Text style={styles.imageIndicator}>
+              Swipe to see {booking.idVehicle.carImageUrls.length} images
+            </Text>
+          </View>
+        )}
+
+        {booking.company && (
+          <>
+            <Text style={styles.sectionTitle}>Rental Company</Text>
+            <Text style={styles.value}>{booking.company.companyName || 'Not specified'}</Text>
+            {booking.company.address && booking.company.city && (
+              <Text style={styles.value}>
+                {booking.company.address}, {booking.company.city}
+              </Text>
+            )}
+            {booking.company.phNum && (
+              <Text style={styles.value}>📞 {booking.company.phNum}</Text>
+            )}
+          </>
+        )}
+
         <Text style={styles.sectionTitle}>Booking Dates</Text>
         <View style={styles.infoRow}>
           <Text style={styles.label}>From:</Text>
-          <Text style={styles.value}>{booking.from}</Text>
+          <Text style={styles.value}>{booking.from || 'Not specified'}</Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.label}>To:</Text>
-          <Text style={styles.value}>{booking.to}</Text>
+          <Text style={styles.value}>{booking.to || 'Not specified'}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>From Time:</Text>
+          <Text style={styles.value}>{booking.fromTime || 'Not specified'}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>To Time:</Text>
+          <Text style={styles.value}>{booking.toTime || 'Not specified'}</Text>
         </View>
 
-        {/* Total Price */}
-        <Text style={styles.sectionTitle}>Total Price</Text>
-        <Text style={styles.value}>${booking.totalPrice}</Text>
+        <Text style={styles.sectionTitle}>Payment Details</Text>
+        {transaction ? (
+          <>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Amount Paid:</Text>
+              <Text style={styles.price}>Rs.{transaction.amount.toFixed(2)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Payment Status:</Text>
+              <Text style={[styles.value, transaction.paymentStatus === 'completed' ? styles.statusConfirmed : styles.statusCancelled]}>
+                {transaction.paymentStatus.toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Payment Method:</Text>
+              <Text style={styles.value}>{transaction.paymentMethod.toUpperCase()}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Transaction ID:</Text>
+              <Text style={styles.value}>{transaction.transactionId}</Text>
+            </View>
+          </>
+        ) : (
+          <Text style={styles.value}>No transaction details available</Text>
+        )}
 
-        {/* Booking Status */}
         <Text style={styles.sectionTitle}>Status</Text>
-        <Text
-          style={[
-            styles.value,
-            booking.status === "confirmed" && styles.statusConfirmed,
-            booking.status === "ongoing" && styles.statusOngoing,
-            booking.status === "completed" && styles.statusCompleted,
-          ]}
-        >
-          {booking.status}
-        </Text>
+        <View style={styles.statusContainer}>
+          <Text
+            style={[
+              styles.statusText,
+              booking.status === "confirmed" && styles.statusConfirmed,
+              booking.status === "ongoing" && styles.statusOngoing,
+              booking.status === "completed" && styles.statusCompleted,
+              booking.status === "cancelled" && styles.statusCancelled,
+            ]}
+          >
+            {booking.status ? booking.status.toUpperCase() : 'UNKNOWN'}
+          </Text>
+        </View>
+
+        {booking.status !== 'cancelled' && (
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={confirmCancel}
+            disabled={isCancelling}
+          >
+            {isCancelling ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.cancelButtonText}>Cancel Booking</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
 };
 
-// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#003366",
-    padding: 10,
+    padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: "#003366",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#FFF",
+    marginTop: 10,
+  },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: "#003366",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
   backButton: {
     position: "absolute",
-    top: 40,
+    top: 50,
     left: 20,
-    zIndex: 1,
+    zIndex: 10,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 80, // Add padding to avoid overlap with the button row
+    paddingTop: 100,
+    paddingBottom: 40,
+  },
+  heading: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#FFF",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  imageContainer: {
+    marginVertical: 15,
   },
   image: {
-    width: "100%",
     height: 200,
-    marginTop: 50,
     borderRadius: 10,
-    marginBottom: 10,
+    marginRight: 10,
+  },
+  imageIndicator: {
+    color: "#ADD8E6",
+    textAlign: "center",
+    marginTop: 5,
+    fontSize: 12,
   },
   errorText: {
     fontSize: 16,
-    color: "red",
-    marginTop: 10,
+    color: "#FF6B6B",
+    marginBottom: 20,
     textAlign: "center",
+  },
+  button: {
+    backgroundColor: "#0066CC",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 5,
+    marginTop: 8,
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#ADD8E6",
     fontWeight: "600",
   },
   value: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#FFF",
+    marginVertical: 2,
+  },
+  price: {
+    fontSize: 24,
+    color: "#4CD964",
+    fontWeight: "bold",
+  },
+  statusContainer: {
+    marginTop: 5,
+  },
+  statusText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignSelf: "flex-start",
+    overflow: "hidden",
+    color: "#FFF",
+    backgroundColor: "#666",
   },
   statusConfirmed: {
-    color: "#FFA500", // Orange for confirmed
+    backgroundColor: "#FF9500",
   },
   statusOngoing: {
-    color: "#00FF00", // Green for ongoing
+    backgroundColor: "#4CD964",
   },
   statusCompleted: {
-    color: "#808080", // Gray for completed
+    backgroundColor: "#5AC8FA",
+  },
+  statusCancelled: {
+    backgroundColor: "#FF3B30",
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#FFF",
     marginTop: 20,
-    marginBottom: 10,
+    marginBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.2)",
+    paddingBottom: 5,
+  },
+  cancelButton: {
+    backgroundColor: "#FF3B30",
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

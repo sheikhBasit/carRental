@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TextInput, ScrollView, Image, TouchableOpacity, 
-  StyleSheet, ActivityIndicator, Modal, Pressable, Platform
+  StyleSheet, ActivityIndicator, Modal, Pressable, Platform, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,6 +11,7 @@ import { AppConstants } from '@/constants/appConstants';
 import { router } from 'expo-router';
 import { useLikedVehicles } from '@/components/layout/LikedVehicleContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
 
 type CarProps = {
   _id: string;
@@ -20,7 +21,10 @@ type CarProps = {
   capacity: number;
   transmission: string;
   carImageUrls: string[];
-  companyName: string;
+  company: {
+    _id: string;
+    companyName: string;
+  };
   trips: number;
   numberPlate: string;
   cities: {
@@ -32,7 +36,12 @@ type CarProps = {
     startTime: string;
     endTime: string;
   };
-  isAvailable: boolean;
+  bookings?: string[]; // Optional array of booking IDs
+  vehicleType?: string;
+  year?: number;
+  features?: string[];
+  fuelType?: string;
+  blackoutDates?: string[];
 };
 
 const ExploreScreen = () => {
@@ -44,14 +53,29 @@ const ExploreScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
+  const [userCity, setUserCity] = useState('');
+
   const [minRent, setMinRent] = useState('');
   const [maxRent, setMaxRent] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedDay, setSelectedDay] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('All');
+  const [selectedVehicleType, setSelectedVehicleType] = useState('All');
+  const [minYear, setMinYear] = useState('');
+  const [maxYear, setMaxYear] = useState('');
+
+  const [minCapacity, setMinCapacity] = useState('');
+  const [selectedTransmission, setSelectedTransmission] = useState('All');
+  const [selectedFuelType, setSelectedFuelType] = useState('All');
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [fromDate, setFromDate] = useState(new Date());
+  const [toDate, setToDate] = useState(new Date());
+  const [showFromDatePicker, setShowFromDatePicker] = useState(false);
+  const [showToDatePicker, setShowToDatePicker] = useState(false);
+  const [fromTime, setFromTime] = useState('');
+  const [toTime, setToTime] = useState('');
+  const [showFromTimePicker, setShowFromTimePicker] = useState(false);
+  const [showToTimePicker, setShowToTimePicker] = useState(false);
+  const [isFiltered, setIsFiltered] = useState(false);
 
   const { likedVehicles, toggleLike } = useLikedVehicles();
 
@@ -67,6 +91,7 @@ const ExploreScreen = () => {
         throw new Error('Failed to fetch manufacturers');
       }
       const data: string[] = await response.json();
+      console.log('Manufacturers API response:', data);
       setManufacturers(['All', ...data]);
     } catch (err: any) {
       console.error('Error fetching manufacturers:', err.message);
@@ -81,32 +106,43 @@ const ExploreScreen = () => {
         setLoading(false);
         return;
       }
+      setUserCity(storedCity);
       setSelectedCity(storedCity);
   
-      const url = `${AppConstants.LOCAL_URL}/vehicles/getVehicle?city=${storedCity}`;
+      const url = `${AppConstants.LOCAL_URL}/vehicles/getCityVehicle?city=${storedCity}`;
       console.log('Fetching vehicles from:', url);
-  
+      
       const response = await fetch(url);
+      
+      console.log('Response status:', response.status);
       if (!response.ok) {
         if (response.status === 404) {
           console.log("No Vehicles found for the city.");
           setVehicles([]);
           setAllVehicles([]);
+          setLoading(false);
           return;
         }
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
   
-      const data = await response.json();
-      const vehiclesWithCompany = data.map((car: any) => ({
-        ...car,
-        companyName: car.company?.companyName || "Unknown Company",
-      }));
+      const responseData = await response.json();
+      console.log("Raw response data:", responseData);
+      
+      if (!responseData.data || !Array.isArray(responseData.data)) {
+        console.log("Response data is not in the expected format:", responseData);
+        setVehicles([]);
+        setAllVehicles([]);
+        setLoading(false);
+        return;
+      }
   
-      setVehicles(vehiclesWithCompany);
-      setAllVehicles(vehiclesWithCompany); // Store all vehicles for filtering
+      setVehicles(responseData.data);
+      setAllVehicles(responseData.data);
+      console.log('Fetched vehicles:', responseData.data);
     } catch (err: any) {
-      setError(err.message);
+      console.error('Error fetching vehicles:', err);
+      setError(err.message || 'Failed to fetch vehicles');
     } finally {
       setLoading(false);
     }
@@ -114,117 +150,61 @@ const ExploreScreen = () => {
 
   const handleBookNow = (car: CarProps) => {
     try {
+    
       router.push({
         pathname: "/screens/bookNow/[car]",
         params: {
           car: JSON.stringify(car),
         },
       });
-      console.log("Navigation executed successfully");
     } catch (error) {
-      console.error(" Navigation error:", error);
+      console.error("Navigation error:", error);
+      Alert.alert('Error', 'Failed to navigate to booking page. Please try again.');
     }
   };
 
   const handleManufacturerSelect = (manufacturer: string) => {
     setSelectedManufacturer(manufacturer);
-    applyFilters(manufacturer, selectedCity, minRent, maxRent, selectedDay, selectedTime);
+    setSelectedModel('All');
+    // Only apply manufacturer filter, not city filter
+    applyFilters(manufacturer, 'All', minRent, maxRent);
   };
 
-  const applyFilters = (
-    manufacturer: string,
-    city: string,
-    min: string,
-    max: string,
-    day: string,
-    time: string
-  ) => {
-    let filtered = allVehicles;
-
-    // Filter by manufacturer
-    if (manufacturer !== 'All') {
-      filtered = filtered.filter(car => 
-        car.manufacturer.toLowerCase() === manufacturer.toLowerCase()
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    // Only apply search filter, don't reset other filters
+    const filtered = allVehicles.filter(v => {
+      const query = text.toLowerCase().trim();
+      if (!query) return true;
+      
+      return (
+        v.manufacturer.toLowerCase().includes(query) ||
+        v.model.toLowerCase().includes(query) ||
+        v.company?.companyName?.toLowerCase().includes(query) ||
+        v.vehicleType?.toLowerCase().includes(query) ||
+        v.cities.some(c => c.name.toLowerCase().includes(query))
       );
-    }
-
-    // Filter by city
-    if (city) {
-      filtered = filtered.filter(car => 
-        car.cities.some(c => c.name.toLowerCase() === city.toLowerCase())
-      );
-    }
-
-    // Filter by rent range
-    if (min) {
-      filtered = filtered.filter(car => car.rent >= parseInt(min));
-    }
-    if (max) {
-      filtered = filtered.filter(car => car.rent <= parseInt(max));
-    }
-
-    // Filter by availability day
-    if (day) {
-      filtered = filtered.filter(car => 
-        car.availability.days.includes(day)
-      );
-    }
-
-    // Filter by availability time
-    if (time) {
-      filtered = filtered.filter(car => {
-        const [startHour, startMin] = car.availability.startTime.split(':').map(Number);
-        const [endHour, endMin] = car.availability.endTime.split(':').map(Number);
-        const [selectedHour, selectedMin] = time.split(':').map(Number);
-        
-        const startTimeInMinutes = startHour * 60 + startMin;
-        const endTimeInMinutes = endHour * 60 + endMin;
-        const selectedTimeInMinutes = selectedHour * 60 + selectedMin;
-        
-        return selectedTimeInMinutes >= startTimeInMinutes && 
-               selectedTimeInMinutes <= endTimeInMinutes;
-      });
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(car => 
-        car.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        car.manufacturer.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
+    });
     setVehicles(filtered);
+    setIsFiltered(text.trim().length > 0);
   };
 
   const resetFilters = () => {
     setSelectedManufacturer('All');
+    setSelectedModel('All');
+    setMinYear('');
+    setMaxYear('');
+    setSelectedVehicleType('All');
+    setMinCapacity('');
+    setSelectedTransmission('All');
+    setSelectedFuelType('All');
+    setSelectedFeatures([]);
     setMinRent('');
     setMaxRent('');
-    setSelectedDay('');
-    setSelectedTime('');
-    setVehicles(allVehicles);
+    setSelectedCity(userCity);
     setSearchQuery('');
-  };
-
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || date;
-    setShowDatePicker(Platform.OS === 'ios');
-    setDate(currentDate);
-    
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const dayName = days[currentDate.getDay()];
-    setSelectedDay(dayName);
-  };
-
-  const onTimeChange = (event: any, selectedTime?: Date) => {
-    const currentTime = selectedTime || new Date();
-    setShowTimePicker(Platform.OS === 'ios');
-    
-    const hours = currentTime.getHours().toString().padStart(2, '0');
-    const minutes = currentTime.getMinutes().toString().padStart(2, '0');
-    const timeString = `${hours}:${minutes}`;
-    setSelectedTime(timeString);
+    setIsFiltered(false);
+    setVehicles(allVehicles);
   };
 
   const getAvailableCities = () => {
@@ -236,9 +216,163 @@ const ExploreScreen = () => {
     });
     return Array.from(cities);
   };
-
   const availableCities = getAvailableCities();
 
+  const getModelsForManufacturer = () => {
+    if (selectedManufacturer === 'All') {
+      const allModels = allVehicles.map(v => v.model);
+      return ['All', ...Array.from(new Set(allModels))];
+    }
+    const filtered = allVehicles.filter(v => v.manufacturer === selectedManufacturer);
+    const models = filtered.map(v => v.model);
+    return ['All', ...Array.from(new Set(models))];
+  };
+  const models = getModelsForManufacturer();
+
+  const getVehicleTypes = () => {
+    const types = allVehicles.map(v => v.vehicleType).filter(Boolean);
+    return ['All', ...Array.from(new Set(types))];
+  };
+  const vehicleTypes = getVehicleTypes();
+
+  const getYears = () => {
+    const years = allVehicles.map(v => v.year).filter((y): y is number => typeof y === 'number');
+    return ['All', ...Array.from(new Set(years)).sort((a = 0, b = 0) => b - a).map(String)];
+  };
+  const years = getYears();
+
+  const getAllFeatures = () => {
+    const features = allVehicles.flatMap(v => v.features || []);
+    return Array.from(new Set(features));
+  };
+  const allFeatures = getAllFeatures();
+
+  const applyFilters = (
+    manufacturer = selectedManufacturer,
+    city = selectedCity,
+    minRentVal = minRent,
+    maxRentVal = maxRent
+  ) => {
+    console.log('Applying filters with:', {
+      city,
+      manufacturer,
+      minRentVal,
+      maxRentVal,
+      minYear,
+      maxYear,
+      minCapacity,
+      selectedFeatures,
+      selectedFuelType,
+      selectedModel,
+      selectedTransmission,
+      selectedVehicleType,
+      searchQuery
+    });
+  
+    let filtered = [...allVehicles];
+    
+    // Check if any filter is active
+    const hasActiveFilters = Boolean(
+      (manufacturer && manufacturer !== 'All') ||
+      (city && city !== 'All' && city !== userCity) ||
+      (minRentVal && minRentVal !== '') ||
+      (maxRentVal && maxRentVal !== '') ||
+      (minYear && minYear !== 'All') ||
+      (maxYear && maxYear !== 'All') ||
+      (minCapacity && minCapacity !== '') ||
+      (selectedTransmission && selectedTransmission !== 'All') ||
+      (selectedFuelType && selectedFuelType !== 'All') ||
+      (selectedFeatures.length > 0) ||
+      (selectedModel && selectedModel !== 'All') ||
+      (selectedVehicleType && selectedVehicleType !== 'All') ||
+      searchQuery.trim().length > 0
+    );
+    
+    setIsFiltered(hasActiveFilters);
+    
+    // Apply search filter first
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(v => 
+        v.manufacturer.toLowerCase().includes(query) ||
+        v.model.toLowerCase().includes(query) ||
+        v.company?.companyName?.toLowerCase().includes(query) ||
+        v.vehicleType?.toLowerCase().includes(query) ||
+        v.cities.some(c => c.name.toLowerCase().includes(query))
+      );
+    }
+    
+    // Then apply other filters
+    if (manufacturer && manufacturer !== 'All') {
+      filtered = filtered.filter(v => 
+        v.manufacturer.toLowerCase() === manufacturer.toLowerCase()
+      );
+    }
+  
+    if (selectedModel && selectedModel !== 'All') {
+      filtered = filtered.filter(v => 
+        v.model.toLowerCase() === selectedModel.toLowerCase()
+      );
+    }
+  
+    if (selectedVehicleType && selectedVehicleType !== 'All') {
+      filtered = filtered.filter(v => 
+        v.vehicleType?.toLowerCase() === selectedVehicleType.toLowerCase()
+      );
+    }
+  
+    if (minYear && minYear !== 'All') {
+      filtered = filtered.filter(v => (v.year ?? 0) >= parseInt(minYear));
+    }
+  
+    if (maxYear && maxYear !== 'All') {
+      filtered = filtered.filter(v => (v.year ?? 0) <= parseInt(maxYear));
+    }
+  
+    if (minCapacity) {
+      filtered = filtered.filter(v => v.capacity >= parseInt(minCapacity));
+    }
+  
+    if (selectedTransmission && selectedTransmission !== 'All') {
+      filtered = filtered.filter(v => 
+        v.transmission.toLowerCase() === selectedTransmission.toLowerCase()
+      );
+    }
+  
+    if (selectedFuelType && selectedFuelType !== 'All') {
+      filtered = filtered.filter(v => 
+        v.fuelType?.toLowerCase() === selectedFuelType.toLowerCase()
+      );
+    }
+  
+    if (selectedFeatures.length > 0) {
+      filtered = filtered.filter(v => 
+        selectedFeatures.every(f => 
+          v.features?.some(vf => vf.toLowerCase() === f.toLowerCase())
+        )
+      );
+    }
+  
+    // Apply city filter if it's different from user's city
+    if (city && city !== 'All' && city !== userCity) {
+      filtered = filtered.filter(v => 
+        v.cities.some(c => 
+          c.name.toLowerCase().includes(city.toLowerCase())
+        )
+      );
+    }
+  
+    if (minRentVal) {
+      filtered = filtered.filter(v => v.rent >= parseInt(minRentVal));
+    }
+  
+    if (maxRentVal) {
+      filtered = filtered.filter(v => v.rent <= parseInt(maxRentVal));
+    }
+  
+    console.log('Final filtered vehicles:', filtered);
+    setVehicles(filtered);
+  };
   return (
     <AppLayout title="Find the Perfect Car">
       <View style={styles.container}>
@@ -249,10 +383,10 @@ const ExploreScreen = () => {
               placeholder="Search for cars..."
               style={styles.searchInput}
               value={searchQuery}
-              onChangeText={(text) => {
-                setSearchQuery(text);
-                applyFilters(selectedManufacturer, selectedCity, minRent, maxRent, selectedDay, selectedTime);
+              onFocus={() => {
+                resetFilters();
               }}
+              onChangeText={handleSearch}
             />
           </View>
           <TouchableOpacity 
@@ -263,28 +397,6 @@ const ExploreScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.manufacturersContainer}>
-          {manufacturers.map((manufacturer, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.manufacturerButton,
-                selectedManufacturer === manufacturer && styles.selectedManufacturerButton,
-              ]}
-              onPress={() => handleManufacturerSelect(manufacturer)}
-            >
-              <Text
-                style={[
-                  styles.manufacturerText,
-                  selectedManufacturer === manufacturer && styles.selectedManufacturerText,
-                ]}
-              >
-                {manufacturer}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
         {loading && <ActivityIndicator size="large" color="white" />}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -292,8 +404,11 @@ const ExploreScreen = () => {
           {vehicles.length > 0 ? (
             vehicles.map((car) => (
               <View key={car._id} style={styles.card}>
-                <Image source={{ uri: car.carImageUrls[0] }} style={styles.image} />
-
+                <Image 
+                  source={{ uri: car.carImageUrls?.[0] || 'default_image_uri' }} 
+                  style={styles.image}
+                  onError={(e) => console.log('Failed to load image:', e.nativeEvent.error)}
+                />
                 <View style={styles.likeContainer}>
                   <Text style={styles.carName}>{car.manufacturer} {car.model}</Text>
                   <TouchableOpacity onPress={() => toggleLike(car._id)}>
@@ -326,7 +441,6 @@ const ExploreScreen = () => {
                     <Text style={styles.detailText}>{car.trips} Trips</Text>
                   </View>
                 </View>
-
                 <View style={styles.detailsContainer}>
                   <View style={styles.detailRow}>
                     <Ionicons name="time" size={16} color="#ADD8E6" />
@@ -347,11 +461,18 @@ const ExploreScreen = () => {
 
                 <View style={styles.detailRow}>
                   <Ionicons name="business" size={20} color="#ADD8E6" />
-                  <Text style={styles.carCompany}>  {car.companyName}</Text>
+                  <Text style={styles.carCompany}>{car.company?.companyName || "Unknown Company"}</Text>
                 </View>
                 
-                <TouchableOpacity style={styles.bookNowButton} onPress={() => handleBookNow(car)}>
-                  <Text style={styles.bookNowText}>Book Now: Rs.{car.rent}/day</Text>
+                <TouchableOpacity 
+                  style={[
+                    styles.bookNowButton,
+                    ]} 
+                  onPress={() => handleBookNow(car)}
+                >
+                  <Text style={styles.bookNowText}>
+                  Book Now: Rs.${car.rent}/day
+                  </Text>
                 </TouchableOpacity>
               </View>
             ))
@@ -376,23 +497,212 @@ const ExploreScreen = () => {
           onRequestClose={() => setShowFilters(false)}
         >
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+            <ScrollView style={styles.modalContent}>
               <Text style={styles.modalTitle}>Filter Vehicles</Text>
-              
-              <Text style={styles.filterLabel}>City</Text>
+              {/* Manufacturer Dropdown */}
+              <Text style={styles.filterLabel}>Manufacturer</Text>
               <View style={styles.filterInput}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Select city"
-                  value={selectedCity}
-                  onChangeText={setSelectedCity}
-                />
+                <Picker
+                  selectedValue={selectedManufacturer}
+                  onValueChange={(itemValue) => setSelectedManufacturer(itemValue)}
+                >
+                  {manufacturers.map((mfg, index) => (
+                    <Picker.Item key={index} label={mfg} value={mfg} />
+                  ))}
+                </Picker>
               </View>
-              
+              {/* Model Dropdown */}
+              <Text style={styles.filterLabel}>Model</Text>
+              <View style={styles.filterInput}>
+                <Picker
+                  selectedValue={selectedModel}
+                  onValueChange={(itemValue) => setSelectedModel(itemValue)}
+                >
+                  {models.map((model, index) => (
+                    <Picker.Item key={index} label={model} value={model} />
+                  ))}
+                </Picker>
+              </View>
+              {/* Year Range */}
+              <Text style={styles.filterLabel}>Year Range</Text>
+              <View style={styles.rangeContainer}>
+                <Picker
+                  selectedValue={minYear}
+                  onValueChange={(itemValue) => setMinYear(itemValue)}
+                  style={{ flex: 1 }}
+                >
+                  {years.map((year, index) => (
+                    <Picker.Item key={index} label={year} value={year} />
+                  ))}
+                </Picker>
+                <Text style={styles.rangeSeparator}>-</Text>
+                <Picker
+                  selectedValue={maxYear}
+                  onValueChange={(itemValue) => setMaxYear(itemValue)}
+                  style={{ flex: 1 }}
+                >
+                  {years.map((year, index) => (
+                    <Picker.Item key={index} label={year} value={year} />
+                  ))}
+                </Picker>
+              </View>
+              {/* Vehicle Type */}
+              <Text style={styles.filterLabel}>Vehicle Type</Text>
+              <View style={styles.filterInput}>
+                <Picker
+                  selectedValue={selectedVehicleType}
+                  onValueChange={(itemValue) => setSelectedVehicleType(itemValue)}
+                >
+                  {vehicleTypes.map((type, index) => (
+                    <Picker.Item key={index} label={type} value={type} />
+                  ))}
+                </Picker>
+              </View>
+              {/* Capacity */}
+              <Text style={styles.filterLabel}>Seats</Text>
+              <View style={styles.filterInput}>
+                <Picker
+                  selectedValue={minCapacity}
+                  style={styles.picker}
+                  onValueChange={(itemValue) => setMinCapacity(itemValue)}
+                  dropdownIconColor="#ADD8E6"
+                >
+                  <Picker.Item label="Any" value="" />
+                  {Array.from({length: 9}, (_, i) => i + 4).map((seats) => (
+                    <Picker.Item key={seats} label={`${seats} seats`} value={seats.toString()} />
+                  ))}
+                </Picker>
+              </View>
+              {/* Transmission */}
+              <Text style={styles.filterLabel}>Transmission</Text>
+              <View style={styles.filterInput}>
+                <Picker
+                  selectedValue={selectedTransmission}
+                  onValueChange={(itemValue) => setSelectedTransmission(itemValue)}
+                >
+                  <Picker.Item label="All" value="All" />
+                  <Picker.Item label="Automatic" value="Auto" />
+                  <Picker.Item label="Manual" value="Manual" />
+                </Picker>
+              </View>
+              {/* Fuel Type */}
+              <Text style={styles.filterLabel}>Fuel Type</Text>
+              <View style={styles.filterInput}>
+                <Picker
+                  selectedValue={selectedFuelType}
+                  onValueChange={(itemValue) => setSelectedFuelType(itemValue)}
+                >
+                  <Picker.Item label="All" value="All" />
+                  <Picker.Item label="Petrol" value="Petrol" />
+                  <Picker.Item label="Diesel" value="Diesel" />
+                  <Picker.Item label="Electric" value="Electric" />
+                  <Picker.Item label="Hybrid" value="Hybrid" />
+                </Picker>
+              </View>
+              {/* Features */}
+              <Text style={styles.filterLabel}>Features</Text>
+              <View style={styles.featuresContainer}>
+                {allFeatures.map(feature => (
+              <TouchableOpacity 
+                    key={feature}
+                    style={[
+                      styles.featureButton,
+                      selectedFeatures.includes(feature) && styles.selectedFeatureButton
+                    ]}
+                    onPress={() => {
+                      if (selectedFeatures.includes(feature)) {
+                        setSelectedFeatures(selectedFeatures.filter(f => f !== feature));
+                      } else {
+                        setSelectedFeatures([...selectedFeatures, feature]);
+                      }
+                    }}
+                  >
+                    <Text style={[
+                      styles.featureText,
+                      selectedFeatures.includes(feature) && styles.selectedFeatureText
+                    ]}>
+                      {feature}
+                </Text>
+              </TouchableOpacity>
+                ))}
+              </View>
+              {/* From Date */}
+              <Text style={styles.filterLabel}>From Date</Text>
+              <TouchableOpacity style={styles.filterInput} onPress={() => setShowFromDatePicker(true)}>
+                <Text style={styles.input}>{fromDate ? fromDate.toLocaleDateString() : 'Select from date'}</Text>
+              </TouchableOpacity>
+              {showFromDatePicker && (
+                <DateTimePicker
+                  value={fromDate}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowFromDatePicker(false);
+                    if (selectedDate) setFromDate(selectedDate);
+                  }}
+                />
+              )}
+              {/* To Date */}
+              <Text style={styles.filterLabel}>To Date</Text>
+              <TouchableOpacity style={styles.filterInput} onPress={() => setShowToDatePicker(true)}>
+                <Text style={styles.input}>{toDate ? toDate.toLocaleDateString() : 'Select to date'}</Text>
+              </TouchableOpacity>
+              {showToDatePicker && (
+                <DateTimePicker
+                  value={toDate}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowToDatePicker(false);
+                    if (selectedDate) setToDate(selectedDate);
+                  }}
+                />
+              )}
+              {/* From Time */}
+              <Text style={styles.filterLabel}>From Time</Text>
+              <TouchableOpacity style={styles.filterInput} onPress={() => setShowFromTimePicker(true)}>
+                <Text style={styles.input}>{fromTime || 'Select from time'}</Text>
+              </TouchableOpacity>
+              {showFromTimePicker && (
+                <DateTimePicker
+                  value={fromTime ? new Date(`1970-01-01T${fromTime}:00`) : new Date()}
+                  mode="time"
+                  display="default"
+                  onChange={(event, selectedTime) => {
+                    setShowFromTimePicker(false);
+                    if (selectedTime) {
+                      const hours = selectedTime.getHours().toString().padStart(2, '0');
+                      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
+                      setFromTime(`${hours}:${minutes}`);
+                    }
+                  }}
+                />
+              )}
+              {/* To Time */}
+              <Text style={styles.filterLabel}>To Time</Text>
+              <TouchableOpacity style={styles.filterInput} onPress={() => setShowToTimePicker(true)}>
+                <Text style={styles.input}>{toTime || 'Select to time'}</Text>
+              </TouchableOpacity>
+              {showToTimePicker && (
+                <DateTimePicker
+                  value={toTime ? new Date(`1970-01-01T${toTime}:00`) : new Date()}
+                  mode="time"
+                  display="default"
+                  onChange={(event, selectedTime) => {
+                    setShowToTimePicker(false);
+                    if (selectedTime) {
+                      const hours = selectedTime.getHours().toString().padStart(2, '0');
+                      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
+                      setToTime(`${hours}:${minutes}`);
+                    }
+                  }}
+                />
+              )}
+              {/* Rent Range */}
               <Text style={styles.filterLabel}>Rent Range</Text>
-              <View style={styles.rentRangeContainer}>
+              <View style={styles.rangeContainer}>
                 <TextInput
-                  style={[styles.input, styles.rentInput]}
+                  style={[styles.input, styles.rangeInput]}
                   placeholder="Min"
                   keyboardType="numeric"
                   value={minRent}
@@ -400,76 +710,48 @@ const ExploreScreen = () => {
                 />
                 <Text style={styles.rangeSeparator}>-</Text>
                 <TextInput
-                  style={[styles.input, styles.rentInput]}
+                  style={[styles.input, styles.rangeInput]}
                   placeholder="Max"
                   keyboardType="numeric"
                   value={maxRent}
                   onChangeText={setMaxRent}
                 />
               </View>
-              
-              <Text style={styles.filterLabel}>Available Date</Text>
-              <TouchableOpacity 
-                style={styles.filterInput}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={styles.input}>
-                  {selectedDay || 'Select day'}
-                </Text>
-              </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display="default"
-                  onChange={onDateChange}
-                />
-              )}
-              
-              <Text style={styles.filterLabel}>Available Time</Text>
-              <TouchableOpacity 
-                style={styles.filterInput}
-                onPress={() => setShowTimePicker(true)}
-              >
-                <Text style={styles.input}>
-                  {selectedTime || 'Select time'}
-                </Text>
-              </TouchableOpacity>
-              {showTimePicker && (
-                <DateTimePicker
-                  value={date}
-                  mode="time"
-                  display="default"
-                  onChange={onTimeChange}
-                />
-              )}
-              
+              {/* City Filter */}
+              <Text style={styles.filterLabel}>City</Text>
+              <View style={styles.filterInput}>
+                <Picker
+                  selectedValue={selectedCity}
+                  onValueChange={(itemValue) => setSelectedCity(itemValue)}
+                >
+                  {availableCities.map((city, index) => (
+                    <Picker.Item key={index} label={city} value={city} />
+                  ))}
+                </Picker>
+              </View>
+              {/* Action Buttons */}
               <View style={styles.modalButtonContainer}>
                 <TouchableOpacity 
                   style={[styles.modalButton, styles.resetButton]}
-                  onPress={resetFilters}
-                >
-                  <Text style={styles.modalButtonText}>Reset</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.applyButton]}
                   onPress={() => {
-                    applyFilters(
-                      selectedManufacturer,
-                      selectedCity,
-                      minRent,
-                      maxRent,
-                      selectedDay,
-                      selectedTime
-                    );
+                    resetFilters();
                     setShowFilters(false);
                   }}
                 >
-                  <Text style={styles.modalButtonText}>Apply</Text>
+                  <Text style={styles.modalButtonText}>Reset All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.applyButton]}
+                  onPress={() => {
+                    applyFilters();
+                    setShowFilters(false);
+                    setSearchQuery('');
+                  }}
+                >
+                  <Text style={styles.modalButtonText}>Apply Filters</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </ScrollView>
           </View>
         </Modal>
       </View>
@@ -537,7 +819,7 @@ const styles = StyleSheet.create({
   },
   bookNowText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   manufacturersContainer: {
@@ -577,7 +859,11 @@ const styles = StyleSheet.create({
     color: '#ADD8E6',
     fontWeight: 'bold',
     marginVertical: 2,
-    justifyContent: 'flex-start',
+    marginLeft: 5,
+  },
+  disabledButton: {
+    backgroundColor: 'gray',
+    opacity: 0.6,
   },
   detailsContainer: {
     flexDirection: 'row',
@@ -623,6 +909,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    
   },
   modalContent: {
     backgroundColor: '#003366',
@@ -672,6 +959,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 10,
+    marginBottom: 80,
   },
   modalButton: {
     flex: 1,
@@ -690,6 +978,46 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  rangeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  rangeInput: {
+    flex: 1,
+    backgroundColor: '#1E5A82',
+    borderRadius: 5,
+    padding: 10,
+  },
+  featuresContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 15,
+  },
+  featureButton: {
+    padding: 8,
+    margin: 4,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#ADD8E6',
+  },
+  selectedFeatureButton: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  featureText: {
+    color: '#ADD8E6',
+  },
+  selectedFeatureText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  picker: {
+    flex: 1,
+    backgroundColor: '#1E5A82',
+    borderRadius: 5,
+    padding: 10,
   },
 });
 

@@ -17,203 +17,173 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppConstants } from "@/constants/appConstants";
 import { Ionicons } from "@expo/vector-icons";
 import { IconSymbol } from "@/components/ui/IconSymbol";
-import NetInfo from "@react-native-community/netinfo";
 
-// Define message type
 interface Message {
-  _id?: string; // Optional _id for messages
+  _id?: string;
   senderId: string;
   receiverId: string;
   message: string;
   timestamp?: string;
   chatId: string;
-  status?: "sending" | "sent" | "failed"; // Strictly typed
+  status?: "sending" | "sent" | "failed";
 }
 
-// Initialize Socket.io connection
 const socket = io(`${AppConstants.SOCKETS_URL}`);
+
 const useChatController = (userId: string, receiverId: string) => {
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [message, setMessage] = useState<string>("");
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-  
-    // Cache key for messages
-    const cacheKey = `chat_${[userId, receiverId].sort().join("_")}`;
-  
-    // Load cached messages
-    const loadCachedMessages = async () => {
-      try {
-        const cachedMessages = await AsyncStorage.getItem(cacheKey);
-        if (cachedMessages) {
-          const parsedMessages = JSON.parse(cachedMessages);
-          if (Array.isArray(parsedMessages)) {
-            setMessages(parsedMessages);
-          } else {
-            console.warn("Cached messages are not in array format");
-          }
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [message, setMessage] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const cacheKey = `chat_${[userId, receiverId].sort().join("_")}`;
+
+  const loadCachedMessages = async () => {
+    try {
+      const cachedMessages = await AsyncStorage.getItem(cacheKey);
+      if (cachedMessages) {
+        const parsedMessages = JSON.parse(cachedMessages);
+        if (Array.isArray(parsedMessages)) {
+          setMessages(parsedMessages);
         }
-      } catch (err) {
-        console.error("Error loading cached messages:", err);
       }
-    };
-  
-    // Save messages to cache
-    const saveMessagesToCache = async (messages: Message[]) => {
-      try {
-        await AsyncStorage.setItem(cacheKey, JSON.stringify(messages));
-      } catch (err) {
-        console.error("Error saving messages to cache:", err);
-      }
-    };
-  
-    // Flatten batched messages into a single array
-    const flattenBatchedMessages = (batches: any[]) => {
-      return batches.flatMap((batch) =>
-        batch.messages.map((msg: any) => ({
-          ...msg,
-          chatId: batch.chatId,
-          timestamp: msg.timestamp || batch.endTime,
-        }))
-      );
-    };
-  
-    useEffect(() => {
-      if (!userId || !receiverId) return;
-  
-      // Load cached messages
-      loadCachedMessages();
-  
-      // Connect to the socket if not already connected
-      if (!socket.connected) {
-        socket.connect();
-      }
-  
-      // Log socket connection status
-      socket.on("connect", () => {
-        console.log("Socket connected:", socket.connected);
-      });
-  
-      socket.on("disconnect", () => {
-        console.log("Socket disconnected");
-      });
-  
-      // Join the chat room
-      const chatId = [userId, receiverId].sort().join("_");
-      socket.emit("joinChat", { chatId });
-  
-      // Fetch previous messages (batched)
-      setLoading(true);
-      axios
-        .get(`${AppConstants.SOCKETS_URL}/chat/messages/${userId}/${receiverId}`)
-        .then((response) => {
-          console.log(response.data);
-          const flattenedMessages = flattenBatchedMessages(response.data);
-  
-          // Merge with cached messages and remove duplicates
-          const mergedMessages = [...messages, ...flattenedMessages].filter(
-            (msg, index, self) =>
-              index === self.findIndex((m) => m.timestamp === msg.timestamp && m.message === msg.message)
-          );
-  
-          setMessages(mergedMessages);
-          setError(null); // Clear any previous errors
-          saveMessagesToCache(mergedMessages); // Cache fetched messages
-        })
-        .catch((err) => {
-          if (err.response?.status === 404) {
-            setError("No messages found."); // Handle 404 (no messages)
-          } else if (err.response?.status === 500) {
-            setError("Network error. Please try again later."); // Handle 500 (server error)
-          }
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-  
-      // Listen for new messages
-      const handleReceiveMessage = (msg: Message) => {
-        console.log("New message received:", msg);
-  
-        // Only add the message if it is received (not sent by the current user)
-        if (msg.senderId !== userId) {
-          setMessages((prevMessages) => {
-            // Check if the message already exists in the state
-            const isDuplicate = prevMessages.some(
-              (m) => m.timestamp === msg.timestamp && m.message === msg.message
-            );
-  
-            if (!isDuplicate) {
-              const updatedMessages = [...prevMessages, { ...msg, status: "sent" as const }];
-              console.log("Updated messages:", updatedMessages);
-              saveMessagesToCache(updatedMessages); // Cache updated messages
-              return updatedMessages;
-            }
-  
-            console.log("Duplicate message ignored:", msg);
-            return prevMessages; // Return previous messages if duplicate
-          });
-        }
-      };
-  
-      socket.on("receiveMessage", handleReceiveMessage);
-  
-      // Cleanup on unmount
-      return () => {
-        socket.off("receiveMessage", handleReceiveMessage); // Remove the event listener
-        socket.disconnect(); // Disconnect socket when component unmounts
-      };
-    }, [userId, receiverId]);
-  
-    const sendMessage = () => {
-      if (message.trim()) {
-        const tempId = Date.now().toString(); // Unique ID for optimistic message
-        const newMessage: Message = {
-          _id: tempId, // Temporary ID for optimistic update
-          senderId: userId,
-          receiverId,
-          message,
-          chatId: [userId, receiverId].sort().join("_"),
-          timestamp: new Date().toISOString(),
-          status: "sending", // Temporary status
-        };
-  
-        // Optimistically update UI
-        setMessages((prevMessages) => {
-          const updatedMessages = [...prevMessages, newMessage];
-          saveMessagesToCache(updatedMessages); // Cache updated messages
-          return updatedMessages;
-        });
-  
-        // Emit message via Socket.io
-        socket.emit("sendMessage", newMessage, (ack: boolean) => {
-          if (!ack) {
-            console.error("Message failed to send:", newMessage); // Log error message
-            // Update message to 'failed' status
-            setMessages((prevMessages) =>
-              prevMessages.map((msg) =>
-                msg._id === tempId ? { ...msg, status: "failed" as const } : msg
-              )
-            );
-          } else {
-            console.log("Message sent successfully:", newMessage); // Log successful send
-            // Update message to 'sent' status
-            setMessages((prevMessages) =>
-              prevMessages.map((msg) =>
-                msg._id === tempId ? { ...msg, status: "sent" as const } : msg
-              )
-            );
-          }
-        });
-  
-        setMessage("");
-      } else {
-        console.warn("Message is empty. Not sending."); // Log warning if message is empty
-      }
-    };
-  
-    return { messages, message, setMessage, sendMessage, loading, error, setError };
+    } catch (err) {
+      console.error("Error loading cached messages:", err);
+    }
   };
+
+  const saveMessagesToCache = async (messages: Message[]) => {
+    try {
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(messages));
+    } catch (err) {
+      console.error("Error saving messages to cache:", err);
+    }
+  };
+
+  const isValidMessage = (msg: any): msg is Message => {
+    return (
+      typeof msg.senderId === 'string' &&
+      typeof msg.message === 'string'
+    );
+  };
+
+  useEffect(() => {
+    if (!userId || !receiverId) return;
+
+    loadCachedMessages();
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    const chatId = [userId, receiverId].sort().join("_");
+    socket.emit("joinChat", { chatId });
+
+    setLoading(true);
+    axios
+      .get(`${AppConstants.SOCKETS_URL}/chat/messages/${userId}/${receiverId}`)
+      .then((response) => {
+        console.log("API Response:", response.data);
+        
+        const apiMessages = Array.isArray(response.data) ? response.data : [];
+        const processedMessages = apiMessages.map(msg => ({
+          ...msg,
+          receiverId: msg.senderId === userId ? receiverId : userId,
+          chatId,
+          timestamp: msg.timestamp || new Date().toISOString()
+        })).filter(isValidMessage);
+
+        setMessages(processedMessages);
+        setError(null);
+        saveMessagesToCache(processedMessages);
+      })
+      .catch((err) => {
+        console.error("Error fetching messages:", err);
+        setError(err.response?.status === 404 
+          ? "No messages found." 
+          : "Failed to load messages.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+    const handleReceiveMessage = (msg: any) => {
+      if (!isValidMessage(msg)) return;
+
+      const newMessage = {
+        ...msg,
+        receiverId: msg.senderId === userId ? receiverId : userId,
+        chatId,
+        timestamp: msg.timestamp || new Date().toISOString(),
+        status: "sent" as const
+      };
+
+      setMessages(prev => {
+        const isDuplicate = prev.some(m => 
+          (m._id && m._id === newMessage._id) || 
+          (m.timestamp === newMessage.timestamp && m.message === newMessage.message)
+        );
+        return isDuplicate ? prev : [...prev, newMessage];
+      });
+    };
+
+    socket.on("receiveMessage", handleReceiveMessage);
+
+    return () => {
+      socket.off("receiveMessage", handleReceiveMessage);
+      socket.disconnect();
+    };
+  }, [userId, receiverId]);
+
+  const sendMessage = () => {
+    if (!message.trim()) return;
+
+    const tempId = Date.now().toString();
+    const newMessage: Message = {
+      _id: tempId,
+      senderId: userId,
+      receiverId,
+      message,
+      chatId: [userId, receiverId].sort().join("_"),
+      timestamp: new Date().toISOString(),
+      status: "sending" as const,
+    };
+
+    setMessages(prev => [...prev, newMessage]);
+
+    axios.post(`${AppConstants.SOCKETS_URL}/chat/messages/send`, {
+      senderId: userId,
+      receiverId,
+      message,
+    })
+    .then((response) => {
+      setMessages(prev =>
+        prev.map(msg =>
+          msg._id === tempId ? { 
+            ...msg, 
+            status: "sent" as const,
+            _id: response.data._id 
+          } : msg
+        )
+      );
+    })
+    .catch((error) => {
+      console.error("Error sending message:", error);
+      setMessages(prev =>
+        prev.map(msg =>
+          msg._id === tempId ? { 
+            ...msg, 
+            status: "failed" as const 
+          } : msg
+        )
+      );
+    });
+
+    setMessage("");
+  };
+
+  return { messages, message, setMessage, sendMessage, loading, error };
+};
+
 const ChatScreen: React.FC = () => {
   const { chat, userId, receiverId, companyName } = useLocalSearchParams<{
     chat: string;
@@ -222,18 +192,14 @@ const ChatScreen: React.FC = () => {
     companyName: string;
   }>();
 
-  // Ensure userId and receiverId are strings
   const parsedUserId = typeof userId === "string" ? userId : "";
   const parsedReceiverId = typeof receiverId === "string" ? receiverId : "";
 
-  const { messages, message, setMessage, sendMessage, loading, error, setError } =
+  const { messages, message, setMessage, sendMessage, loading, error } =
     useChatController(parsedUserId, parsedReceiverId);
   const navigation = useNavigation();
-
-  // Ref for FlatList auto-scrolling
   const flatListRef = useRef<FlatList>(null);
 
-  // Auto-scroll to bottom when messages are updated
   useEffect(() => {
     if (flatListRef.current && messages.length > 0) {
       flatListRef.current.scrollToEnd({ animated: true });
@@ -242,17 +208,14 @@ const ChatScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with Back Button and Company Name */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Ionicons name="person-circle" size={24} color="#fff" />
-
         <Text style={styles.headerText}>{companyName}</Text>
       </View>
 
-      {/* Chat Messages */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#fff" />
@@ -272,26 +235,39 @@ const ChatScreen: React.FC = () => {
           renderItem={({ item }) => (
             <View
               style={[
-                item.senderId === parsedUserId ? styles.sentMessageContainer : styles.receivedMessageContainer,
-                { marginHorizontal: 16, marginVertical: 5 },
+                styles.messageContainer,
+                item.senderId === parsedUserId ? styles.senderMessage : styles.receiverMessage,
               ]}
             >
-              <Text style={item.senderId === parsedUserId ? styles.sentMessage : styles.receivedMessage}>
-                {item.message}
-              </Text>
+              <View style={[
+                styles.messageBubble,
+                item.senderId === parsedUserId ? styles.senderBubble : styles.receiverBubble
+              ]}>
+                <Text style={[
+                  styles.messageText,
+                  item.senderId === parsedUserId ? styles.senderMessageText : styles.receiverMessageText
+                ]}>
+                  {item.message}
+                </Text>
+                <Text style={[
+                  styles.timestamp,
+                  item.senderId === parsedUserId ? styles.senderTimestamp : styles.receiverTimestamp
+                ]}>
+                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
               {item.status === "failed" && (
-                <Text style={{ color: "red", fontSize: 12 }}>Failed to send</Text>
+                <Text style={styles.errorText}>Failed to send</Text>
               )}
             </View>
           )}
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={styles.messagesContainer}
           ref={flatListRef}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
       )}
 
-      {/* Message Input */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -307,7 +283,6 @@ const ChatScreen: React.FC = () => {
   );
 };
 
-// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -319,7 +294,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomColor: "#ccc",
     backgroundColor: "#003366",
-    marginTop: Platform.OS === "ios" ? 0 : 45, // Adjust for Android status bar
+    marginTop: Platform.OS === "ios" ? 0 : 45,
   },
   backButton: {
     marginRight: 16,
@@ -331,31 +306,57 @@ const styles = StyleSheet.create({
   },
   messagesContainer: {
     flexGrow: 1,
-    paddingVertical: 16,
+    padding: 16,
   },
-  sentMessageContainer: {
-    alignSelf: "flex-end",
-    backgroundColor: "#007AFF",
-    padding: 10,
+  messageContainer: {
+    marginVertical: 4,
+    maxWidth: '80%',
+  },
+  senderMessage: {
+    alignSelf: 'flex-end',
+  },
+  receiverMessage: {
+    alignSelf: 'flex-start',
+  },
+  messageBubble: {
+    padding: 12,
     borderRadius: 20,
-    maxWidth: "70%",
-    marginVertical: 5,
+    maxWidth: '100%',
   },
-  receivedMessageContainer: {
-    alignSelf: "flex-start",
-    backgroundColor: "#E5E5EA",
-    padding: 10,
-    borderRadius: 20,
-    maxWidth: "70%",
-    marginVertical: 5,
+  senderBubble: {
+    backgroundColor: '#007AFF',
+    borderBottomRightRadius: 4,
   },
-  sentMessage: {
+  receiverBubble: {
+    backgroundColor: '#E5E5EA',
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
     fontSize: 16,
-    color: "#fff",
   },
-  receivedMessage: {
-    fontSize: 16,
-    color: "#000",
+  senderMessageText: {
+    color: '#FFF',
+  },
+  receiverMessageText: {
+    color: '#000',
+  },
+  timestamp: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  senderTimestamp: {
+    color: '#E5E5EA',
+    alignSelf: 'flex-end',
+  },
+  receiverTimestamp: {
+    color: '#666',
+    alignSelf: 'flex-start',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 4,
+    alignSelf: 'flex-end',
   },
   inputContainer: {
     flexDirection: "row",
@@ -374,9 +375,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   chatButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#007bff", // Adjust color as needed
+    backgroundColor: "#007bff",
     padding: 10,
     borderRadius: 5,
   },
@@ -389,10 +388,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-  },
-  errorText: {
-    color: "#fff",
-    fontSize: 16,
   },
   emptyContainer: {
     flex: 1,

@@ -14,8 +14,11 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import InputField from "../../components/ui/InputField";
+import PakistaniProvinceSelector from "../../components/ui/ProvinceSelector";
 import { loadCity, loadUserId, saveCity } from "@/utils/storageUtil";
 import * as Notifications from "expo-notifications";
+import { AppConstants } from "@/constants/appConstants";
+import ProvinceSelector from "@/components/ui/ProvinceSelector";
 
 type ImageUri = string | null;
 
@@ -28,9 +31,7 @@ const SignUpScreen: React.FC = () => {
   const [city, setCity] = useState("");
   const [province, setProvince] = useState("");
   const [cnic, setCnic] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
-  const [licenseFront, setLicenseFront] = useState<ImageUri>(null);
-  const [licenseBack, setLicenseBack] = useState<ImageUri>(null);
+  const [displayCnic, setDisplayCnic] = useState("");
   const [cnicFront, setCnicFront] = useState<ImageUri>(null);
   const [cnicBack, setCnicBack] = useState<ImageUri>(null);
   const [profilePic, setProfilePic] = useState<ImageUri>(null); // Added for profile picture
@@ -94,8 +95,7 @@ const SignUpScreen: React.FC = () => {
     const cnicRegex = /^\d{13}$/; // Exactly 13 digits
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/; // Standard email format
     const passwordRegex = /^.{8,20}$/; // Password must be between 8-20 characters
-    const licenseNumberRegex = /^[A-Za-z0-9]{6,20}$/; // Alphanumeric, 6-20 characters
-
+   
     if (!nameRegex.test(name)) {
       Alert.alert("Invalid Input", "Name must contain only letters.");
       setIsLoading(false);
@@ -132,15 +132,10 @@ const SignUpScreen: React.FC = () => {
       setIsLoading(false);
       return;
     }
-    if (!licenseNumberRegex.test(licenseNumber)) {
-      Alert.alert("Invalid Input", "License number must be alphanumeric and 6-20 characters long.");
-      setIsLoading(false);
-      return;
-    }
-
+  
     // Check if all required images are selected
-    if (!cnicFront || !cnicBack || !licenseFront || !licenseBack) {
-      Alert.alert("Error", "Please upload all required images (CNIC & License front and back).");
+    if (!cnicFront || !cnicBack ) {
+      Alert.alert("Error", "Please upload all required images (CNIC  front and back).");
       setIsLoading(false);
       return;
     }
@@ -155,7 +150,6 @@ const SignUpScreen: React.FC = () => {
     formData.append("city", city);
     formData.append("province", province);
     formData.append("cnic", cnic);
-    formData.append("license", licenseNumber);
     
     // Add FCM token if available
     if (fcmToken) {
@@ -182,19 +176,9 @@ const SignUpScreen: React.FC = () => {
       name: "cnicBack.jpg",
       type: "image/jpeg",
     } as any);
-    formData.append("licenseFront", {
-      uri: licenseFront,
-      name: "licenseFront.jpg",
-      type: "image/jpeg",
-    } as any);
-    formData.append("licenseBack", {
-      uri: licenseBack,
-      name: "licenseBack.jpg",
-      type: "image/jpeg",
-    } as any);
 
     try {
-      const response = await fetch("http://192.168.100.17:5000/users/create", {
+      const response = await fetch(`${AppConstants.LOCAL_URL}/users/create`, {
         method: "POST",
         body: formData,
         headers: {
@@ -250,24 +234,87 @@ const SignUpScreen: React.FC = () => {
           )}
         </TouchableOpacity>
 
-        <InputField label="Name" placeholder="Enter your name" value={name} onChangeText={setName} />
-        <InputField label="Email" placeholder="Enter your email" value={email} onChangeText={setEmail} keyboardType="email-address" />
-        <InputField label="Password" placeholder="Enter password" value={password} onChangeText={setPassword} secureTextEntry />
-        <InputField label="Phone Number" placeholder="Enter phone number" value={phNum} onChangeText={setPhNum} keyboardType="numeric" />
-        <InputField label="Address" placeholder="Enter address" value={address} onChangeText={setAddress} />
         <InputField
-          label="City"
-          placeholder="Enter city"
-          value={city}
-          onChangeText={(text) => {
-            setCity(text);
-            saveCity(text); // Save city to AsyncStorage
+        label="Name"
+        placeholder="Enter your name"
+        value={name}
+        onChangeText={setName}
+        keyboardType="default"
+        maxLength={50}
+        autoCapitalize="words"
+      />
+        <InputField
+        label="Email"
+        placeholder="Enter your email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
+        <InputField
+        label="Password"
+        placeholder="Enter password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        maxLength={20}
+      />
+        <InputField
+        label="Phone Number"
+        placeholder="Enter phone number"
+        value={phNum}
+        onChangeText={setPhNum}
+        keyboardType="numeric"
+        maxLength={11}
+      />
+        <InputField
+        label="Address"
+        placeholder="Enter address"
+        value={address}
+        onChangeText={setAddress}
+        keyboardType="default"
+        multiline
+        maxLength={200}
+      />
+        <PakistaniProvinceSelector
+        value={province}
+        onChange={setProvince}
+      />
+        <InputField
+        label="City"
+        placeholder="Enter city"
+        value={city}
+        onChangeText={setCity}
+        keyboardType="default"
+        maxLength={50}
+        autoCapitalize="words"
+      />
+    
+        <InputField
+        label="CNIC Number"
+        placeholder="Enter CNIC number"
+        value={displayCnic}
+        onChangeText={(value) => {
+            // Remove all non-digit characters
+            const digitsOnly = value.replace(/\D/g, '');
+            // Format as XXXXX-XXXXXXX-X
+            let formatted = '';
+            if (digitsOnly.length > 0) {
+              formatted = digitsOnly.slice(0, Math.min(5, digitsOnly.length));
+            }
+            if (digitsOnly.length > 5) {
+              formatted += '-' + digitsOnly.slice(5, Math.min(12, digitsOnly.length));
+            }
+            if (digitsOnly.length > 12) {
+              formatted += '-' + digitsOnly.slice(12);
+            }
+            setDisplayCnic(formatted);
+            setCnic(digitsOnly);
           }}
-        />
-        <InputField label="Province" placeholder="Enter province" value={province} onChangeText={setProvince} />
-        <InputField label="CNIC Number" placeholder="Enter CNIC number" value={cnic} onChangeText={setCnic} keyboardType="numeric" />
-        <InputField label="License Number" placeholder="Enter license number" value={licenseNumber} onChangeText={setLicenseNumber} />
-
+        keyboardType="numeric"
+        maxLength={15} // Increased to accommodate formatted CNIC
+      />
+     
         {/* Image Upload Sections */}
         <Text style={styles.imageLabel}>CNIC Front</Text>
         <TouchableOpacity style={styles.imageUploadButton} onPress={() => pickImage(setCnicFront)}>
@@ -279,16 +326,7 @@ const SignUpScreen: React.FC = () => {
           <Text style={styles.imageUploadText}>{cnicBack ? "Change Image" : "Upload Image"}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.imageLabel}>License Front</Text>
-        <TouchableOpacity style={styles.imageUploadButton} onPress={() => pickImage(setLicenseFront)}>
-          <Text style={styles.imageUploadText}>{licenseFront ? "Change Image" : "Upload Image"}</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.imageLabel}>License Back</Text>
-        <TouchableOpacity style={styles.imageUploadButton} onPress={() => pickImage(setLicenseBack)}>
-          <Text style={styles.imageUploadText}>{licenseBack ? "Change Image" : "Upload Image"}</Text>
-        </TouchableOpacity>
-
+    
         {/* Sign Up Button with Loader */}
         <TouchableOpacity
           style={[styles.button, isLoading && styles.buttonDisabled]}

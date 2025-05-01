@@ -84,7 +84,11 @@ const LoginScreen: React.FC = () => {
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.container}>
+      
         <Image source={require('../../assets/images/loginBanner.jpg')} style={styles.image} />
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
         <Text style={styles.title}>Ready to Rent Dream Car?</Text>
 
         <View style={styles.formContainer}>
@@ -208,6 +212,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginVertical: 10,
   },
+  backButton: { position: "absolute", top: 40, left: 15, backgroundColor: "rgba(0, 0, 0, 0.5)", padding: 8, borderRadius: 20 },
+  
   icon: {
     width: 40,
     height: 40,

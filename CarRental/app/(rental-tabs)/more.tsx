@@ -2,7 +2,8 @@ import React, { useEffect } from "react";
 import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { getStoredUserId, getStoredUserName } from "@/utils/storageUtil";
+import { getStoredCompanyName, getStoredUserId, getStoredUserName } from "@/utils/storageUtil";
+  import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const HostScreen = () => {
   const router = useRouter();
@@ -10,38 +11,42 @@ const HostScreen = () => {
     name: "",
     email: "",
     profilePicture: "",
-    
   });
   
   useEffect(() => {
     const fetchUserProfile = async () => {
-              const name = await getStoredUserName();
-        setUser(
-          (prevUser) => ({
-            ...prevUser,
-            name: name || "Guest",
-          })
-        )
-     
+      const name = await getStoredCompanyName();
+      setUser(
+        (prevUser) => ({
+          ...prevUser,
+          name: name || "Guest",
+        })
+      )
     }
     fetchUserProfile();
-  }
-  , []);
+  }, []);
+
   const handleBecomeHost = () => {
     // Navigate to the host registration screen
     router.push("/rentalAuth/rentalSignUpScreen");
   };
 
-
-
-  const handleLogout = () => {
-    // Perform logout actions here (e.g., clear user session, reset state, etc.)
-    console.log("User logged out");
-
-    // Navigate to the login or start screen
-    router.replace("/auth/startScreen");
+  const handleLogout = async () => {
+    try {
+      // Clear all data from AsyncStorage
+      await AsyncStorage.clear();
+      
+      // Alternatively, if you only want to remove specific items:
+      // await AsyncStorage.multiRemove(['userToken', 'userData', 'otherKey']);
+      
+      console.log("User logged out and storage cleared");
+      
+      // Navigate to the login or start screen
+      router.replace("/auth/startScreen");
+    } catch (error) {
+      console.error("Failed to clear storage on logout:", error);
+    }
   };
-
   const navigateToScreen = (screenName: string) => {
     router.push(`./screens/${screenName}`);
   };
@@ -49,35 +54,40 @@ const HostScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
-        {/* <Image
-          source={{ uri: "https://via.placeholder.com/100" }} // Replace with actual user image
-          style={styles.profileImage}
-        /> */}
-        <Ionicons name="person-circle-outline" size={80} color="white"  style={styles.profileImage} />
-
+        <Ionicons name="person-circle-outline" size={80} color="white" style={styles.profileImage} />
         <Text style={styles.userName}>{user.name}</Text>
-        {/* <TouchableOpacity style={styles.editProfileButton}>
-          <Text style={styles.editProfileText}>View and edit profile</Text>
-        </TouchableOpacity> */}
       </View>
 
-
       <View style={styles.section}>
-        <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`/screens/account`)}>
+        <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`/screens/companyAccount`)}>
           <Ionicons name="person-outline" size={24} color="rgba(72, 156, 240, 0.9)" />
           <Text style={styles.optionText}>Account</Text>
         </TouchableOpacity>
+        
         <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`/screens/addCarScreen`)}>
           <Ionicons name="car" size={24} color="rgba(72, 156, 240, 0.9)" />
           <Text style={styles.optionText}>Add Cars</Text>
         </TouchableOpacity>
+        
         <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`/screens/addDriverScreen`)}>
           <Ionicons name="people" size={24} color="rgba(72, 156, 240, 0.9)" />
           <Text style={styles.optionText}>Add Drivers</Text>
         </TouchableOpacity>
-
-
+        
+        {/* New Contact Us Button */}
+        <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`/screens/contact`)}>
+          <Ionicons name="call-outline" size={24} color="rgba(72, 156, 240, 0.9)" />
+          <Text style={styles.optionText}>Contact Us</Text>
+        </TouchableOpacity>
+        
+        {/* New About Us Button */}
+        <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`/screens/about`)}>
+          <Ionicons name="information-circle-outline" size={24} color="rgba(72, 156, 240, 0.9)" />
+          <Text style={styles.optionText}>About Us</Text>
+        </TouchableOpacity>
       </View>
+
+      <View style={styles.divider} />
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Ionicons name="exit-outline" size={24} color="#FF3B30" />
@@ -90,12 +100,13 @@ const HostScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#003366",
+    backgroundColor: "#003366", // Deep blue that works well with Pakistani context
   },
   profileHeader: {
     alignItems: "center",
     marginTop: 30,
     backgroundColor: "#003366",
+    paddingBottom: 20,
   },
   profileImage: {
     alignContent: "center",
@@ -110,16 +121,10 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: "#fff",
     fontWeight: "bold",
-  },
-  editProfileButton: {
-    marginTop: 10,
-  },
-  editProfileText: {
-    color: "#fff",
-    textDecorationLine: "underline",
+    marginTop: 5,
   },
   section: {
-    marginTop: 20,
+    marginTop: 10,
     paddingHorizontal: 20,
   },
   hostButton: {
@@ -148,12 +153,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
   },
   optionText: {
     fontSize: 16,
     color: "#fff",
     marginLeft: 10,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    marginHorizontal: 20,
+    marginTop: 10,
   },
   logoutButton: {
     flexDirection: "row",

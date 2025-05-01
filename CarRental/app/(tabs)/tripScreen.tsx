@@ -1,10 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Image, FlatList, ActivityIndicator, TouchableOpacity } from "react-native";
 import { Button } from "react-native-paper";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import AppLayout from "../screens/AppLayout";
 import { getStoredUserId } from "@/utils/storageUtil";
 import { AppConstants } from "@/constants/appConstants";
+
+type BookingStatus = 'confirmed' | 'completed' | 'cancelled';
+
+type BookingData = {
+  _id: string;
+  idVehicle?: {
+    manufacturer?: string;
+    model?: string;
+    carImageUrls?: string[];
+    rent?: number;
+    capacity?: number;
+  };
+  company?: {
+    companyName?: string;
+  };
+  from?: string;
+  to?: string;
+  status?: BookingStatus;
+};
 
 type CarProps = {
   id: string;
@@ -15,165 +34,193 @@ type CarProps = {
   toDate: string;
   rentalCompany: string;
   capacity: number;
-  status: string; // Add status to the CarProps type
+  status: BookingStatus;
+  bookingData: BookingData; // Now properly typed
+};
+
+const getStatusColor = (status: BookingStatus) => {
+  switch(status) {
+    case 'confirmed': return styles.statusConfirmed;
+    case 'completed': return styles.statusCompleted;
+    case 'cancelled': return styles.statusCancelled;
+    default: return {};
+  }
 };
 
 const TripScreen = () => {
   const [confirmedCars, setConfirmedCars] = useState<CarProps[]>([]);
-  const [ongoingCars, setOngoingCars] = useState<CarProps[]>([]);
   const [completedCars, setCompletedCars] = useState<CarProps[]>([]);
+  const [cancelledCars, setCancelledCars] = useState<CarProps[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"confirmed" | "ongoing" | "completed">("confirmed");
+  const [activeTab, setActiveTab] = useState<BookingStatus>("confirmed");
+  const { refresh } = useLocalSearchParams<{ refresh: string }>();
+
+  console.log("[TripScreen] Initial state:", {
+    confirmedCars: confirmedCars.length,
+    completedCars: completedCars.length,
+    cancelledCars: cancelledCars.length,
+    loading,
+    activeTab,
+    refresh
+  });
 
   const handleHomeNavigation = () => {
+    console.log("[TripScreen] Navigating to home screen");
     router.push("/");
   };
 
-  const fetchBookings = async (status: "confirmed" | "ongoing" | "completed") => {
+  const fetchBookings = async (status: BookingStatus) => {
     try {
+      console.log(`[TripScreen] Fetching ${status} bookings...`);
       setLoading(true);
-      const userId = await getStoredUserId(); // Fetch userId using utility function
+      const userId = await getStoredUserId();
+      
       if (!userId) {
-        console.error("User ID not found in storage");
+        console.error("[TripScreen] User ID not found in storage");
         setLoading(false);
         return;
       }
 
+      console.log(`[TripScreen] Fetching bookings for user ${userId} with status ${status}`);
       const response = await fetch(
         `${AppConstants.LOCAL_URL}/bookings/userBookings?userId=${userId}&status=${status}`
       );
+      
       if (!response.ok) {
         if (response.status === 404) {
-          console.log(`No ${status} bookings found for the user.`);
-          if (status === "confirmed") setConfirmedCars([]);
-          else if (status === "ongoing") setOngoingCars([]);
-          else if (status === "completed") setCompletedCars([]);
+          console.log(`[TripScreen] No ${status} bookings found for the user.`);
+          switch(status) {
+            case 'confirmed': setConfirmedCars([]); break;
+            case 'completed': setCompletedCars([]); break;
+            case 'cancelled': setCancelledCars([]); break;
+          }
           return;
         }
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log(`[TripScreen] Received ${status} bookings data:`, data);
 
       if (!Array.isArray(data)) {
+        console.error("[TripScreen] Invalid response format:", data);
         throw new Error("Invalid response format");
       }
-      const formattedBookings = data.map((booking: any) => {
-        return {
-          id: booking._id,
-          name: `${booking.idVehicle?.manufacturer || "Unknown"} ${booking.idVehicle?.model || ""}`.trim(),
-          image: booking.idVehicle?.carImageUrl || "https://via.placeholder.com/150",
-          price: booking.idVehicle?.rent || "N/A",
-          fromDate: booking.from || "N/A",
-          toDate: booking.to || "N/A",
-          rentalCompany: booking.company?.companyName || "Unknown",
-          capacity: booking.idVehicle?.capacity || "N/A",
-          status: booking.status || "N/A",
-          from: booking.from,
-          to: booking.to,
-          totalPrice: booking.totalPrice,
-          company: booking.company
-        };
-      });
-      
-      // Format data to match CarProps
-      const formattedCars = data.map((booking: any) => {
+
+      const formattedCars: CarProps[] = data.map((booking: BookingData) => {
         const vehicle = booking.idVehicle || {};
         const company = booking.company || {};
 
-        return {
+        const formattedCar = {
           id: booking._id,
           name: `${vehicle.manufacturer || "Unknown"} ${vehicle.model || ""}`.trim(),
-          image: vehicle.carImageUrl || "https://via.placeholder.com/150",
-          price: vehicle.rent || "N/A",
+          image: vehicle.carImageUrls?.[0] || "https://via.placeholder.com/150",
+          price: vehicle.rent ? `Rs.${vehicle.rent}` : "N/A",
           fromDate: booking.from || "N/A",
           toDate: booking.to || "N/A",
           rentalCompany: company.companyName || "Unknown",
-          capacity: vehicle.capacity || "N/A",
-          status: booking.status || "N/A", // Add status to the formatted data
+          capacity: vehicle.capacity || 0,
+          status: booking.status || "confirmed",
+          bookingData: booking
         };
+
+        console.log(`[TripScreen] Formatted car ${formattedCar.id}:`, formattedCar);
+        return formattedCar;
       });
 
-      if (status === "confirmed") {
-        setConfirmedCars(formattedCars);
-      } else if (status === "ongoing") {
-        setOngoingCars(formattedCars);
-      } else if (status === "completed") {
-        setCompletedCars(formattedCars);
+      console.log(`[TripScreen] Setting ${status} cars:`, formattedCars);
+      switch(status) {
+        case 'confirmed': setConfirmedCars(formattedCars); break;
+        case 'completed': setCompletedCars(formattedCars); break;
+        case 'cancelled': setCancelledCars(formattedCars); break;
       }
     } catch (error) {
-      console.error(`Error fetching ${status} bookings:`, error);
+      console.error(`[TripScreen] Error fetching ${status} bookings:`, error);
     } finally {
+      console.log(`[TripScreen] Finished fetching ${status} bookings`);
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    console.log("[TripScreen] Active tab changed to:", activeTab);
     fetchBookings(activeTab);
   }, [activeTab]);
 
-  const handleCardPress = (booking: any) => {
+  useEffect(() => {
+    if (refresh === 'true') {
+      console.log("[TripScreen] Refresh triggered");
+      fetchBookings(activeTab);
+    }
+  }, [refresh, activeTab]);
+
+  const handleCardPress = (booking: CarProps) => {
+    console.log("[TripScreen] Card pressed for booking:", booking.id);
     router.push({
       pathname: "/screens/BookingDetail/[booking]",
-      params: { booking: JSON.stringify(booking) },
+      params: { booking: JSON.stringify(booking.bookingData) },
     });
   };
-  
 
-  const renderCarItem = ({ item }: { item: CarProps }) => (
-    <TouchableOpacity onPress={() => handleCardPress(item)}>
-      <View style={styles.card}>
-        <Image source={{ uri: item.image }} style={styles.carImage} />
-        <View style={styles.cardContent}>
-          <Text style={styles.carName}>{item.name}</Text>
-          <Text style={styles.carPrice}>${item.price} per day</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Rental Company:</Text>
-            <Text style={styles.value}>{item.rentalCompany}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Capacity:</Text>
-            <Text style={styles.value}>{item.capacity} seats</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Booking Dates:</Text>
-            <Text style={styles.value}>
-              {item.fromDate} → {item.toDate}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Status:</Text>
-            <Text
-              style={[
-                styles.value,
-                item.status === "confirmed" && styles.statusConfirmed,
-                item.status === "ongoing" && styles.statusOngoing,
-                item.status === "completed" && styles.statusCompleted,
-              ]}
-            >
-              {item.status}
-            </Text>
+  const renderCarItem = ({ item }: { item: CarProps }) => {
+    console.log(`[TripScreen] Rendering car item ${item.id}`);
+    return (
+      <TouchableOpacity onPress={() => handleCardPress(item)}>
+        <View style={styles.card}>
+          <Image source={{ uri: item.image }} style={styles.carImage} />
+          <View style={styles.cardContent}>
+            <Text style={styles.carName}>{item.name}</Text>
+            <Text style={styles.carPrice}>{item.price} per day</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Rental Company:</Text>
+              <Text style={styles.value}>{item.rentalCompany}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Capacity:</Text>
+              <Text style={styles.value}>{item.capacity} seats</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Booking Dates:</Text>
+              <Text style={styles.value}>
+                {item.fromDate} → {item.toDate}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Status:</Text>
+              <Text style={[styles.value, getStatusColor(item.status)]}>
+                {item.status}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Image source={require('../../assets/images/trip.jpg')} style={styles.image} />
-      <Text style={styles.emptyText}>
-        {activeTab === "confirmed"
-          ? "No confirmed trips available."
-          : activeTab === "ongoing"
-          ? "No ongoing trips available."
-          : "No completed trips available."}
-      </Text>
-      <Button mode="contained" onPress={handleHomeNavigation} style={styles.backButton}>
-        Book New Car
-      </Button>
-    </View>
-  );
+  const renderEmptyState = () => {
+    console.log("[TripScreen] Rendering empty state for tab:", activeTab);
+    return (
+      <View style={styles.emptyContainer}>
+        <Image source={require('../../assets/images/trip.jpg')} style={styles.image} />
+        <Text style={styles.emptyText}>
+          {activeTab === "confirmed" && "No confirmed trips available."}
+          {activeTab === "completed" && "No completed trips available."}
+          {activeTab === "cancelled" && "No cancelled trips available."}
+        </Text>
+        <Button mode="contained" onPress={handleHomeNavigation} style={styles.backButton}>
+          Book New Car
+        </Button>
+      </View>
+    );
+  };
+
+  console.log("[TripScreen] Rendering with state:", {
+    confirmedCars: confirmedCars.length,
+    completedCars: completedCars.length,
+    cancelledCars: cancelledCars.length,
+    loading,
+    activeTab
+  });
 
   return (
     <AppLayout title="Your Trips">
@@ -181,43 +228,47 @@ const TripScreen = () => {
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === "confirmed" && styles.activeTab]}
-            onPress={() => setActiveTab("confirmed")}
+            onPress={() => {
+              console.log("[TripScreen] Switching to confirmed tab");
+              setActiveTab("confirmed");
+            }}
           >
-            <Text style={styles.tabText}>Confirmed Trips</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === "ongoing" && styles.activeTab]}
-            onPress={() => setActiveTab("ongoing")}
-          >
-            <Text style={styles.tabText}>Requested</Text>
+            <Text style={styles.tabText}>Confirmed</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === "completed" && styles.activeTab]}
-            onPress={() => setActiveTab("completed")}
+            onPress={() => {
+              console.log("[TripScreen] Switching to completed tab");
+              setActiveTab("completed");
+            }}
           >
-            <Text style={styles.tabText}>Completed Trips</Text>
+            <Text style={styles.tabText}>Completed</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === "cancelled" && styles.activeTab]}
+            onPress={() => {
+              console.log("[TripScreen] Switching to cancelled tab");
+              setActiveTab("cancelled");
+            }}
+          >
+            <Text style={styles.tabText}>Cancelled</Text>
           </TouchableOpacity>
         </View>
 
         {loading ? (
           <ActivityIndicator size="large" color="#FFF" />
-        ) : activeTab === "confirmed" && confirmedCars.length === 0 ? (
-          renderEmptyState()
-        ) : activeTab === "ongoing" && ongoingCars.length === 0 ? (
-          renderEmptyState()
-        ) : activeTab === "completed" && completedCars.length === 0 ? (
-          renderEmptyState()
         ) : (
           <FlatList
             data={
-              activeTab === "confirmed"
-                ? confirmedCars
-                : activeTab === "ongoing"
-                ? ongoingCars
-                : completedCars
+              activeTab === "confirmed" ? confirmedCars :
+              activeTab === "completed" ? completedCars :
+              cancelledCars
             }
             keyExtractor={(item) => item.id}
             renderItem={renderCarItem}
+            ListEmptyComponent={renderEmptyState}
+            onEndReached={() => console.log("[TripScreen] Reached end of list")}
+            onEndReachedThreshold={0.5}
           />
         )}
       </View>
@@ -230,6 +281,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#003366",
     padding: 10,
+    marginBottom: 60,
   },
   tabContainer: {
     flexDirection: "row",
@@ -251,7 +303,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E5A82",
     borderRadius: 10,
     overflow: "hidden",
-    marginBottom: 15, // Add margin bottom here
+    marginBottom: 15,
   },
   carImage: {
     width: "100%",
@@ -291,13 +343,13 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   statusConfirmed: {
-    color: "#FFA500", // Orange for confirmed
-  },
-  statusOngoing: {
-    color: "#00FF00", // Green for ongoing
+    color: "#00FF00", // Green for confirmed
   },
   statusCompleted: {
     color: "#808080", // Gray for completed
+  },
+  statusCancelled: {
+    color: "#FF0000", // Red for cancelled
   },
   backButton: {
     marginVertical: 20,

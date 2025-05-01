@@ -4,9 +4,28 @@ import { TextInput, StyleSheet, View, Text, TextInputProps } from 'react-native'
 
 interface InputFieldProps extends TextInputProps {
     label: string;
+    placeholder: string;
+    value: string;
+    onChangeText: (text: string) => void;
+    secureTextEntry?: boolean;
+    keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad';
+    maxLength?: number;
+    multiline?: boolean;
+    autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }
 
-const InputField: React.FC<InputFieldProps> = ({ label, placeholder, value, onChangeText, secureTextEntry }) => {
+const InputField: React.FC<InputFieldProps> = ({
+    label,
+    placeholder,
+    value,
+    onChangeText,
+    secureTextEntry,
+    keyboardType,
+    maxLength,
+    multiline,
+    autoCapitalize,
+    ...props
+}) => {
     return (
         <View style={styles.container}>
             <Text style={styles.label}>{label}</Text>
@@ -16,6 +35,11 @@ const InputField: React.FC<InputFieldProps> = ({ label, placeholder, value, onCh
                 value={value}
                 onChangeText={onChangeText}
                 secureTextEntry={secureTextEntry}
+                keyboardType={keyboardType}
+                maxLength={maxLength}
+                multiline={multiline}
+                autoCapitalize={autoCapitalize}
+                {...props}
             />
         </View>
     );

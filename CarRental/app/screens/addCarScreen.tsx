@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,61 +10,81 @@ import {
   Alert,
   ActivityIndicator,
   Switch,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import RentalAppLayout from '@/app/screens/rentalAppLayout';
 import { AppConstants } from '@/constants/appConstants';
-import { getStoredCompanyId } from '@/utils/storageUtil';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
-// Define types
-type Availability = {
+// Define types based on the model
+type CarDetails = {
+  manufacturer: string;
+  model: string;
+  year: string;
+  numberPlate: string;
+  carImageUrls: string[];
+  rent: string;
+  capacity: string;
+  transmission: 'Auto' | 'Manual';
+  fuelType: 'Petrol' | 'Diesel' | 'Electric' | 'Hybrid' | 'CNG';
+  vehicleType: 'Sedan' | 'SUV' | 'Hatchback' | 'Coupe' | 'Convertible' | 'Van' | 'Truck' | 'Minivan' | 'Pickup';
+  features: string[];
+  mileage: string;
+  insuranceExpiry: string;
+  availability: {
   days: string[];
   startTime: string;
   endTime: string;
 };
-
-type City = {
+  cities: {
   name: string;
-  additionalFee: string | number;
+    additionalFee: string;
+  }[];
+  minimumRentalHours: string;
+  maximumRentalDays: string;
+  company: string;
 };
 
-type CarDetails = {
-  manufacturer: string;
-  model: string;
-  numberPlate: string;
-  rent: string;
-  capacity: string;
-  transmission: 'Auto' | 'Manual';
-  isAvailable: boolean;
-  availability: Availability;
-  cities: City[];
-};
-
-// Days of week for availability
+// Constants
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const FUEL_TYPES = ['Petrol', 'Diesel', 'Electric', 'Hybrid', 'CNG'];
+const VEHICLE_TYPES = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Van', 'Truck', 'Minivan', 'Pickup'];
+const FEATURES = [
+  'AC', 'Heating', 'Bluetooth', 'Navigation', 'Sunroof', 
+  'Backup Camera', 'Keyless Entry', 'Leather Seats', 'Child Seat',
+  'Android Auto', 'Apple CarPlay', 'USB Ports', 'WiFi', 'Premium Sound'
+];
 
 const AddCarScreen = () => {
   const navigation = useNavigation();
   const [carDetails, setCarDetails] = useState<CarDetails>({
     manufacturer: '',
     model: '',
+    year: new Date().getFullYear().toString(),
     numberPlate: '',
+    carImageUrls: [],
     rent: '',
     capacity: '',
     transmission: 'Manual',
-    isAvailable: true,
+    fuelType: 'Petrol',
+    vehicleType: 'Sedan',
+    features: [],
+    mileage: '',
+    insuranceExpiry: '',
     availability: {
       days: [],
-      startTime: '',
-      endTime: '',
+      startTime: '08:00',
+      endTime: '20:00'
     },
-    cities: [{
-      name: '',
-      additionalFee: '',
-    }],
+    cities: [{ name: '', additionalFee: '0' }],
+    minimumRentalHours: '4',
+    maximumRentalDays: '30',
+    company: '',
   });
 
   const [carImages, setCarImages] = useState<string[]>([]);
@@ -73,75 +93,29 @@ const AddCarScreen = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = React.useRef<CameraView>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [companyId, setCompanyId] = useState<string>('');
+  const [showInsuranceDatePicker, setShowInsuranceDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
-  // Handle availability changes
-  const handleAvailabilityChange = (field: keyof Availability, value: string) => {
-    setCarDetails(prev => ({
-      ...prev,
-      availability: {
-        ...prev.availability,
-        [field]: value
+  // Function to get stored company ID
+  const getStoredCompanyId = async () => {
+    try {
+      const storedCompanyId = await AsyncStorage.getItem('companyId');
+      if (storedCompanyId) {
+        setCompanyId(storedCompanyId);
+        setCarDetails(prev => ({ ...prev, company: storedCompanyId }));
       }
-    }));
-  };
-
-  // Handle changes for array fields (cities)
-  const handleCityChange = (index: number, field: keyof City, value: string) => {
-    const updatedCities = [...carDetails.cities];
-    updatedCities[index] = {
-      ...updatedCities[index],
-      [field]: field === 'additionalFee' ? Number(value) || 0 : value
-    };
-    setCarDetails(prev => ({ ...prev, cities: updatedCities }));
-  };
-
-  // Add new city
-  const addCity = () => {
-    setCarDetails(prev => ({
-      ...prev,
-      cities: [...prev.cities, { name: '', additionalFee: '' }]
-    }));
-  };
-
-  // Remove city
-  const removeCity = (index: number) => {
-    if (carDetails.cities.length <= 1) {
-      Alert.alert('Error', 'At least one city is required');
-      return;
+    } catch (error) {
+      console.error("Error fetching company ID:", error);
     }
-    const updatedCities = [...carDetails.cities];
-    updatedCities.splice(index, 1);
-    setCarDetails(prev => ({ ...prev, cities: updatedCities }));
   };
 
-  // Toggle day selection
-  const toggleDay = (day: string) => {
-    setCarDetails(prev => {
-      const days = [...prev.availability.days];
-      const dayIndex = days.indexOf(day);
-      
-      if (dayIndex === -1) {
-        days.push(day);
-      } else {
-        days.splice(dayIndex, 1);
-      }
-      
-      return {
-        ...prev,
-        availability: {
-          ...prev.availability,
-          days
-        }
-      };
-    });
-  };
+  useEffect(() => {
+    getStoredCompanyId();
+  }, []);
 
   const handleImageUpload = async (source: 'gallery' | 'camera') => {
-    if (carImages.length >= 3) {
-      Alert.alert('Warning', 'You can only upload up to 3 images.');
-      return;
-    }
-
     if (source === 'gallery') {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
@@ -154,10 +128,16 @@ const AddCarScreen = () => {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 1,
+        allowsMultipleSelection: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setCarImages(prev => [...prev, result.assets[0].uri]);
+        const newImages = result.assets.map(asset => asset.uri);
+        setCarImages([...carImages, ...newImages]);
+        setCarDetails(prev => ({ 
+          ...prev, 
+          carImageUrls: [...prev.carImageUrls, ...newImages] 
+        }));
       }
     } else if (source === 'camera') {
       if (!permission || !permission.granted) {
@@ -176,7 +156,11 @@ const AddCarScreen = () => {
       try {
         const photo = await cameraRef.current.takePictureAsync();
         if (photo) {
-          setCarImages(prev => [...prev, photo.uri]);
+          setCarImages([...carImages, photo.uri]);
+          setCarDetails(prev => ({ 
+            ...prev, 
+            carImageUrls: [...prev.carImageUrls, photo.uri] 
+          }));
         }
         setCameraVisible(false);
       } catch (error) {
@@ -184,6 +168,16 @@ const AddCarScreen = () => {
         Alert.alert('Error', 'Failed to take picture');
       }
     }
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = [...carImages];
+    newImages.splice(index, 1);
+    setCarImages(newImages);
+    setCarDetails(prev => ({
+      ...prev,
+      carImageUrls: newImages
+    }));
   };
 
   const closeCamera = () => {
@@ -194,112 +188,375 @@ const AddCarScreen = () => {
     setCameraType(current => (current === 'back' ? 'front' : 'back'));
   };
 
-  const toggleTransmission = () => {
+  const toggleDaySelection = (day: string) => {
+    setCarDetails(prev => {
+      const newDays = [...prev.availability.days];
+      const index = newDays.indexOf(day);
+      
+      if (index > -1) {
+        newDays.splice(index, 1);
+      } else {
+        newDays.push(day);
+      }
+      
+      return {
+        ...prev,
+        availability: {
+          ...prev.availability,
+          days: newDays
+        }
+      };
+    });
+  };
+
+  const addCity = () => {
     setCarDetails(prev => ({
       ...prev,
-      transmission: prev.transmission === 'Auto' ? 'Manual' : 'Auto',
+      cities: [...prev.cities, { name: '', additionalFee: '0' }]
     }));
   };
 
+  const removeCity = (index: number) => {
+    setCarDetails(prev => {
+      const newCities = [...prev.cities];
+      newCities.splice(index, 1);
+      return {
+        ...prev,
+        cities: newCities
+      };
+    });
+  };
+
+  const updateCityField = (index: number, field: 'name' | 'additionalFee', value: string) => {
+    setCarDetails(prev => {
+      const newCities = [...prev.cities];
+      newCities[index][field] = value;
+      return {
+        ...prev,
+        cities: newCities
+      };
+    });
+  };
+
+  const toggleFeature = (feature: string) => {
+    setCarDetails(prev => {
+      const newFeatures = [...prev.features];
+      const index = newFeatures.indexOf(feature);
+      
+      if (index > -1) {
+        newFeatures.splice(index, 1);
+      } else {
+        newFeatures.push(feature);
+      }
+      
+      return {
+        ...prev,
+        features: newFeatures
+      };
+    });
+  };
+
+  const handleChange = (name: keyof CarDetails | 'availability.startTime' | 'availability.endTime', value: string) => {
+    // Special handling for number plate
+    if (name === 'numberPlate') {
+      // Remove any non-alphanumeric characters
+      let cleanValue = value.replace(/[^a-zA-Z0-9]/g, '');
+      
+      // Format as ABC-1234
+      if (cleanValue.length > 3) {
+        cleanValue = cleanValue.slice(0, 3) + '-' + cleanValue.slice(3);
+      }
+      
+      // Limit to 7 characters (3 letters + hyphen + 4 numbers)
+      cleanValue = cleanValue.slice(0, 8);
+      
+      setCarDetails(prev => ({...prev, [name]: cleanValue.toUpperCase()}));
+      return;
+    }
+
+    // Handle availability time fields
+    if (name === 'availability.startTime' || name === 'availability.endTime') {
+      setCarDetails(prev => ({
+        ...prev,
+        availability: {
+          ...prev.availability,
+          [name.split('.')[1]]: value
+        }
+      }));
+      return;
+    }
+    
+    // Handle other fields normally
+    setCarDetails(prev => ({...prev, [name]: value}));
+  };
+
+  const validateField = (name: keyof CarDetails, value: string): string => {
+    if (!value) return 'This field is required';
+
+    switch (name) {
+      case 'numberPlate':
+        if (!/^[A-Z]{3}-[0-9]{4}$/.test(value)) {
+          return 'Number plate must be in format ABC-1234';
+        }
+        break;
+      // ... rest of the validation cases ...
+    }
+
+    return '';
+  };
+
   const handleSubmit = async () => {
-    if (
-      !carDetails.manufacturer ||
-      !carDetails.model ||
-      !carDetails.numberPlate ||
-      !carDetails.rent ||
-      !carDetails.capacity ||
-      !carDetails.transmission ||
-      carDetails.availability.days.length === 0 ||
-      !carDetails.availability.startTime ||
-      !carDetails.availability.endTime ||
-      carDetails.cities.some(city => !city.name)
-    ) {
-      Alert.alert('Error', 'Please fill in all required fields.');
-      return;
-    }
+    console.log('Starting handleSubmit...');
+    console.log('Car Details:', JSON.stringify(carDetails, null, 2));
+    
+    // Basic validation
+    console.log('Performing basic validation...');
+  if (
+    !carDetails.manufacturer ||
+    !carDetails.model ||
+      !carDetails.year ||
+    !carDetails.numberPlate ||
+    !carDetails.rent ||
+    !carDetails.capacity ||
+    !carDetails.transmission ||
+      !carDetails.fuelType ||
+      !carDetails.vehicleType ||
+      !carDetails.insuranceExpiry ||
+      carDetails.carImageUrls.length === 0 ||
+    carDetails.availability.days.length === 0 ||
+      !carDetails.company
+  ) {
+      console.log('Validation failed - missing required fields');
+    Alert.alert('Error', 'Please fill in all required fields.');
+    return;
+  }
 
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(carDetails.availability.startTime) || 
-        !timeRegex.test(carDetails.availability.endTime)) {
-      Alert.alert('Error', 'Please enter time in HH:MM format (24-hour)');
-      return;
-    }
+    // Validate number plate format
+    if (!/^[A-Z]{3}-[0-9]{4}$/.test(carDetails.numberPlate)) {
+      console.log('Validation failed - invalid number plate format');
+      Alert.alert('Error', 'Number plate must be in format ABC-1234');
+    return;
+  }
+    console.log('Basic validation passed');
 
-    const companyId = await getStoredCompanyId();
+    // Validate cities
+    console.log('Validating cities...');
+    for (const city of carDetails.cities) {
+      if (!city.name) {
+        console.log('City validation failed - missing city name');
+        Alert.alert('Error', 'Please fill in all city names.');
+    return;
+  }
+    }
+    console.log('City validation passed');
+
     if (!companyId) {
-      Alert.alert('Error', 'Company ID is missing.');
+      console.log('Company ID validation failed');
+      Alert.alert('Error', 'Company ID not found. Please login again.');
       return;
     }
+    console.log('Company ID validation passed');
 
-    const formData = new FormData();
-    formData.append('manufacturer', carDetails.manufacturer);
-    formData.append('model', carDetails.model);
-    formData.append('numberPlate', carDetails.numberPlate);
+    // Prepare form data
+    console.log('Preparing form data...');
+  const formData = new FormData();
+    
+    // Add simple fields
+    console.log('Adding basic fields to form data...');
+  formData.append('manufacturer', carDetails.manufacturer.toLowerCase());
+  formData.append('model', carDetails.model.toLowerCase());
+    formData.append('year', carDetails.year);
+    formData.append('numberPlate', carDetails.numberPlate.toUpperCase());
     formData.append('rent', carDetails.rent);
     formData.append('capacity', carDetails.capacity);
-    formData.append('transmission', carDetails.transmission);
-    formData.append('isAvailable', carDetails.isAvailable.toString());
-    formData.append('availability', JSON.stringify(carDetails.availability));
-    formData.append('cities', JSON.stringify(carDetails.cities));
-    formData.append('company', companyId);
-
-    carImages.forEach((image, index) => {
-      const filename = image.split('/').pop();
-      const match = /\.(\w+)$/.exec(filename || '');
-      const type = match ? `image/${match[1]}` : 'image';
-
-      formData.append('carImages', {
-        uri: image,
-        type,
-        name: filename || `image${index}.jpg`,
-      } as any);
+  formData.append('transmission', carDetails.transmission);
+    formData.append('fuelType', carDetails.fuelType);
+    formData.append('vehicleType', carDetails.vehicleType);
+    formData.append('mileage', carDetails.mileage || '0');
+    formData.append('insuranceExpiry', carDetails.insuranceExpiry);
+    formData.append('minimumRentalHours', carDetails.minimumRentalHours);
+    formData.append('maximumRentalDays', carDetails.maximumRentalDays);
+    formData.append('companyId', companyId);
+    console.log('Basic fields added to form data');
+  
+    // Add availability
+    console.log('Adding availability data...');
+    const formattedDays = carDetails.availability.days.map(day => {
+      const dayMap: Record<string, string> = {
+        'monday': 'Monday',
+        'tuesday': 'Tuesday',
+        'wednesday': 'Wednesday',
+        'thursday': 'Thursday',
+        'friday': 'Friday',
+        'saturday': 'Saturday',
+        'sunday': 'Sunday'
+      };
+      return dayMap[day.toLowerCase()] || day;
     });
+    formattedDays.forEach((day, idx) => {
+      formData.append(`availability[days][${idx}]`, day);
+  });
+  formData.append('availability[startTime]', carDetails.availability.startTime);
+  formData.append('availability[endTime]', carDetails.availability.endTime);
+    console.log('Availability data added:', {
+      days: formattedDays,
+      startTime: carDetails.availability.startTime,
+      endTime: carDetails.availability.endTime
+    });
+    
+    // Add cities
+    console.log('Adding cities data...');
+    const formattedCities = carDetails.cities.map(city => ({
+      name: city.name.toLowerCase().trim(),
+      additionalFee: parseFloat(city.additionalFee) || 0
+    }));
+    formattedCities.forEach((city, idx) => {
+      formData.append(`cities[${idx}][name]`, city.name);
+      formData.append(`cities[${idx}][additionalFee]`, city.additionalFee.toString());
+  });
+    console.log('Cities data added:', formattedCities);
+    
+    // Add features
+    console.log('Adding features data...');
+    const validFeatures = [
+      'AC', 'Heating', 'Bluetooth', 'Navigation', 'Sunroof', 
+      'Backup Camera', 'Keyless Entry', 'Leather Seats', 'Child Seat',
+      'Android Auto', 'Apple CarPlay', 'USB Ports', 'WiFi', 'Premium Sound'
+    ];
+    const formattedFeatures = carDetails.features
+      .filter(feature => feature && validFeatures.includes(feature))
+      .map(feature => feature);
+    formattedFeatures.forEach((feature, idx) => {
+      formData.append(`features[${idx}]`, feature);
+    });
+    console.log('Features data added:', formattedFeatures);
+    
+    // Add images
+    console.log('Adding images...');
+    carImages.forEach((uri, index) => {
+      const filename = uri.split('/').pop();
+    const match = /\.(\w+)$/.exec(filename || '');
+    const type = match ? `image/${match[1]}` : 'image';
 
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${AppConstants.LOCAL_URL}/vehicles/postVehicle`, {
-        method: 'POST',
-        body: formData,
+      console.log(`Adding image ${index}:`, {
+        filename,
+        type,
+        uri
       });
 
-      const result = await response.json();
-      if (response.ok) {
-        Alert.alert('Success', 'Car posted successfully!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              setCarDetails({
-                manufacturer: '',
-                model: '',
-                numberPlate: '',
-                rent: '',
-                capacity: '',
-                transmission: 'Manual',
-                isAvailable: true,
-                availability: {
-                  days: [],
-                  startTime: '',
-                  endTime: '',
-                },
-                cities: [{
-                  name: '',
-                  additionalFee: '',
-                }],
-              });
-              setCarImages([]);
-              navigation.goBack();
-            },
+    formData.append('carImages', {
+        uri,
+      type,
+        name: filename || `carImage_${index}.jpg`,
+    } as any);
+  });
+    console.log('All images added to form data');
+
+    // Log the complete form data for debugging
+    console.log('Complete FormData:', {
+      availability: {
+        days: formattedDays,
+        startTime: carDetails.availability.startTime,
+        endTime: carDetails.availability.endTime
+      },
+      cities: formattedCities,
+      features: formattedFeatures,
+      carImages: carImages.length
+    });
+
+  setIsLoading(true);
+    console.log('Making API request...');
+  try {
+      console.log('Request URL:', `${AppConstants.LOCAL_URL}/vehicles/postVehicle`);
+    const response = await fetch(`${AppConstants.LOCAL_URL}/vehicles/postVehicle`, {
+      method: 'POST',
+      body: formData,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'multipart/form-data',
+        },
+    });
+
+      console.log('Response status:', response.status);
+    const result = await response.json();
+      console.log('Response data:', result);
+
+    if (response.ok) {
+        console.log('Car posted successfully');
+      Alert.alert('Success', 'Car posted successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            navigation.goBack();
           },
-        ]);
-      } else {
-        Alert.alert('Error', result.message || 'Something went wrong');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'Failed to post the car.');
-    } finally {
-      setIsLoading(false);
+        },
+      ]);
+    } else {
+        console.log('Error response:', result);
+      Alert.alert('Error', result.message || 'Something went wrong');
     }
+    } catch (error: any) {
+      console.error('Error in handleSubmit:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      });
+    Alert.alert('Error', 'Failed to post the car.');
+  } finally {
+      console.log('Cleaning up...');
+    setIsLoading(false);
+  }
+};
+
+  const onInsuranceDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || new Date();
+    setShowInsuranceDatePicker(Platform.OS === 'ios');
+    
+    // Format date as YYYY-MM-DD
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    
+    setCarDetails(prev => ({
+      ...prev,
+      insuranceExpiry: formattedDate
+    }));
+  };
+
+  const onStartTimeChange = (event: any, selectedTime?: Date) => {
+    const currentTime = selectedTime || new Date();
+    setShowStartTimePicker(Platform.OS === 'ios');
+    
+    const hours = currentTime.getHours().toString().padStart(2, '0');
+    const minutes = currentTime.getMinutes().toString().padStart(2, '0');
+    const timeString = `${hours}:${minutes}`;
+    
+    setCarDetails(prev => ({
+      ...prev,
+      availability: {
+        ...prev.availability,
+        startTime: timeString
+      }
+    }));
+  };
+
+  const onEndTimeChange = (event: any, selectedTime?: Date) => {
+    const currentTime = selectedTime || new Date();
+    setShowEndTimePicker(Platform.OS === 'ios');
+    
+    const hours = currentTime.getHours().toString().padStart(2, '0');
+    const minutes = currentTime.getMinutes().toString().padStart(2, '0');
+    const timeString = `${hours}:${minutes}`;
+    
+    setCarDetails(prev => ({
+      ...prev,
+      availability: {
+        ...prev.availability,
+        endTime: timeString
+      }
+    }));
   };
 
   return (
@@ -326,19 +583,21 @@ const AddCarScreen = () => {
         </View>
 
         {/* Display Uploaded Images */}
-        <View style={styles.imagePreviewList}>
-          {carImages.map((image, index) => (
-            <View key={index} style={styles.imagePreviewContainer}>
-              <Image source={{ uri: image }} style={styles.imagePreview} />
+        {carImages.length > 0 && (
+          <View style={styles.imagesPreviewContainer}>
+            {carImages.map((uri, index) => (
+              <View key={index} style={styles.imagePreviewWrapper}>
+                <Image source={{ uri }} style={styles.imagePreview} />
               <TouchableOpacity
                 style={styles.removeImageButton}
-                onPress={() => setCarImages(prev => prev.filter((_, i) => i !== index))}
+                  onPress={() => removeImage(index)}
               >
                 <Text style={styles.removeImageText}>Remove</Text>
               </TouchableOpacity>
             </View>
           ))}
         </View>
+        )}
 
         {/* Camera View */}
         {cameraVisible && (
@@ -359,71 +618,91 @@ const AddCarScreen = () => {
           </View>
         )}
 
-        {/* Form Fields */}
-        <View style={styles.formContainer}>
+        {/* Basic Information Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Basic Information</Text>
+          
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Manufacturer</Text>
+            <Text style={styles.label}>Manufacturer*</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter manufacturer"
               value={carDetails.manufacturer}
-              onChangeText={(text) => setCarDetails(prev => ({...prev, manufacturer: text}))}
+              onChangeText={(text) => handleChange('manufacturer', text)}
               autoCapitalize="words"
             />
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Model</Text>
+            <Text style={styles.label}>Model*</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter model"
               value={carDetails.model}
-              onChangeText={(text) => setCarDetails(prev => ({...prev, model: text}))}
+              onChangeText={(text) => handleChange('model', text)}
             />
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Number Plate</Text>
+            <Text style={styles.label}>Year*</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter year"
+              keyboardType="numeric"
+              maxLength={4}
+              value={carDetails.year}
+              onChangeText={(text) => handleChange('year', text)}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Number Plate*</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter number plate"
               value={carDetails.numberPlate}
-              onChangeText={(text) => setCarDetails(prev => ({...prev, numberPlate: text}))}
+              onChangeText={(text) => handleChange('numberPlate', text)}
               autoCapitalize="characters"
+              maxLength={8}
             />
           </View>
+          </View>
+
+        {/* Rental Information Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Rental Information</Text>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Rent ($)</Text>
+            <Text style={styles.label}>Rent (PKR)*</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter rent"
               keyboardType="numeric"
               value={carDetails.rent}
-              onChangeText={(text) => setCarDetails(prev => ({...prev, rent: text}))}
+              onChangeText={(text) => handleChange('rent', text)}
             />
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Seating Capacity</Text>
+            <Text style={styles.label}>Seating Capacity*</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter seating capacity"
               keyboardType="numeric"
               value={carDetails.capacity}
-              onChangeText={(text) => setCarDetails(prev => ({...prev, capacity: text}))}
+              onChangeText={(text) => handleChange('capacity', text)}
             />
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Transmission</Text>
+            <Text style={styles.label}>Transmission*</Text>
             <View style={styles.toggleContainer}>
               <TouchableOpacity
                 style={[
                   styles.toggleButton,
                   carDetails.transmission === 'Auto' && styles.activeButton,
                 ]}
-                onPress={() => setCarDetails(prev => ({...prev, transmission: 'Auto'}))}
+                onPress={() => handleChange('transmission', 'Auto')}
               >
                 <Text
                   style={[
@@ -440,7 +719,7 @@ const AddCarScreen = () => {
                   styles.toggleButton,
                   carDetails.transmission === 'Manual' && styles.activeButton,
                 ]}
-                onPress={() => setCarDetails(prev => ({...prev, transmission: 'Manual'}))}
+                onPress={() => handleChange('transmission', 'Manual')}
               >
                 <Text
                   style={[
@@ -454,26 +733,137 @@ const AddCarScreen = () => {
             </View>
           </View>
 
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Fuel Type*</Text>
+            <View style={styles.optionsContainer}>
+              {FUEL_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.optionButton,
+                    carDetails.fuelType === type && styles.activeOptionButton,
+                  ]}
+                  onPress={() => handleChange('fuelType', type as any)}
+                >
+                  <Text
+                    style={[
+                      styles.optionButtonText,
+                      carDetails.fuelType === type && styles.activeOptionButtonText,
+                    ]}
+                  >
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Vehicle Type*</Text>
+            <View style={styles.optionsContainer}>
+              {VEHICLE_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.optionButton,
+                    carDetails.vehicleType === type && styles.activeOptionButton,
+                  ]}
+                  onPress={() => handleChange('vehicleType', type as any)}
+                >
+                  <Text
+                    style={[
+                      styles.optionButtonText,
+                      carDetails.vehicleType === type && styles.activeOptionButtonText,
+                    ]}
+                  >
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Mileage (km)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter mileage"
+              keyboardType="numeric"
+              value={carDetails.mileage}
+              onChangeText={(text) => handleChange('mileage', text)}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Insurance Expiry*</Text>
+            <TouchableOpacity
+              style={styles.dateInput}
+              onPress={() => setShowInsuranceDatePicker(true)}
+            >
+              <Text style={styles.dateText}>
+                {carDetails.insuranceExpiry || 'Select date'}
+              </Text>
+            </TouchableOpacity>
+            {showInsuranceDatePicker && (
+              <DateTimePicker
+                value={carDetails.insuranceExpiry ? new Date(carDetails.insuranceExpiry) : new Date()}
+                mode="date"
+                display="default"
+                onChange={onInsuranceDateChange}
+                minimumDate={new Date()}
+              />
+            )}
+          </View>
+        </View>
+
+        {/* Features Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Features</Text>
+          <View style={styles.featuresContainer}>
+            {FEATURES.map((feature) => (
+              <TouchableOpacity
+                key={feature}
+                style={[
+                  styles.featureButton,
+                  carDetails.features.includes(feature) && styles.activeFeatureButton,
+                ]}
+                onPress={() => toggleFeature(feature)}
+              >
+                <Text
+                  style={[
+                    styles.featureButtonText,
+                    carDetails.features.includes(feature) && styles.activeFeatureButtonText,
+                  ]}
+                >
+                  {feature}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            </View>
+          </View>
+
           {/* Availability Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Availability</Text>
             
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Days Available</Text>
+            <Text style={styles.label}>Available Days*</Text>
               <View style={styles.daysContainer}>
-                {DAYS_OF_WEEK.map(day => (
+              {DAYS_OF_WEEK.map((day) => (
                   <TouchableOpacity
                     key={day}
                     style={[
                       styles.dayButton,
-                      carDetails.availability.days.includes(day) && styles.selectedDay
+                    carDetails.availability.days.includes(day) && styles.selectedDay,
                     ]}
-                    onPress={() => toggleDay(day)}
+                  onPress={() => toggleDaySelection(day)}
                   >
-                    <Text style={[
+                  <Text
+                    style={[
                       styles.dayButtonText,
-                      carDetails.availability.days.includes(day) && styles.selectedDayText
-                    ]}>
+                      carDetails.availability.days.includes(day) && styles.selectedDayText,
+                    ]}
+                  >
                       {day.substring(0, 3)}
                     </Text>
                   </TouchableOpacity>
@@ -481,77 +871,112 @@ const AddCarScreen = () => {
               </View>
             </View>
 
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Available Hours*</Text>
+            <Text style={styles.label}>For 24 hours select 12:00 AM to 11:59 PM</Text>
+            
             <View style={styles.timeInputContainer}>
               <View style={styles.timeInput}>
                 <Text style={styles.label}>Start Time</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="HH:MM"
-                  value={carDetails.availability.startTime}
-                  onChangeText={(text) => handleAvailabilityChange('startTime', text)}
+                <TouchableOpacity
+                  style={styles.timeButton}
+                  onPress={() => setShowStartTimePicker(true)}
+                >
+                  <Text style={styles.timeText}>{carDetails.availability.startTime}</Text>
+                </TouchableOpacity>
+                {showStartTimePicker && (
+                  <DateTimePicker
+                    value={new Date(`1970-01-01T${carDetails.availability.startTime}`)}
+                    mode="time"
+                    display="default"
+                    onChange={onStartTimeChange}
                 />
+                )}
               </View>
               <View style={styles.timeInput}>
                 <Text style={styles.label}>End Time</Text>
+                <TouchableOpacity
+                  style={styles.timeButton}
+                  onPress={() => setShowEndTimePicker(true)}
+                >
+                  <Text style={styles.timeText}>{carDetails.availability.endTime}</Text>
+                </TouchableOpacity>
+                {showEndTimePicker && (
+                  <DateTimePicker
+                    value={new Date(`1970-01-01T${carDetails.availability.endTime}`)}
+                    mode="time"
+                    display="default"
+                    onChange={onEndTimeChange}
+                  />
+                )}
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Minimum Rental Hours</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="HH:MM"
-                  value={carDetails.availability.endTime}
-                  onChangeText={(text) => handleAvailabilityChange('endTime', text)}
+              placeholder="Enter minimum hours"
+              keyboardType="numeric"
+              value={carDetails.minimumRentalHours}
+              onChangeText={(text) => handleChange('minimumRentalHours', text)}
                 />
               </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Maximum Rental Days</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter maximum days"
+              keyboardType="numeric"
+              value={carDetails.maximumRentalDays}
+              onChangeText={(text) => handleChange('maximumRentalDays', text)}
+            />
             </View>
           </View>
 
           {/* Cities Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cities & Pricing</Text>
+          <Text style={styles.sectionTitle}>Cities</Text>
+          
             {carDetails.cities.map((city, index) => (
               <View key={index} style={styles.cityContainer}>
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>City Name</Text>
+                <Text style={styles.label}>City Name*</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="Enter city name"
                     value={city.name}
-                    onChangeText={(text) => handleCityChange(index, 'name', text)}
+                  onChangeText={(text) => updateCityField(index, 'name', text)}
                   />
                 </View>
+              
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Additional Fee ($)</Text>
+                  <Text style={styles.label}>Additional Fee (PKR)</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="Enter additional fee"
                     keyboardType="numeric"
-                    value={city.additionalFee.toString()}
-                    onChangeText={(text) => handleCityChange(index, 'additionalFee', text)}
+                  value={city.additionalFee}
+                  onChangeText={(text) => updateCityField(index, 'additionalFee', text)}
                   />
                 </View>
+              
                 {carDetails.cities.length > 1 && (
                   <TouchableOpacity 
                     style={styles.removeCityButton}
                     onPress={() => removeCity(index)}
                   >
-                    <Ionicons name="trash-outline" size={20} color="#dc3545" />
+                  <Ionicons name="trash-outline" size={24} color="red" />
                   </TouchableOpacity>
                 )}
               </View>
             ))}
+          
             <TouchableOpacity style={styles.addButton} onPress={addCity}>
-              <Text style={styles.addButtonText}>+ Add Another City</Text>
+            <Text style={styles.addButtonText}>Add Another City</Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Availability Toggle */}
-          <View style={styles.toggleContainer}>
-            <Text style={styles.label}>Available for Rent</Text>
-            <Switch
-              value={carDetails.isAvailable}
-              onValueChange={(value) => setCarDetails(prev => ({ ...prev, isAvailable: value }))}
-              trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={carDetails.isAvailable ? '#003366' : '#f4f3f4'}
-            />
-          </View>
         </View>
 
         {/* Submit Button */}
@@ -572,6 +997,23 @@ const AddCarScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  backButton: {
+    position: 'absolute',
+    top: -25,
+    left: 7,
+    zIndex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 5,
+  },
   section: {
     marginBottom: 20,
     borderBottomWidth: 1,
@@ -583,75 +1025,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#003366',
     marginBottom: 15,
-  },
-  daysContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  dayButton: {
-    padding: 10,
-    borderRadius: 5,
-    backgroundColor: '#f0f0f0',
-    minWidth: 50,
-    alignItems: 'center',
-  },
-  selectedDay: {
-    backgroundColor: '#003366',
-  },
-  dayButtonText: {
-    color: '#333',
-  },
-  selectedDayText: {
-    color: '#fff',
-  },
-  timeInputContainer: {
-    flexDirection: 'row',
-    gap: 15,
-  },
-  timeInput: {
-    flex: 1,
-  },
-  cityContainer: {
-    marginBottom: 15,
-    position: 'relative',
-  },
-  removeCityButton: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    padding: 10,
-  },
-  addButton: {
-    backgroundColor: '#e9f5ff',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  addButtonText: {
-    color: '#003366',
-    fontWeight: 'bold',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
-    zIndex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
-    padding: 5,
-  },
-  formContainer: {
-    marginTop: 20,
   },
   imageUploadContainer: {
     flexDirection: 'row',
@@ -671,13 +1044,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  imagePreviewList: {
+  imagesPreviewContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
     marginBottom: 20,
   },
-  imagePreviewContainer: {
+  imagePreviewWrapper: {
     width: '48%',
     alignItems: 'center',
   },
@@ -772,6 +1145,113 @@ const styles = StyleSheet.create({
   activeButtonText: {
     color: '#fff',
   },
+  optionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  optionButton: {
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: '#f0f0f0',
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  activeOptionButton: {
+    backgroundColor: '#003366',
+  },
+  optionButtonText: {
+    color: '#333',
+  },
+  activeOptionButtonText: {
+    color: '#fff',
+  },
+  featuresContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  featureButton: {
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  activeFeatureButton: {
+    backgroundColor: '#003366',
+  },
+  featureButtonText: {
+    color: '#333',
+  },
+  activeFeatureButtonText: {
+    color: '#fff',
+  },
+  daysContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  dayButton: {
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: '#f0f0f0',
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  selectedDay: {
+    backgroundColor: '#003366',
+  },
+  dayButtonText: {
+    color: '#333',
+  },
+  selectedDayText: {
+    color: '#fff',
+  },
+  timeInputContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  timeInput: {
+    flex: 1,
+  },
+  timeButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  timeText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  cityContainer: {
+    marginBottom: 15,
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 8,
+    padding: 10,
+  },
+  removeCityButton: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    padding: 10,
+  },
+  addButton: {
+    backgroundColor: '#e9f5ff',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  addButtonText: {
+    color: '#003366',
+    fontWeight: 'bold',
+  },
   button: {
     marginTop: 20,
     backgroundColor: '#003366',
@@ -786,6 +1266,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  dateInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+  },
+  dateText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
 

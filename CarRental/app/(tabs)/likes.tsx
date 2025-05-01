@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, ScrollView, Image, TouchableOpacity, 
-  StyleSheet, ActivityIndicator 
+  StyleSheet, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,13 +17,34 @@ type CarProps = {
   rent: number;
   capacity: number;
   transmission: string;
-  carImageUrl: string;
-  companyName: string;
+  carImageUrls: string[];
+  company: {
+    _id: string;
+    companyName: string;
+  };
+  trips: number;
+  numberPlate: string;
+  cities: {
+    name: string;
+    additionalFee: number;
+  }[];
+  availability: {
+    days: string[];
+    startTime: string;
+    endTime: string;
+  };
+  bookings?: string[]; // Optional array of booking IDs
+  vehicleType?: string;
+  year?: number;
+  features?: string[];
+  fuelType?: string;
+  blackoutDates?: string[];
 };
 
 const LikedVehiclesScreen = () => {
   const [loading, setLoading] = useState(true);
   const [likedCars, setLikedCars] = useState<CarProps[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Use the toggleLike function and likedVehicles state from the context
   const { likedVehicles, toggleLike } = useLikedVehicles();
@@ -76,6 +97,17 @@ const LikedVehiclesScreen = () => {
     router.push("/");
   };
 
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchLikedVehicles();
+    } catch (error) {
+      console.error('Error refreshing:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   return (
     <AppLayout title="Liked Vehicles">
       
@@ -83,10 +115,21 @@ const LikedVehiclesScreen = () => {
         {loading ? (
           <ActivityIndicator size="large" color="white" />
         ) : likedCars.length > 0 ? (
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="white"
+                title="Pull to refresh"
+                titleColor="white"
+              />
+            }
+          >
             {likedCars.map((car) => (
               <View key={car._id} style={styles.card}>
-                <Image source={{ uri: car.carImageUrl }} style={styles.image} />
+                <Image source={{ uri: car.carImageUrls[0] }} style={styles.image} />
                 <View style={styles.likeContainer}>
                   <Text style={styles.carName}>{car.manufacturer} {car.model}</Text>
                   <TouchableOpacity onPress={() => toggleLike(car._id)}>
@@ -97,7 +140,7 @@ const LikedVehiclesScreen = () => {
                     />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.carCompany}>Company: {car.companyName}</Text>
+                <Text style={styles.carCompany}>Company:  {car.company.companyName || "Unknown Company"}</Text>
                 <Text style={styles.carPrice}>${car.rent}/day</Text>
                 <Text style={styles.carDetails}>{car.capacity} Seats | {car.transmission} Transmission</Text>
                 <TouchableOpacity style={styles.bookNowButton} onPress={() => handleBookNow(car)}>

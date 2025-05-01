@@ -23,6 +23,7 @@ const RentalAppLayout: React.FC<RentalAppLayoutProps> = ({ children, title }) =>
   return (
     <View style={styles.container}>
       {/* App Bar */}
+
       <View style={styles.header}>
 
         <Text style={styles.title}>{title}</Text>

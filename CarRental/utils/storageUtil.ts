@@ -36,7 +36,7 @@ export const getStoredCity = async () => {
   }
 };
 
-// =========================
+// Save Company Name to AsyncStorage
 // Save Company ID to AsyncStorage
 export const saveCompanyId = async (companyId: string) => {
   if (!companyId) return; // Prevent saving empty userId
@@ -69,6 +69,43 @@ export const getStoredCompanyId = async () => {
     return ""; // Return empty string if not found
   } catch (error) {
     console.error("Error retrieving CompanyId:", error);
+    return "";
+  }
+};
+
+// =========================
+// Save Company ID to AsyncStorage
+export const saveCompanyName = async (companyName: string) => {
+  if (!companyName) return; // Prevent saving empty userId
+  try {
+    await AsyncStorage.setItem("companyName", companyName);
+  } catch (error) {
+    console.error("Error saving companyName:", error);
+  }
+};
+
+// Load Company ID from AsyncStorage
+export const loadCompanyName = async () => {
+  try {
+    const storedCompanyName = await AsyncStorage.getItem("companyName");
+    return storedCompanyName || ""; // Return empty string if userId is not found
+  } catch (error) {
+    console.error("Error loading companyName:", error);
+    return "";
+  }
+};
+
+// Get Stored Company ID
+export const getStoredCompanyName = async () => {
+  try {
+    const storedCompanyName = await AsyncStorage.getItem("companyName");
+    if (storedCompanyName) {
+      console.log("Company Name:", storedCompanyName);
+      return storedCompanyName;
+    }
+    return ""; // Return empty string if not found
+  } catch (error) {
+    console.error("Error retrieving CompanyName:", error);
     return "";
   }
 };

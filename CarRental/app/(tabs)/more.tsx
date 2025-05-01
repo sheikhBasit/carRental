@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView } from "rea
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { getStoredUserId, getStoredUserName } from "@/utils/storageUtil";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfileScreen = () => {
   const router = useRouter();
@@ -34,12 +35,21 @@ const ProfileScreen = () => {
 
 
 
-  const handleLogout = () => {
-    // Perform logout actions here (e.g., clear user session, reset state, etc.)
-    console.log("User logged out");
-
-    // Navigate to the login or start screen
-    router.replace("/auth/startScreen");
+  const handleLogout = async () => {
+    try {
+      // Clear all data from AsyncStorage
+      await AsyncStorage.clear();
+      
+      // Alternatively, if you only want to remove specific items:
+      // await AsyncStorage.multiRemove(['userToken', 'userData', 'otherKey']);
+      
+      console.log("User logged out and storage cleared");
+      
+      // Navigate to the login or start screen
+      router.replace("/auth/startScreen");
+    } catch (error) {
+      console.error("Failed to clear storage on logout:", error);
+    }
   };
 
   const navigateToScreen = (screenName: string) => {
@@ -74,7 +84,17 @@ const ProfileScreen = () => {
           <Ionicons name="person-outline" size={24} color="rgba(72, 156, 240, 0.9)" />
           <Text style={styles.optionText}>Account</Text>
         </TouchableOpacity>
-
+        {/* New Contact Us Button */}
+        <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`/screens/contact`)}>
+          <Ionicons name="call-outline" size={24} color="rgba(72, 156, 240, 0.9)" />
+          <Text style={styles.optionText}>Contact Us</Text>
+        </TouchableOpacity>
+        
+        {/* New About Us Button */}
+        <TouchableOpacity style={styles.optionButton} onPress={() => router.push(`/screens/about`)}>
+          <Ionicons name="information-circle-outline" size={24} color="rgba(72, 156, 240, 0.9)" />
+          <Text style={styles.optionText}>About Us</Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

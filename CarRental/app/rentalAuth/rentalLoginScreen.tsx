@@ -6,7 +6,7 @@ import InputField from '../../components/ui/InputField';
 import Button from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { AppConstants } from '@/constants/appConstants';
-import { loadCompanyId, saveCompanyId } from '@/utils/storageUtil';
+import { loadCompanyId, saveCompanyId, saveCompanyName } from '@/utils/storageUtil';
 // import { registerForPushNotifications}  from '@/utils/useNotification';
 
 const RentalLoginScreen: React.FC = () => {
@@ -54,6 +54,8 @@ const RentalLoginScreen: React.FC = () => {
                 if (data.company._id) {
                     await saveCompanyId(data.company._id);
                     setCompanyId(data.company._id);
+                    await saveCompanyName(data.company.companyName);
+                    
                 }
                 router.push('/(rental-tabs)');
             } else {

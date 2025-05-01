@@ -9,21 +9,59 @@ import {
   Alert,
   Modal,
   Switch,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { getStoredUserId, setStoredNotificationPreference, getStoredNotificationPreference } from "@/utils/storageUtil";
 import { AppConstants } from "@/constants/appConstants";
 
+type PaymentMethod = {
+  cardNumber: string;
+  cardHolderName?: string;
+  expiryDate: string;
+  cvv?: string;
+  isDefault: boolean;
+  cardType: 'visa' | 'mastercard' | 'amex' | 'discover' | 'other';
+  lastFourDigits?: string;
+};
+
+type User = {
+  name: string;
+  email: string;
+  phoneNo: string;
+  address: string;
+  profilePic?: string;
+  accountNo?: string;
+  city: string;
+  fcmToken?: string;
+  province: string;
+  license?: string;
+  licenseFrontUrl?: string;
+  licenseBackUrl?: string;
+  cnic: string;
+  cnicFrontUrl?: string;
+  cnicBackUrl?: string;
+  paymentMethods: PaymentMethod[];
+  isVerified: boolean;
+};
+
 const EditProfileScreen = () => {
   const router = useRouter();
-  const [user, setUser] = useState({
-    email: "ab745726@gmail.com",
+  const [user, setUser] = useState<User>({
+    name: "",
+    email: "",
     phoneNo: "",
+    address: "",
+    city: "",
+    province: "",
+    cnic: "",
+    paymentMethods: [],
+    isVerified: false,
   });
   const [loading, setLoading] = useState(true);
   const [isDialogVisible, setIsDialogVisible] = useState(false);
-  const [isAgreed, setIsAgreed] = useState(false); // State for the Switch
+  const [isAgreed, setIsAgreed] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
@@ -53,12 +91,11 @@ const EditProfileScreen = () => {
     }
   };
 
-  // Load the saved notification preference
   const loadNotificationPreference = async () => {
     try {
       const preference = await getStoredNotificationPreference();
       if (preference !== null) {
-        setIsAgreed(preference === "true"); // Convert string to boolean
+        setIsAgreed(preference === "true");
       }
     } catch (error) {
       console.error("Error loading notification preference:", error);
@@ -66,21 +103,20 @@ const EditProfileScreen = () => {
   };
 
   const handleNotificationSettings = () => {
-    setIsDialogVisible(true); // Show the dialog
+    setIsDialogVisible(true);
   };
 
-  const handleSwitchToggle = async (newValue:any) => {
-    setIsAgreed(newValue); // Update the switch state
+  const handleSwitchToggle = async (newValue: boolean) => {
+    setIsAgreed(newValue);
     try {
-      // Save the notification preference to storage
-      await setStoredNotificationPreference(newValue.toString()); // Convert boolean to string
+      await setStoredNotificationPreference(newValue.toString());
       if (newValue) {
         Alert.alert("Success", "You will be notified about updates.");
       }
     } catch (error) {
       console.error("Error saving notification preference:", error);
     } finally {
-      setIsDialogVisible(false); // Close the dialog
+      setIsDialogVisible(false);
     }
   };
 
@@ -94,7 +130,6 @@ const EditProfileScreen = () => {
 
   return (
     <View style={styles.mcontainer}>
-      {/* Back Button */}
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => router.back()}
@@ -103,22 +138,58 @@ const EditProfileScreen = () => {
       </TouchableOpacity>
 
       <ScrollView style={styles.container}>
-        {/* Login Settings Section */}
-        <Text style={styles.sectionTitle}>LOGIN SETTINGS</Text>
+        {/* Profile Section */}
+        <View style={styles.profileSection}>
+          {user.profilePic ? (
+            <Image source={{ uri: user.profilePic }} style={styles.profileImage} />
+          ) : (
+            <Ionicons name="person-circle-outline" size={80} color="#FFF" />
+          )}
+          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.userEmail}>{user.email}</Text>
+          <Text style={styles.verificationStatus}>
+            {user.isVerified ? "Verified" : "Not Verified"}
+          </Text>
+        </View>
+
+        {/* Personal Information Section */}
+        <Text style={styles.sectionTitle}>PERSONAL INFORMATION</Text>
         <View style={styles.section}>
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{user.email}</Text>
-          <Text style={styles.verifiedText}>Verified</Text>
+          <Text style={styles.label}>Phone Number</Text>
+          <Text style={styles.value}>{user.phoneNo}</Text>
+          
+          <Text style={styles.label}>Address</Text>
+          <Text style={styles.value}>{user.address}</Text>
+          
+          <Text style={styles.label}>City</Text>
+          <Text style={styles.value}>{user.city}</Text>
+          
+          <Text style={styles.label}>Province</Text>
+          <Text style={styles.value}>{user.province}</Text>
+          
+          <Text style={styles.label}>CNIC</Text>
+          <Text style={styles.value}>{user.cnic}</Text>
         </View>
 
         <View style={styles.divider} />
 
-        {/* Password Section */}
-        <Text style={styles.sectionTitle}>Password</Text>
-        <View style={styles.section}>
-          <Text style={styles.label}>Google</Text>
-          <Text style={styles.value}>{user.email}</Text>
-        </View>
+        {/* Payment Methods Section */}
+        <Text style={styles.sectionTitle}>PAYMENT METHODS</Text>
+        {user.paymentMethods.length > 0 ? (
+          user.paymentMethods.map((method, index) => (
+            <View key={index} style={styles.paymentMethod}>
+              <Text style={styles.label}>
+                {method.cardType.toUpperCase()} •••• {method.lastFourDigits || '****'}
+              </Text>
+              <Text style={styles.value}>Expires {method.expiryDate}</Text>
+              {method.isDefault && (
+                <Text style={styles.defaultBadge}>Default</Text>
+              )}
+            </View>
+          ))
+        ) : (
+          <Text style={styles.noPaymentMethods}>No payment methods added</Text>
+        )}
 
         <View style={styles.divider} />
 
@@ -144,7 +215,6 @@ const EditProfileScreen = () => {
       >
         <View style={styles.dialogContainer}>
           <View style={styles.dialogContent}>
-            {/* Cross Button (X) in the top-right corner */}
             <TouchableOpacity
               style={styles.crossButton}
               onPress={() => setIsDialogVisible(false)}
@@ -160,9 +230,9 @@ const EditProfileScreen = () => {
               <Text style={styles.switchLabel}>I agree</Text>
               <Switch
                 value={isAgreed}
-                onValueChange={handleSwitchToggle} // Automatically close the dialog when toggled
-                trackColor={{ false: "#767577", true: "#4CAF50" }} // Custom colors for the track
-                thumbColor={isAgreed ? "#FFF" : "#FFF"} // Custom colors for the thumb
+                onValueChange={handleSwitchToggle}
+                trackColor={{ false: "#767577", true: "#4CAF50" }}
+                thumbColor={isAgreed ? "#FFF" : "#FFF"}
               />
             </View>
           </View>
@@ -188,6 +258,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  profileSection: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 10,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFF",
+    marginBottom: 5,
+  },
+  userEmail: {
+    fontSize: 16,
+    color: "#ADD8E6",
+    marginBottom: 5,
+  },
+  verificationStatus: {
+    fontSize: 14,
+    color: "#4CAF50",
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "bold",
@@ -206,11 +301,7 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 16,
     color: "#FFF",
-    marginBottom: 10,
-  },
-  verifiedText: {
-    fontSize: 14,
-    color: "#4CAF50", // Green color for verified status
+    marginBottom: 15,
   },
   divider: {
     height: 1,
@@ -277,6 +368,22 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 14,
     color: "#FFF",
+  },
+  paymentMethod: {
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: "#1E5A82",
+    borderRadius: 8,
+  },
+  defaultBadge: {
+    fontSize: 12,
+    color: "#4CAF50",
+    marginTop: 5,
+  },
+  noPaymentMethods: {
+    fontSize: 14,
+    color: "#ADD8E6",
+    fontStyle: "italic",
   },
 });
 
