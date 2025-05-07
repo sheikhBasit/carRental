@@ -16,25 +16,21 @@ const FavoritesPage = () => {
     const fetchFavorites = async () => {
       setIsLoading(true);
       setError(null);
-      console.log(`cookiiess ${Cookies.get('user')}`)
       const user = Cookies.get('user')
-      console.log(typeof(user))
       const userId = JSON.parse(user).id
-      const url = `https://car-rental-backend-black.vercel.app/likes/liked-vehicles/${userId}`;
+      const url = `https://car-rental-backend-black.vercel.app/api/likes/liked-vehicles/${userId}`;
 
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to fetch favorite vehicles');
         
         const data = await res.json();
-        console.log("Data",data); 
         // Validate and clean the data
         const validatedData = Array.isArray(data) 
           ? data.filter(item => item && typeof item === 'object')
           : [];
         setFavorites(validatedData);
       } catch (err) {
-        console.error('Error fetching liked vehicles:', err);
         setError('Unable to load your favorites. Please try again later.');
         setFavorites([]);
       } finally {
@@ -61,15 +57,13 @@ const FavoritesPage = () => {
     
     try {
       const res = await fetch(
-        `https://car-rental-backend-black.vercel.app/likes/unlike/${vehicleId}/${userId}`,
+        `https://car-rental-backend-black.vercel.app/api/likes/unlike/${vehicleId}/${userId}`,
         { method: 'DELETE' }
       );
-  console.log(res)
       if (!res.ok) {
         throw new Error('Failed to unlike vehicle');
       }
     } catch (error) {
-      console.error('Error unliking vehicle:', error);
       setFavorites(previousFavorites);
       setError('Failed to remove from favorites. Please try again.');
       setTimeout(() => setError(null), 3000);
@@ -79,7 +73,6 @@ const FavoritesPage = () => {
 
   const navigateToDetails = (vehicleId) => {
     if (!vehicleId) return;
-    console.log(`Navigating to details for vehicle: ${vehicleId}`);
     // Example with React Router: history.push(`/vehicles/${vehicleId}`);
   };
 

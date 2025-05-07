@@ -13,9 +13,8 @@ const TransactionDetails = () => {
     const fetchTransactionDetails = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`https://car-rental-backend-black.vercel.app/transaction/details/${id}`);
+        const response = await fetch(`https://car-rental-backend-black.vercel.app/api/transaction/details/${id}`);
         const data = await response.json();
-        console.log(data);
         if (data.success) {
           setTransaction(data.data);
         } else {
@@ -23,7 +22,6 @@ const TransactionDetails = () => {
         }
       } catch (err) {
         setError('An error occurred while fetching transaction details');
-        console.error('Error fetching transaction details:', err);
       } finally {
         setLoading(false);
       }

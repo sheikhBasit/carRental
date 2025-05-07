@@ -12,15 +12,17 @@ const RentalCompanySignUp = () => {
     companyName: '',
     email: '',
     password: '',
-    confirmPassword: '',
     phNum: '',
     bankName: '',
     bankTitle: '',
     accountNo: '',
     cnic: '',
+    cnicFrontUrl: '',
+    cnicBackUrl: '',
     address: '',
     city: '',
     province: '',
+    fcmToken: '',
   });
   
   // File state
@@ -105,11 +107,6 @@ const RentalCompanySignUp = () => {
         return false;
       }
       
-      if (formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match');
-        return false;
-      }
-      
       const cnicRegex = /^\d{5}-\d{7}-\d{1}$/;
       if (!cnicRegex.test(formData.cnic)) {
         setError('CNIC must be in format: 12345-1234567-1');
@@ -180,7 +177,7 @@ const RentalCompanySignUp = () => {
       
       // Append all form data except confirmPassword
       Object.entries(formData).forEach(([key, value]) => {
-        if (key !== 'confirmPassword' && value !== undefined) {
+        if (value !== undefined) {
           formDataToSend.append(key, value);
         }
       });
@@ -190,7 +187,7 @@ const RentalCompanySignUp = () => {
       if (files.cnicBack) formDataToSend.append('cnicBack', files.cnicBack);
   
       const response = await fetch(
-        'https://car-rental-backend-black.vercel.app/rental-companies/postRental',
+        'https://car-rental-backend-black.vercel.app/api/rental-companies/postRental',
         {
           method: 'POST',
           body: formDataToSend,
@@ -198,7 +195,6 @@ const RentalCompanySignUp = () => {
       );
   
       const data = await response.json();
-      console.log(data)
       if (!response.ok) {
         throw new Error(data.error || data.message || 'Registration failed');
       }
@@ -218,12 +214,15 @@ const RentalCompanySignUp = () => {
         secure: true,
         sameSite: 'strict'
       });
+      if (data.token) {
+          Cookies.set("token", data.token, { expires: 7 });
+        }
 
-      navigate('/company-dashboard', { 
+ Cookies.set('unverifiedEmail', companyData.email, { expires: 1 }); // Store for 1 day
+     
+      navigate('/rental-verification', { 
         state: { 
-          message: data.message || 'Registration successful!',
-          success: true,
-          company: data.company
+          email: companyData.email
         } 
       });
   
@@ -237,7 +236,6 @@ const RentalCompanySignUp = () => {
       }
       
       setError(errorMessage);
-      console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }
@@ -346,6 +344,7 @@ const RentalCompanySignUp = () => {
                     type="tel"
                     placeholder="03XX-XXXXXXX"
                     required
+                    maxLength={12}
                     value={formData.phNum}
                     onChange={handleChange}
                     className="mt-1 block w-full text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -369,21 +368,6 @@ const RentalCompanySignUp = () => {
                 </div>
                 
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                    Confirm Password*
-                  </label>
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="mt-1 block text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
-                </div>
-                
-                <div>
                   <label htmlFor="cnic" className="block text-sm font-medium text-gray-700">
                     CNIC Number* (format: 12345-1234567-1)
                   </label>
@@ -395,6 +379,7 @@ const RentalCompanySignUp = () => {
                     required
                     pattern="\d{5}-\d{7}-\d{1}"
                     value={formData.cnic}
+                    maxLength="15"
                     onChange={handleChange}
                     className="mt-1 block text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />

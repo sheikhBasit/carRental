@@ -43,11 +43,11 @@ export default function AccountPage() {
         console.log(cookies.user)
         const userId = cookies.user.id ;
         const response = await axios.get(
-          `https://car-rental-backend-black.vercel.app/users/${userId}`
+          `https://car-rental-backend-black.vercel.app/api/users/${userId}`
         );
         setUserData(response.data);
         const paymentResponse = await axios.get(
-          `https://car-rental-backend-black.vercel.app/users/${userId}/payment-methods`
+          `https://car-rental-backend-black.vercel.app/api/users/${userId}/payment-methods`
         );
         
         const fetchedCards = (paymentResponse.data || []).map(pm => ({
@@ -63,7 +63,7 @@ export default function AccountPage() {
         // Fetch bookings if on bookings tab
         if (activeTab === 'bookings') {
           const bookingsResponse = await axios.get(
-            `https://car-rental-backend-black.vercel.app/bookings/userBookings?userId=${userId}&status=confirmed`
+            `https://car-rental-backend-black.vercel.app/api/bookings/userBookings?userId=${userId}&status=confirmed`
           );
           console.log("Fetched bookings:", bookingsResponse.data); // Print fetched bookings
           
@@ -85,7 +85,7 @@ export default function AccountPage() {
   const handleCancelBooking = async (bookingId) => {
     try {
       await axios.delete(
-        `https://car-rental-backend-black.vercel.app/bookings/${bookingId}`
+        `https://car-rental-backend-black.vercel.app/api/bookings/${bookingId}`
       );
       setBookings(bookings.filter(b => b.id !== bookingId));
       setShowCancelModal(false);
@@ -99,7 +99,7 @@ export default function AccountPage() {
     if (window.confirm("Are you sure you want to permanently delete your account? This cannot be undone.")) {
       try {
         await axios.delete(
-          `https://car-rental-backend-black.vercel.app/users/${cookies.user.id}`
+          `https://car-rental-backend-black.vercel.app/api/users/${cookies.user.id}`
         );
         
         // Remove user cookie after successful account deletion
@@ -229,7 +229,7 @@ export default function AccountPage() {
     try {
       const userId = cookies.user.id;
       await axios.delete(
-        `https://car-rental-backend-black.vercel.app/users/${userId}/payment-methods/${card.id}`
+        `https://car-rental-backend-black.vercel.app/api/users/${userId}/payment-methods/${card.id}`
       );
       setCards(cards.filter(c => c.id !== card.id));
     } catch (error) {
@@ -478,7 +478,7 @@ export default function AccountPage() {
     try {
       const userId = cookies.user.id;
       const response = await axios.post(
-        `https://car-rental-backend-black.vercel.app/users/${userId}/payment-methods`,
+        `https://car-rental-backend-black.vercel.app/api/users/${userId}/payment-methods`,
         updatedCard
       );
       console.log(response.data);

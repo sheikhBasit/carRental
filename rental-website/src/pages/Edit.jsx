@@ -3,7 +3,7 @@ import axios from 'axios';
 import { X } from 'lucide-react';
 import PropTypes from 'prop-types';
 
-const BASE_URL = 'https://car-rental-backend-black.vercel.app';
+const BASE_URL = 'https://car-rental-backend-black.vercel.app/api';
 
 // Reusable Edit Modal Component
 const EditModal = ({ isOpen, onClose, title, children }) => {
@@ -55,7 +55,9 @@ export const EditUserForm = ({ user, onClose, onSave }) => {
     cnic: '',
     cnicFrontUrl: '',
     cnicBackUrl: '',
-    isVerified: false
+    age: '',
+    role: '',
+    fcmToken: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -78,7 +80,9 @@ export const EditUserForm = ({ user, onClose, onSave }) => {
         cnic: user.cnic || '',
         cnicFrontUrl: user.cnicFrontUrl || '',
         cnicBackUrl: user.cnicBackUrl || '',
-        isVerified: user.isVerified || false
+        age: user.age || '',
+        role: user.role || '',
+        fcmToken: user.fcmToken || ''
       });
     }
   }, [user]);
@@ -185,6 +189,20 @@ export const EditUserForm = ({ user, onClose, onSave }) => {
           />
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Age
+          </label>
+          <input
+            type="number"
+            name="age"
+            value={formData.age}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+        </div>
+
         {/* Address Information */}
         <div className="col-span-2">
           <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Address Information</h4>
@@ -232,22 +250,21 @@ export const EditUserForm = ({ user, onClose, onSave }) => {
           />
         </div>
 
-        {/* Bank Information */}
+        {/* Profile Picture */}
         <div className="col-span-2">
-          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Bank Information</h4>
+          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Profile Picture</h4>
         </div>
 
-        <div>
+        <div className="col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Account Number
+            Profile Picture URL
           </label>
           <input
-            type="text"
-            name="accountNo"
-            value={formData.accountNo}
+            type="url"
+            name="profilePic"
+            value={formData.profilePic}
             onChange={handleChange}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
           />
         </div>
 
@@ -345,39 +362,37 @@ export const EditUserForm = ({ user, onClose, onSave }) => {
           />
         </div>
 
-        {/* Profile Picture */}
+        {/* Role */}
         <div className="col-span-2">
-          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Profile Picture</h4>
+          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Role</h4>
         </div>
 
-        <div className="col-span-2">
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Profile Picture URL
+            Role
           </label>
           <input
-            type="url"
-            name="profilePic"
-            value={formData.profilePic}
+            type="text"
+            name="role"
+            value={formData.role}
             onChange={handleChange}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           />
         </div>
 
-        {/* Status */}
+        {/* FCM Token */}
         <div className="col-span-2">
-          <div className="flex items-center mt-2">
-            <input
-              type="checkbox"
-              id="isVerified"
-              name="isVerified"
-              checked={formData.isVerified}
-              onChange={handleChange}
-              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="isVerified" className="ml-2 text-sm text-gray-700">
-              Verified User
-            </label>
-          </div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            FCM Token (Optional)
+          </label>
+          <input
+            type="text"
+            name="fcmToken"
+            value={formData.fcmToken}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
       </div>
 
@@ -741,12 +756,59 @@ export const EditVehicleForm = ({ vehicle, onClose, onSave, companies }) => {
     company: '',
     manufacturer: '',
     model: '',
+    year: '',
     numberPlate: '',
+    vin: '',
     carImageUrls: [''],
     trips: 0,
     rent: '',
-    capacity: '',
-    transmission: 'Auto'
+    features: {
+      transmission: 'automatic',
+      fuelType: 'petrol',
+      seats: 5,
+      luggage: 2,
+      ac: true,
+      bluetooth: false,
+      gps: false
+    },
+    mileage: '',
+    lastServiceDate: '',
+    insurance: {
+      policyNumber: '',
+      provider: '',
+      documentUrl: '',
+      expiry: ''
+    },
+    status: 'available',
+    maintenanceLogs: [],
+    dynamicPricing: {
+      baseRate: 0,
+      weekendRate: 0,
+      seasonalRate: 0,
+      surgeMultiplier: 1
+    },
+    discount: {
+      percent: 0,
+      validUntil: ''
+    },
+    availability: {
+      days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+      startTime: '08:00',
+      endTime: '20:00'
+    },
+    cities: [{
+      name: '',
+      additionalFee: 0
+    }],
+    currentLocation: {
+      type: 'Point',
+      coordinates: [0, 0]
+    },
+    blackoutDates: [],
+    bookings: [],
+    rating: 0,
+    minimumRentalHours: 4,
+    maximumRentalDays: 30
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -757,22 +819,91 @@ export const EditVehicleForm = ({ vehicle, onClose, onSave, companies }) => {
         company: vehicle.company?._id || vehicle.company || '',
         manufacturer: vehicle.manufacturer || '',
         model: vehicle.model || '',
+        year: vehicle.year || '',
         numberPlate: vehicle.numberPlate || '',
+        vin: vehicle.vin || '',
         carImageUrls: vehicle.carImageUrls?.length ? vehicle.carImageUrls : [''],
         trips: vehicle.trips || 0,
         rent: vehicle.rent || '',
-        capacity: vehicle.capacity || '',
-        transmission: vehicle.transmission || 'Auto'
+        features: {
+          transmission: vehicle.features?.transmission || 'automatic',
+          fuelType: vehicle.features?.fuelType || 'petrol',
+          seats: vehicle.features?.seats || 5,
+          luggage: vehicle.features?.luggage || 2,
+          ac: vehicle.features?.ac || true,
+          bluetooth: vehicle.features?.bluetooth || false,
+          gps: vehicle.features?.gps || false
+        },
+        mileage: vehicle.mileage || '',
+        lastServiceDate: vehicle.lastServiceDate || '',
+        insurance: {
+          policyNumber: vehicle.insurance?.policyNumber || '',
+          provider: vehicle.insurance?.provider || '',
+          documentUrl: vehicle.insurance?.documentUrl || '',
+          expiry: vehicle.insurance?.expiry || ''
+        },
+        status: vehicle.status || 'available',
+        maintenanceLogs: vehicle.maintenanceLogs || [],
+        dynamicPricing: {
+          baseRate: vehicle.dynamicPricing?.baseRate || 0,
+          weekendRate: vehicle.dynamicPricing?.weekendRate || 0,
+          seasonalRate: vehicle.dynamicPricing?.seasonalRate || 0,
+          surgeMultiplier: vehicle.dynamicPricing?.surgeMultiplier || 1
+        },
+        discount: {
+          percent: vehicle.discount?.percent || 0,
+          validUntil: vehicle.discount?.validUntil || ''
+        },
+        availability: {
+          days: vehicle.availability?.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+          startTime: vehicle.availability?.startTime || '08:00',
+          endTime: vehicle.availability?.endTime || '20:00'
+        },
+        cities: vehicle.cities || [{
+          name: '',
+          additionalFee: 0
+        }],
+        currentLocation: {
+          type: vehicle.currentLocation?.type || 'Point',
+          coordinates: vehicle.currentLocation?.coordinates || [0, 0]
+        },
+        blackoutDates: vehicle.blackoutDates || [],
+        bookings: vehicle.bookings || [],
+        rating: vehicle.rating || 0,
+        minimumRentalHours: vehicle.minimumRentalHours || 4,
+        maximumRentalDays: vehicle.maximumRentalDays || 30
       });
     }
   }, [vehicle]);
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'number' ? (value === '' ? '' : Number(value)) : value
-    }));
+    setFormData(prev => {
+      // Handle nested objects by splitting the name by '.'
+      const parts = name.split('.');
+      let current = prev;
+      
+      // Update nested objects
+      for (let i = 0; i < parts.length - 1; i++) {
+        current[parts[i]] = current[parts[i]] || {};
+        current = current[parts[i]];
+      }
+
+      // Handle number conversion
+      if (type === 'number') {
+        value = value === '' ? '' : Number(value);
+      }
+
+      // Handle boolean values (for checkboxes)
+      if (type === 'checkbox') {
+        value = e.target.checked;
+      }
+
+      // Update the final value
+      current[parts[parts.length - 1]] = value;
+
+      return prev;
+    });
   };
 
   const handleImageUrlChange = (index, value) => {
@@ -847,9 +978,9 @@ export const EditVehicleForm = ({ vehicle, onClose, onSave, companies }) => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* Vehicle Details */}
+        {/* Basic Vehicle Information */}
         <div className="col-span-2">
-          <h4 className="text-lg font-medium text-gray-700 mb-2">Vehicle Details</h4>
+          <h4 className="text-lg font-medium text-gray-700 mb-2">Basic Information</h4>
         </div>
 
         <div className="col-span-2">
@@ -902,6 +1033,36 @@ export const EditVehicleForm = ({ vehicle, onClose, onSave, companies }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
+            Year
+          </label>
+          <input
+            type="number"
+            name="year"
+            value={formData.year}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="1990"
+            max={new Date().getFullYear() + 1}
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            VIN
+          </label>
+          <input
+            type="text"
+            name="vin"
+            value={formData.vin}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Number Plate
           </label>
           <input
@@ -914,35 +1075,124 @@ export const EditVehicleForm = ({ vehicle, onClose, onSave, companies }) => {
           />
         </div>
 
+        {/* Features */}
+        <div className="col-span-2">
+          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Features</h4>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Transmission
           </label>
           <select
-            name="transmission"
-            value={formData.transmission}
+            name="features.transmission"
+            value={formData.features.transmission}
             onChange={handleChange}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           >
-            <option value="Auto">Automatic</option>
-            <option value="Manual">Manual</option>
+            <option value="automatic">Automatic</option>
+            <option value="manual">Manual</option>
           </select>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Capacity
+            Fuel Type
+          </label>
+          <select
+            name="features.fuelType"
+            value={formData.features.fuelType}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            <option value="petrol">Petrol</option>
+            <option value="diesel">Diesel</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="electric">Electric</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Seats
           </label>
           <input
             type="number"
-            name="capacity"
-            value={formData.capacity}
+            name="features.seats"
+            value={formData.features.seats}
             onChange={handleChange}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            min="1"
+            min="2"
+            max="15"
             required
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Luggage Capacity
+          </label>
+          <input
+            type="number"
+            name="features.luggage"
+            value={formData.features.luggage}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0"
+            max="10"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Air Conditioning
+          </label>
+          <select
+            name="features.ac"
+            value={formData.features.ac}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Bluetooth
+          </label>
+          <select
+            name="features.bluetooth"
+            value={formData.features.bluetooth}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            GPS
+          </label>
+          <select
+            name="features.gps"
+            value={formData.features.gps}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+
+        {/* Pricing and Availability */}
+        <div className="col-span-2">
+          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Pricing & Availability</h4>
         </div>
 
         <div>
@@ -962,12 +1212,331 @@ export const EditVehicleForm = ({ vehicle, onClose, onSave, companies }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
+            Base Rate
+          </label>
+          <input
+            type="number"
+            name="dynamicPricing.baseRate"
+            value={formData.dynamicPricing.baseRate}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Weekend Rate
+          </label>
+          <input
+            type="number"
+            name="dynamicPricing.weekendRate"
+            value={formData.dynamicPricing.weekendRate}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Seasonal Rate
+          </label>
+          <input
+            type="number"
+            name="dynamicPricing.seasonalRate"
+            value={formData.dynamicPricing.seasonalRate}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Surge Multiplier
+          </label>
+          <input
+            type="number"
+            name="dynamicPricing.surgeMultiplier"
+            value={formData.dynamicPricing.surgeMultiplier}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="1"
+            step="0.1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Discount Percentage
+          </label>
+          <input
+            type="number"
+            name="discount.percent"
+            value={formData.discount.percent}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0"
+            max="100"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Discount Valid Until
+          </label>
+          <input
+            type="date"
+            name="discount.validUntil"
+            value={formData.discount.validUntil}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* Availability */}
+        <div className="col-span-2">
+          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Availability</h4>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Available Days
+          </label>
+          <div className="space-y-2">
+            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+              <div key={day} className="flex items-center">
+                <input
+                  type="checkbox"
+                  name={`availability.days.${day}`}
+                  checked={formData.availability.days.includes(day)}
+                  onChange={(e) => {
+                    const days = formData.availability.days;
+                    if (e.target.checked) {
+                      days.push(day);
+                    } else {
+                      days.splice(days.indexOf(day), 1);
+                    }
+                    setFormData(prev => ({
+                      ...prev,
+                      availability: {
+                        ...prev.availability,
+                        days: days.sort()
+                      }
+                    }));
+                  }}
+                  className="mr-2"
+                />
+                <span>{day}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Start Time
+          </label>
+          <input
+            type="time"
+            name="availability.startTime"
+            value={formData.availability.startTime}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            End Time
+          </label>
+          <input
+            type="time"
+            name="availability.endTime"
+            value={formData.availability.endTime}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+        </div>
+
+        {/* Status and Maintenance */}
+        <div className="col-span-2">
+          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Status & Maintenance</h4>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Status
+          </label>
+          <select
+            name="status"
+            value={formData.status}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            <option value="available">Available</option>
+            <option value="booked">Booked</option>
+            <option value="under_maintenance">Under Maintenance</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Mileage
+          </label>
+          <input
+            type="number"
+            name="mileage"
+            value={formData.mileage}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Last Service Date
+          </label>
+          <input
+            type="date"
+            name="lastServiceDate"
+            value={formData.lastServiceDate}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Number of Trips
           </label>
           <input
             type="number"
             name="trips"
             value={formData.trips}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0"
+          />
+        </div>
+
+        {/* Insurance */}
+        <div className="col-span-2">
+          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Insurance</h4>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Policy Number
+          </label>
+          <input
+            type="text"
+            name="insurance.policyNumber"
+            value={formData.insurance.policyNumber}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Provider
+          </label>
+          <input
+            type="text"
+            name="insurance.provider"
+            value={formData.insurance.provider}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Document URL
+          </label>
+          <input
+            type="url"
+            name="insurance.documentUrl"
+            value={formData.insurance.documentUrl}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Expiry Date
+          </label>
+          <input
+            type="date"
+            name="insurance.expiry"
+            value={formData.insurance.expiry}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* Location */}
+        <div className="col-span-2">
+          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Location & Cities</h4>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Current Latitude
+          </label>
+          <input
+            type="number"
+            name="currentLocation.coordinates.0"
+            value={formData.currentLocation.coordinates[0]}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            step="0.000001"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Current Longitude
+          </label>
+          <input
+            type="number"
+            name="currentLocation.coordinates.1"
+            value={formData.currentLocation.coordinates[1]}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            step="0.000001"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            City Name
+          </label>
+          <input
+            type="text"
+            name="cities[0].name"
+            value={formData.cities[0].name}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Additional Fee
+          </label>
+          <input
+            type="number"
+            name="cities[0].additionalFee"
+            value={formData.cities[0].additionalFee}
             onChange={handleChange}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             min="0"
@@ -1009,6 +1578,62 @@ export const EditVehicleForm = ({ vehicle, onClose, onSave, companies }) => {
           >
             Add Another Image
           </button>
+        </div>
+
+        {/* Rental Limits */}
+        <div className="col-span-2">
+          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Rental Limits</h4>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Minimum Rental Hours
+          </label>
+          <input
+            type="number"
+            name="minimumRentalHours"
+            value={formData.minimumRentalHours}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="1"
+            max="24"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Maximum Rental Days
+          </label>
+          <input
+            type="number"
+            name="maximumRentalDays"
+            value={formData.maximumRentalDays}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="1"
+            max="365"
+          />
+        </div>
+
+        {/* Ratings */}
+        <div className="col-span-2">
+          <h4 className="text-lg font-medium text-gray-700 mb-2 mt-2">Ratings</h4>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Rating
+          </label>
+          <input
+            type="number"
+            name="rating"
+            value={formData.rating}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0"
+            max="5"
+            step="0.1"
+          />
         </div>
       </div>
 

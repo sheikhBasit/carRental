@@ -45,13 +45,13 @@ const CarCard = ({
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
             <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
           </svg>
-          <span>{car.capacity || 'N/A'} seats</span>
+          <span>{car.features.seats || car.capacity || 'N/A'} seats</span>
         </div>
         <div className="flex items-center text-gray-700">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
           </svg>
-          <span>{car.transmission || 'N/A'}</span>
+          <span>{car.transmission || car.features.transmission || 'N/A'}</span>
         </div>
         {car.numberPlate && (
           <div className="flex items-center text-gray-700">
@@ -170,9 +170,11 @@ const useLikedVehicles = () => {
           const userId = user.id;
   
           if (userId) {
-            const response = await fetch(`https://car-rental-backend-black.vercel.app/likes/liked-vehicles/${userId}`);
+            const response = await fetch(`https://car-rental-backend-black.vercel.app/api/likes/liked-vehicles/${userId}`);
             if (!response.ok) throw new Error('Failed to fetch liked vehicles');
+            console.log("response",response);
             const data = await response.json();
+            console.log("data",data);
             setLikedVehicles(data.map(vehicle => vehicle._id));
           }
         } catch (error) {
@@ -222,12 +224,12 @@ const CarRentalMarket = ({ brandName, carModels }) => {
       const isLiked = likedVehicles.includes(carId);
   
       if (isLiked) {
-        await fetch(`https://car-rental-backend-black.vercel.app/likes/unlike/${carId}/${userId}`, {
+        await fetch(`https://car-rental-backend-black.vercel.app/api/likes/unlike/${carId}/${userId}`, {
           method: 'DELETE'
         });
         setLikedVehicles(likedVehicles.filter(id => id !== carId));
       } else {
-        await fetch('https://car-rental-backend-black.vercel.app/likes/', {
+        await fetch('https://car-rental-backend-black.vercel.app/api/likes/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

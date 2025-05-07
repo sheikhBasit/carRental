@@ -31,6 +31,7 @@ const SideMenu = ({ isOpen, onClose }) => {
     removeCookie('city', { path: '/' });
     Cookies.remove('user');
     Cookies.remove('city');
+    Cookies.remove('token');
     
     // Clear other storage
     localStorage.clear();

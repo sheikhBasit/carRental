@@ -6,7 +6,7 @@ import { CardElement, useStripe, useElements, Elements } from "@stripe/react-str
 
 const stripePromise = loadStripe("pk_test_51RCixfPOwJcw4TunDpaIvFjYc3FWO69gD7ivHSBQKgR4vPWWzhIy0oqfvnilYSe3dlkdwQCvGMUvikRPAWw1BKYX00NnJmVGqW");
 
-const API_URL = "https://car-rental-backend-black.vercel.app/bookings/postBooking";
+const API_URL = "https://car-rental-backend-black.vercel.app/api/bookings/postBooking";
 
 const PaymentForm = ({ handleConfirmBooking }) => {
   const _stripe = useStripe();
@@ -40,7 +40,7 @@ const BookNow = () => {
   useEffect(() => {
     const fetchCarDetails = async () => {
       try {
-        const response = await fetch(`https://car-rental-backend-black.vercel.app/vehicles/${id}`);
+        const response = await fetch(`https://car-rental-backend-black.vercel.app/api/vehicles/${id}`);
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }
@@ -65,7 +65,7 @@ const BookNow = () => {
 
       try {
         const response = await fetch(
-          `https://car-rental-backend-black.vercel.app/drivers/company?company=${car.company._id}`
+          `https://car-rental-backend-black.vercel.app/api/drivers/company?company=${car.company._id}`
         );
         const result = await response.json();
 
@@ -145,7 +145,7 @@ const BookNow = () => {
       }
 
       // 2. Create payment intent
-      const paymentResponse = await fetch("https://car-rental-backend-black.vercel.app/stripe/create-payment-intent", {
+      const paymentResponse = await fetch("https://car-rental-backend-black.vercel.app/api/stripe/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -178,7 +178,7 @@ const BookNow = () => {
 
       if (paymentIntent.status === 'succeeded') {
         // 4. Confirm payment on backend
-        await fetch("https://car-rental-backend-black.vercel.app/stripe/confirm-payment", {
+        await fetch("https://car-rental-backend-black.vercel.app/api/stripe/confirm-payment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

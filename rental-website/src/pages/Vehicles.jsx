@@ -91,6 +91,7 @@ const Vehicles = ({ vehicles, company }) => {
 
   const handleEdit = (vehicle) => {
     setSelectedVehicle(vehicle);
+    
     setShowVehicleForm(true);
   };
 
@@ -106,7 +107,7 @@ const Vehicles = ({ vehicles, company }) => {
             <Filter size={18} className="mr-2" />
             {showFilters ? 'Hide Filters' : 'Show Filters'}
           </button>
-          {/* <button 
+          <button 
             onClick={() => {
               setSelectedVehicle(null);
               setShowVehicleForm(true);
@@ -115,7 +116,7 @@ const Vehicles = ({ vehicles, company }) => {
           >
             <Plus size={18} className="mr-2" />
             Add New Vehicle
-          </button> */}
+          </button>
         </div>
       </div>
 
@@ -215,7 +216,7 @@ const Vehicles = ({ vehicles, company }) => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Min Rent ($)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Min Rent (Rs.)</label>
               <input
                 type="number"
                 name="minRent"
@@ -227,7 +228,7 @@ const Vehicles = ({ vehicles, company }) => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Max Rent ($)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max Rent (Rs.)</label>
               <input
                 type="number"
                 name="maxRent"
@@ -295,7 +296,7 @@ const Vehicles = ({ vehicles, company }) => {
               <th className="p-3 text-black text-left">Number Plate</th>
               <th className="p-3 text-black text-left">Capacity</th>
               <th className="p-3 text-black text-left">Transmission</th>
-              <th className="p-3 text-black text-left">Rent ($/day)</th>
+              <th className="p-3 text-black text-left">Rent (Rs./day)</th>
               <th className="p-3 text-black text-left">Actions</th>
             </tr>
           </thead>
@@ -318,9 +319,9 @@ const Vehicles = ({ vehicles, company }) => {
                 <td className="p-3 font-medium">{vehicle.manufacturer?.toUpperCase()}</td>
                 <td className="p-3">{vehicle.model?.toUpperCase()}</td>
                 <td className="p-3">{vehicle.numberPlate}</td>
-                <td className="p-3">{vehicle.capacity} Seats</td>
-                <td className="p-3">{vehicle.transmission}</td>
-                <td className="p-3">${vehicle.rent}</td>
+                <td className="p-3">{vehicle.features.seats} Seats</td>
+                <td className="p-3">{vehicle.features.transmission}</td>
+                <td className="p-3">Rs.{vehicle.rent}</td>
                 <td className="p-3 flex space-x-2">
                   <button 
                     onClick={() => handleEdit(vehicle)}
@@ -346,6 +347,14 @@ const Vehicles = ({ vehicles, company }) => {
           onClose={() => setShowVehicleForm(false)} 
           company={company}
           vehicle={selectedVehicle}
+          onVehicleAdded={() => {
+            // refresh driver list or show success message
+            console.log("Driver added successfully");
+          }}
+          onVehicleUpdated={() => {
+            // refresh driver list or show update success
+            console.log("Driver updated successfully");
+          }}
         />
       )}
     </div>

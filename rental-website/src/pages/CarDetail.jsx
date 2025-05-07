@@ -189,6 +189,8 @@ const PaymentForm = ({
         <div className="flex justify-between mb-2">
           <span className="text-gray-600">Booking price</span>
           <span className="font-medium">Rs.{bookingPrice}</span>
+          <span className="text-gray-600">Driver price</span>
+          <span className="font-medium">Rs.{selectedDriver?.baseDailyRate  || 0}</span>
         </div>
         <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
           <span className="font-medium">Total</span>
@@ -272,7 +274,7 @@ const DriverSelection = ({ drivers, selectedDriver, onSelectDriver, loading, err
   if (error) {
     return (
       <div className="text-red-500 p-4 text-center">
-        Error loading drivers: {error}
+        No Driver of this company
       </div>
     );
   }
@@ -323,7 +325,15 @@ const DriverSelection = ({ drivers, selectedDriver, onSelectDriver, loading, err
 
 const CarDetailPage = () => {
   const [cookies] = useCookies(['user']);
+  const user = cookies.user || {};
   
+  // Debug logging
+  useEffect(() => {
+    console.log('Cookies:', cookies);
+    console.log('User:', user);
+    console.log('Token:', user.token);
+  }, [cookies]);
+
   // Vehicle and booking state
   const [vehicle, setVehicle] = useState(null);
   const [comments, setComments] = useState([]);
@@ -363,8 +373,6 @@ const CarDetailPage = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  
-
   const { vehicleId } = useParams();
   const navigate = useNavigate();
 
@@ -374,35 +382,71 @@ const CarDetailPage = () => {
 
   const handlePaymentSuccess = async (paymentIntent) => {
     try {
-      console.log('🔍 Payment Intent Received:', paymentIntent);
-
-      // Confirm payment on backend
-      await axios.post(
-        'https://car-rental-backend-black.vercel.app/transaction/post',
+      console.log('Payment Intent Received:', paymentIntent);
+  
+      // Update booking with payment status
+      const response = await axios.post(
+        'https://car-rental-backend-black.vercel.app/api/transaction/post',
+        
         {
+          paymentStatus: 'completed',
+          bookingId: bookingId,
           transactionId: paymentIntent.id,
-          bookingId,
-          userId: getUserId(),
-          amount: paymentIntent.amount ,
-          paymentMethod: 'card',
-          paymentStatus:"completed"
+          amount: paymentIntent.amount / 100, // Convert back to PKR
+          method: 'card'
+          
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${user.token}`
+          }
         }
       );
+  
+      console.log("Transaction response:", response.data);
+      console.log("booking",bookingId)
+      if (response.data) {
+        try {
 
+          await axios.post(
+            `https://car-rental-backend-black.vercel.app/api/bookings/confirm/${bookingId}`,
+           
+            {}, // empty body
+            {
+              headers: {
+                'Authorization': `Bearer ${user.token}`
+              }
+            }
+          );
+      
+          // Navigate only after successful confirmation
+          navigate(`/bookings/${bookingId}`);
+        } catch (error) {
+          console.error('Booking confirmation failed:', error);
+          // Optional: show a toast or alert
+        }
+      }
+      
+  
       // Show success message and redirect
       setShowSuccessModal(true);
-      setTimeout(() => {
-        setShowSuccessModal(false);
-        navigate(`/booking-confirmation/${bookingId}`);
-      }, 3000);
-
+  
     } catch (error) {
-      console.error('❌ Error confirming payment:', error);
+      console.error('Error updating booking status:', error);
       setPaymentError('Payment confirmation failed. Please contact support.');
     }
   };
-
-  const handlePaymentCancel = () => {
+  
+  const handlePaymentCancel = async () => {
+    await axios.post(
+      `https://car-rental-backend-black.vercel.app/api/bookings/cancelBooking/${bookingId}`,
+      {}, // empty body if no data is sent
+      {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      }
+    );
     setShowPaymentForm(false);
     setClientSecret('');
     setBookingId(null);
@@ -432,11 +476,13 @@ const CarDetailPage = () => {
     const fetchVehicleDetails = async () => {
       try {
         const [vehicleResponse, commentsResponse] = await Promise.all([
-          axios.get(`https://car-rental-backend-black.vercel.app/vehicles/${vehicleId}`),
-          axios.get(`https://car-rental-backend-black.vercel.app/comment/${vehicleId}`)
+          axios.get(`https://car-rental-backend-black.vercel.app/api/vehicles/${vehicleId}`),
+          axios.get(`https://car-rental-backend-black.vercel.app/api/comment/${vehicleId}`)
         ]);
-        
-        setVehicle(vehicleResponse.data);
+        console.log("vehicleResponse",vehicleResponse);
+
+        console.log("commentsResponse",vehicleResponse.data);
+        setVehicle(vehicleResponse.data.data);
         setComments(commentsResponse.data);
         if (vehicleResponse.data?.company?.address) {
           setLocation(vehicleResponse.data.company.address);
@@ -458,10 +504,10 @@ const CarDetailPage = () => {
       const fetchDrivers = async () => {
         setLoadingDrivers(true);
         try {
-          const response = await axios.get('https://car-rental-backend-black.vercel.app/drivers/company', {
+          const response = await axios.get('https://car-rental-backend-black.vercel.app/api/drivers/company', {
             params: { company: vehicle.company._id }
           });
-          setDrivers(response.data.drivers);
+          setDrivers(response.data.data);
         } catch (err) {
           setDriverError(err.message);
         } finally {
@@ -472,20 +518,38 @@ const CarDetailPage = () => {
     }
   }, [vehicle]);
 
-  const generateTimeOptions = () => {
+  const generateTimeOptions = (minTime = null) => {
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        options.push(
-          <option key={timeString} value={timeString}>
-            {timeString}
-          </option>
-        );
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute
+          .toString()
+          .padStart(2, '0')}`;
+        if (!minTime || timeString > minTime) {
+          options.push(
+            <option key={timeString} value={timeString}>
+              {timeString}
+            </option>
+          );
+        }
       }
     }
     return options;
   };
+  
+  const getCurrentTimeString = () => {
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes() < 30 ? '00' : '30';
+    return `${hours}:${minutes}`;
+  };
+
+  const today = new Date();
+const isStartToday = startDate?.toDateString() === today.toDateString();
+const minStartTime = isStartToday ? getCurrentTimeString() : null;
+
+const isSameDay = startDate?.toDateString() === endDate?.toDateString();
+const minEndTime = isSameDay && startTime ? startTime : null;
 
   const handleSelectDriver = (driver) => {
     setSelectedDriver(driver);
@@ -515,7 +579,9 @@ const CarDetailPage = () => {
           <div className="flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-3 text-purple-600">
               <path d="M20 13c0 5-3 7-7 7-4 0-7-2-7-7 0-4 3-7 7-7 4 0 7 3 7 7z"></path>
-              <path d="m10.4 10.4 5.2 5.2"></path>
+              <path d="M15 4H9"></path>
+              <path d="M8 4h0"></path>
+              <path d="M16 4h0"></path>
             </svg>
             <span>No need to wash the car before returning it, but please keep the vehicle tidy.</span>
           </div>
@@ -628,12 +694,12 @@ const CarDetailPage = () => {
       const isLiked = likedVehicles.includes(carId);
   
       if (isLiked) {
-        await fetch(`https://car-rental-backend-black.vercel.app/likes/unlike/${carId}/${userId}`, {
+        await fetch(`https://car-rental-backend-black.vercel.app/api/likes/unlike/${carId}/${userId}`, {
           method: 'DELETE'
         });
         setLikedVehicles(likedVehicles.filter(id => id !== carId));
       } else {
-        await fetch('https://car-rental-backend-black.vercel.app/likes/', {
+        await fetch('https://car-rental-backend-black.vercel.app/api/likes/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -649,94 +715,194 @@ const CarDetailPage = () => {
       console.error('Error handling favorites:', error);
     }
   };
-  
 
-  const handleContinue = async () => {
-    if (!vehicle) return;
-    
-    setProcessingPayment(true);
+  const BASE_URL = 'https://car-rental-backend-black.vercel.app';
+  const getAuthToken = () => {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
     
     try {
-      // Calculate rental duration in days
-      const timeDiff = Math.abs(endDate - startDate);
-      const diffDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) || 1; // Ensure at least 1 day
+      // Simple validation - check if token is a valid JWT format (xxx.yyy.zzz)
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.log("Invalid token format, clearing token");
+        localStorage.removeItem('token');
+        return null;
+      }
       
-      // Calculate prices
-      const bookingPrice = vehicle.rent * diffDays;
-       console.log(bookingPrice)
-      setAmount(bookingPrice)
-          // Prepare booking data
-      const bookingData = {
-        idVehicle: vehicle._id,
-        user: getUserId(),
-        company: vehicle.company._id,
-        driver: selectedDriver?._id || null,
-        from: location,
-        to: location,
-        fromTime: startTime,
-        toTime: endTime,
-        intercity: false,
-        cityName: vehicle.company.city.toLowerCase(),
-        status: 'confirmed',
-        amount,
-        duration: diffDays
-      };
-
-      // 1. First create the booking
-      const bookingResponse = await axios.post(
-        'https://car-rental-backend-black.vercel.app/bookings/postBooking', 
-        bookingData
-      );
-
-      if (!bookingResponse.data.success) {
-        throw new Error(bookingResponse.data.message || 'Booking failed');
-      }
-
-      const bookingId = bookingResponse.data.booking._id;
-      setBookingId(bookingId);
-
-      // 2. Create payment intent with Stripe
-      const paymentResponse = await axios.post(
-        'https://car-rental-backend-black.vercel.app/stripe/create-payment-intent',
-        {
-          bookingId,
-          amount: amount , // Convert to cents
-          currency: "pkr",
-          description: `Booking for ${vehicle.manufacturer} ${vehicle.model} (${diffDays} days)`
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${cookies.user?.token || ''}`
-          }
-        }
-      );
-
-      if (!paymentResponse.data.clientSecret) {
-        throw new Error(paymentResponse.data.message || 'Payment setup failed');
-      }
-
-      // 3. Show payment form with the client secret
-      setClientSecret(paymentResponse.data.clientSecret);
-      setShowPaymentForm(true);
-
+      return token;
     } catch (error) {
-      console.error('Booking Error:', error);
-      let errorMessage = 'Failed to create booking. Please try again.';
-      
-      if (error.response) {
-        errorMessage = error.response.data.error || 
-                     error.response.data.message || 
-                     `Server responded with status ${error.response.status}`;
-      } else if (error.request) {
-        errorMessage = 'No response received from server. Please check your connection.';
-      }
-      
-      setPaymentError(errorMessage);
-    } finally {
-      setProcessingPayment(false);
+      console.log("Error parsing token:", error);
+      localStorage.removeItem('token');
+      return null;
     }
   };
 
+  // Axios instance with interceptor to attach token
+const axiosInstance = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: true, // Enable sending cookies with all requests
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  }
+});
+
+axiosInstance.interceptors.request.use(
+  config => {
+    const token = getAuthToken();
+    console.log("Using token for request:", token ? `${token.substring(0, 15)}...` : 'No token');
+    
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => Promise.reject(error)
+);
+
+// Add response interceptor to handle common errors
+axiosInstance.interceptors.response.use(
+  response => response,
+  error => {
+    console.log("API Error:", error);
+    
+    // Handle token expiration
+    if (error.response && error.response.status === 401) {
+      console.log("Token expired or invalid - clearing token");
+      localStorage.removeItem('token');
+      // We'll let the component handle the redirect
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+const handleContinue = async () => {
+  if (!vehicle) return;
+  setProcessingPayment(true);
+  
+  try {
+    // Get fresh token
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication required. Please login again.');
+    }
+
+    // VALIDATION 1: Check if dates are valid
+    if (endDate < startDate) {
+      throw new Error('End date cannot be before start date');
+    }
+
+    // Calculate rental duration in days
+    const timeDiff = Math.abs(endDate - startDate);
+    const diffDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) || 1;
+    
+    // Create Date objects with times
+    const startDateTime = new Date(`${startDate.toISOString().split('T')[0]}T${startTime}`);
+    const endDateTime = new Date(`${endDate.toISOString().split('T')[0]}T${endTime}`);
+    const now = new Date();
+
+    // VALIDATION 2: Check if start time is in the past
+    if (startDateTime < now) {
+      throw new Error('Start time cannot be in the past');
+    }
+
+    // VALIDATION 3: Check if end time is before start time (for same day)
+    if (startDate.toDateString() === endDate.toDateString() && endDateTime <= startDateTime) {
+      throw new Error('End time must be 60 min after start time');
+    }
+
+    // Calculate prices
+    const basePrice = vehicle.rent * diffDays;
+    let totalAmount = basePrice;
+    
+    if (selectedDriver) {
+      totalAmount += selectedDriver.baseDailyRate * diffDays;
+    }
+    
+    // Add 16% GST
+    const gst = totalAmount * 0.16;
+    totalAmount += gst;
+    
+    setAmount(totalAmount);
+    
+    // Prepare booking data
+    const bookingData = {
+      user: user.id,
+      idVehicle: vehicle._id,
+      from: startDate,
+      to: endDate,
+      fromTime: startDateTime.toISOString(),
+      toTime: endDateTime.toISOString(),
+      intercity: false,
+      cityName: vehicle.company.city.toLowerCase(),
+      driver: selectedDriver?._id || null,
+      termsAccepted: true,
+      status:'pending',
+      paymentStatus: 'pending',
+      bookingChannel: 'web'
+    };
+
+    console.log("booking data", bookingData);
+    
+    // 1. Create booking
+    const bookingResponse = await axiosInstance.post(
+      'https://car-rental-backend-black.vercel.app/api/bookings/postBooking', 
+      bookingData
+    );
+
+    if (!bookingResponse.data) {
+      throw new Error(bookingResponse.data.message || 'Booking failed');
+    }
+
+    console.log("booking response", bookingResponse.data); 
+    const bookingId = bookingResponse.data.booking._id;
+    setBookingId(bookingId);
+
+    // 2. Create payment intent with Stripe
+    const paymentResponse = await axiosInstance.post(
+      'https://car-rental-backend-black.vercel.app/api/stripe/create-payment-intent',
+      {
+        bookingId,
+        amount: Math.round(totalAmount),
+        currency: "pkr",
+        description: `Booking for ${vehicle.manufacturer} ${vehicle.model} (${diffDays} days)`
+      }
+    );
+
+    if (!paymentResponse.data.clientSecret) {
+      throw new Error(paymentResponse.data.message || 'Payment setup failed');
+    }
+
+    // 3. Show payment form
+    setClientSecret(paymentResponse.data.clientSecret);
+    setShowPaymentForm(true);
+
+  } catch (error) {
+    console.error('Booking Error:', error);
+    
+    let errorMessage = 'Failed to process booking';
+    
+    if (error.response) {
+      if (error.response.status === 401) {
+        errorMessage = 'Session expired. Please login again.';
+        localStorage.removeItem('token');
+        navigate('/login');
+      } else {
+        errorMessage = error.response.data?.error || 
+                      error.response.data?.message || 
+                      `Error: ${error.response.status}`;
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    setPaymentError(errorMessage);
+  } finally {
+    setProcessingPayment(false);
+  }
+};
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -859,7 +1025,8 @@ const CarDetailPage = () => {
               <path d="M8 4h0"></path>
               <path d="M16 4h0"></path>
             </svg>
-            <p className="text-sm">{vehicle.capacity} seats</p>
+            <p className="text-sm">{vehicle.features.seats || vehicle.capacity || 'N/A'} seats</p>
+
           </div>
           <div>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-1">
@@ -867,7 +1034,7 @@ const CarDetailPage = () => {
               <path d="M3 12h18"></path>
               <path d="M12 3l9 9-9 9"></path>
             </svg>
-            <p className="text-sm">{vehicle.transmission}</p>
+            <p className="text-sm">{vehicle.features.transmission}</p>
           </div>
           <div>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-1">
@@ -875,7 +1042,8 @@ const CarDetailPage = () => {
               <path d="M3 9h18"></path>
               <path d="M9 21V9"></path>
             </svg>
-            <p className="text-sm">Diesel</p>
+            <p className="text-sm">{vehicle.features.fuelType}</p>
+          
           </div>
         </div>
 
@@ -888,7 +1056,7 @@ const CarDetailPage = () => {
         {/* Host */}
         <div className="flex text-black items-center mb-6">
           <img 
-            src="/api/placeholder/50/50" 
+            src={vehicle.company?.logo || '/api/placeholder/50/50'} 
             alt="Host" 
             className="w-12 h-12 rounded-full mr-3"
           />
@@ -899,7 +1067,7 @@ const CarDetailPage = () => {
                 {[...Array(5)].map((_, i) => <span key={i} className="text-sm">★</span>)}
               </div>
             </div>
-            <p className="text-sm text-gray-600">62 trips · Joined Sept 2023</p>
+            <p className="text-sm text-gray-600">{vehicle.company?.trips || '0'} trips · Joined Mar 2025</p>
           </div>
         </div>
 
@@ -911,6 +1079,23 @@ const CarDetailPage = () => {
 
         {/* Booking Section */}
         <div className="border text-black rounded-lg p-4 mb-6">
+        {vehicle.blackoutDates?.length > 0 && (
+  <div className="text-sm">
+    <p>Not Available Dates:</p>
+    <ul className="list-disc pl-5">
+      {vehicle.blackoutDates.map((date, index) => (
+        <li key={index}>
+          {new Date(date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          })}
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
           <div className="grid grid-cols-2 gap-4">
             {/* Start Date */}
             <div>
@@ -932,8 +1117,8 @@ const CarDetailPage = () => {
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
               >
-                {generateTimeOptions()}
-              </select>
+                {generateTimeOptions(minStartTime)}
+                 </select>
             </div>
 
             {/* End Date */}
@@ -956,7 +1141,7 @@ const CarDetailPage = () => {
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
               >
-                {generateTimeOptions()}
+ {generateTimeOptions(minEndTime)}
               </select>
             </div>
           </div>
@@ -971,7 +1156,7 @@ const CarDetailPage = () => {
           />
 
           {/* Location Input */}
-          <div className="mt-4">
+          {/* <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Pickup & return location</label>
             <input
               type="text"
@@ -980,7 +1165,7 @@ const CarDetailPage = () => {
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Enter pickup location"
             />
-          </div>
+          </div> */}
         </div>
 
         {/* Continue Button */}

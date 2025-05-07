@@ -15,14 +15,15 @@ const Signup = () => {
     name: "",       // Maps to 'name' in the schema
     email: "",
     password: "",
-    confirmPassword: "",
-    phone: "",      // Maps to 'phoneNo' in the schema
-    cnic: "",
+    phoneNo: "",    // Use phoneNo instead of phone
+    cnic: "",       // Added missing field
     address: "",
     accountNo: "",  // Added missing field
     city: "",       // Added missing field
     province: "",   // Added missing field
-    fcmToken: "",
+    age: "",        // Added missing field
+    role: "customer",       // Added missing field
+    fcmToken: "",   // Added missing field (optional)
     isVerified:true   // Added missing field (optional)
   });
 
@@ -70,17 +71,17 @@ const Signup = () => {
   const validateCNIC = (cnic) => /^\d{5}-\d{7}-\d{1}$/.test(cnic);
   const validatePassword = (password) => password.length >= 8 && password.length <= 20;
   const validateAccountNo = (accountNo) => /^\d{10,16}$/.test(accountNo); // Basic validation for account number
+  const validateAge = (age) => /^\d+$/.test(age) && age >= 18 && age <= 100; // Validate age between 18 and 100
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submission started");
     setIsSubmitting(true);
     setError("");
 
     // Validate all required fields
     const requiredFields = [
-      'name', 'email', 'password', 'confirmPassword', 'phone', 
-      'cnic', 'address', 'city', 'province'
+      'name', 'email', 'password', 'phoneNo', 
+      'cnic', 'address', 'city', 'province', 'age'
     ];
     
     for (let key of requiredFields) {
@@ -103,13 +104,7 @@ const Signup = () => {
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!validatePhone(formData.phone)) {
+    if (!validatePhone(formData.phoneNo)) {
       setError("Phone number must be exactly 11 digits and start with '03'.");
       setIsSubmitting(false);
       return;
@@ -123,6 +118,12 @@ const Signup = () => {
 
     if (formData.accountNo && !validateAccountNo(formData.accountNo)) {
       setError("Account number must be 10-16 digits.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!validateAge(formData.age)) {
+      setError("Age must be between 18 and 100.");
       setIsSubmitting(false);
       return;
     }
@@ -165,7 +166,6 @@ const Signup = () => {
       if (files.cnicFront) formDataToSend.append('cnicFront', files.cnicFront);
       if (files.cnicBack) formDataToSend.append('cnicBack', files.cnicBack);
       if (files.profilePic) formDataToSend.append('profilePic', files.profilePic);
-
       // Setup fetch options with credentials
       const fetchOptions = {
         method: "POST",
@@ -173,16 +173,18 @@ const Signup = () => {
         credentials: 'include', // Include cookies in the request
       };
 
-      const response = await fetch("https://car-rental-backend-black.vercel.app/users/create", fetchOptions);
+      const response = await fetch("https://car-rental-backend-black.vercel.app/api/users/create", fetchOptions);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Signup failed. Please try again.");
+      if (!response.ok || response.status === 500) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData.message?.includes("image") || errorData.message?.includes("upload") || errorData.message?.includes("server") || errorData.message?.includes("FUNCTION_INVOCATION_FAILED") ) {
+          throw new Error("Image upload failed. Please check your files and try again.");
+        }
+        throw new Error(errorData.message || "Registration failed. Please try again.");
       }
 
       const data = await response.json();
-      console.log("Signup successful:", data);
-
+      console.log(data)
       // ---------- SAVE USER DATA TO COOKIES ----------
   
   if (data.user?._id) {
@@ -200,10 +202,14 @@ const Signup = () => {
        }  
       // ---------- NAVIGATE TO HOME ----------
    
-      navigate("/", { state: { successMessage: "Registration successful! Please verify your email." } });
-    } catch (error) {
-      console.error("Signup error:", error);
-      setError(error.message || "An error occurred. Please try again.");
+      Cookies.set('unverifiedEmail', formData.email, { expires: 1 }); // Store for 1 day
+      navigate('/verify-email', { state: { email: formData.email } });} 
+      catch (error) {
+      if (error.message.includes("FUNCTION_INVOCATION_FAILED")) {
+        setError("Server error occurred during image processing. Please try again with different images.");
+      } else {
+        setError(error.message || "An error occurred. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -304,16 +310,17 @@ const Signup = () => {
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="phoneNo" className="block text-sm font-medium text-gray-700 mb-1">
                 Phone Number
               </label>
               <input
                 type="text"
-                id="phone"
-                name="phone"
+                id="phoneNo"
+                name="phoneNo"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="03XXXXXXXXX"
-                value={formData.phone}
+                value={formData.phoneNo}
+                maxLength={11}
                 onChange={handleChange}
                 required
               />
@@ -390,6 +397,40 @@ const Signup = () => {
                 required
               />
             </div>
+
+            <div>
+              <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
+                Age
+              </label>
+              <input
+                type="number"
+                id="age"
+                name="age"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter your age"
+                value={formData.age}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            {/* <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+                Role
+              </label>
+              <select
+                id="role"
+                name="role"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.role}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select Role</option>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div> */}
 
             {/* Document Upload Section */}
             <div className="mt-8">

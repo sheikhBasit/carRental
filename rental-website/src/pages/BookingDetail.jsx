@@ -11,16 +11,52 @@ const BookingDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // --- FEEDBACK & DAMAGE REPORT LOGIC ---
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [showDamageForm, setShowDamageForm] = useState(false);
+  const [damageDescription, setDamageDescription] = useState("");
+  const [damageImages, setDamageImages] = useState([]);
+  const [damageUploading, setDamageUploading] = useState(false);
+
+  // --- Delivery/Return Reminder Logic ---
+  const [reminder, setReminder] = useState(null);
+
+  useEffect(() => {
+    if (!booking) return;
+    const now = new Date();
+    const fromTime = booking.fromTime ? new Date(booking.fromTime) : null;
+    const toTime = booking.toTime ? new Date(booking.toTime) : null;
+    let reminderMsg = null;
+    if (booking.status === 'confirmed' && fromTime) {
+      const diff = (fromTime.getTime() - now.getTime()) / (60 * 1000);
+      if (diff > 0 && diff <= 30) {
+        reminderMsg = `Your vehicle will be delivered at ${fromTime.toLocaleString()}`;
+      }
+    }
+    if (booking.status === 'ongoing' && toTime) {
+      const diff = (toTime.getTime() - now.getTime()) / (60 * 1000);
+      if (diff > 0 && diff <= 30) {
+        reminderMsg = `Your vehicle is due for return at ${toTime.toLocaleString()}`;
+      }
+      if (diff < 0) {
+        reminderMsg = `Your vehicle return is overdue! Please return as soon as possible.`;
+      }
+    }
+    setReminder(reminderMsg);
+  }, [booking]);
+
   useEffect(() => {
     const fetchBookingDetails = async () => {
       try {
-        const response = await axios.get(`https://car-rental-backend-black.vercel.app/bookings/getBookingById/${bookingId}`);
+        const response = await axios.get(`https://car-rental-backend-black.vercel.app/api/bookings/getBookingById/${bookingId}`);
         const bookingData = response.data;
         
         // If idVehicle is null, fetch the fallback vehicle
         if (!bookingData.idVehicle) {
           try {
-            const fallbackResponse = await axios.get(`https://car-rental-backend-black.vercel.app/vehicles/68055935385a645f78086de3`);
+            const fallbackResponse = await axios.get(`https://car-rental-backend-black.vercel.app/api/vehicles/68055935385a645f78086de3`);
             setFallbackVehicle(fallbackResponse.data);
           } catch (fallbackError) {
             console.error('Failed to fetch fallback vehicle:', fallbackError);
@@ -37,6 +73,12 @@ const BookingDetail = () => {
 
     fetchBookingDetails();
   }, [bookingId]);
+
+  useEffect(() => {
+    if (booking && booking.status === 'completed') {
+      setShowFeedbackForm(true);
+    }
+  }, [booking]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -57,8 +99,53 @@ const BookingDetail = () => {
     }
   };
 
+  const getVehicleStatusBadge = (status) => {
+    switch (status) {
+      case 'available':
+        return <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+          <FaCheckCircle /> Available
+        </span>;
+      case 'unavailable':
+        return <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+          <FaTimesCircle /> Unavailable
+        </span>;
+      default:
+        return <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">{status}</span>;
+    }
+  };
+
   // Get the vehicle to display (either the booking's vehicle or the fallback)
   const displayVehicle = booking?.idVehicle || fallbackVehicle;
+
+  const submitFeedback = async () => {
+    try {
+      await axios.post('https://car-rental-backend-black.vercel.app/api/feedback', {
+        booking: booking._id,
+        rating,
+        comment
+      });
+      setShowFeedbackForm(false);
+      alert('Feedback submitted!');
+    } catch (e) {
+      alert('Failed to submit feedback.');
+    }
+  };
+
+  const submitDamage = async () => {
+    setDamageUploading(true);
+    try {
+      await axios.post('https://car-rental-backend-black.vercel.app/api/damagereport', {
+        booking: booking._id,
+        description: damageDescription,
+        images: damageImages
+      });
+      setShowDamageForm(false);
+      alert('Damage report submitted!');
+    } catch (e) {
+      alert('Failed to submit damage report.');
+    }
+    setDamageUploading(false);
+  };
 
   if (loading) {
     return (
@@ -103,6 +190,11 @@ const BookingDetail = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
+        {reminder && (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-900 p-4 mb-6 rounded">
+            <p className="font-semibold">{reminder}</p>
+          </div>
+        )}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Booking Details</h1>
           <p className="mt-2 text-gray-600">Here's your booking information</p>
@@ -139,6 +231,7 @@ const BookingDetail = () => {
                       {!booking.idVehicle && (
                         <p className="text-xs text-yellow-600 mt-1">Default vehicle shown as original was not available</p>
                       )}
+                      <p className="text-gray-600 text-sm mt-2">Status: {getVehicleStatusBadge(displayVehicle.status)}</p>
                     </div>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
@@ -162,6 +255,38 @@ const BookingDetail = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Buffer Time */}
+            <div className="mb-8">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <FaClock className="text-purple-600" /> Buffer Time
+              </h3>
+              <p className="text-gray-600">Please note that there is a {booking.bufferTime} hour buffer time before and after the booking period.</p>
+            </div>
+
+            {/* Cancellation Policy */}
+            <div className="mb-8">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <FaTimesCircle className="text-purple-600" /> Cancellation Policy
+              </h3>
+              <p className="text-gray-600">Please note that cancellations are only allowed up to {booking.cancellationTime} hours before the booking period.</p>
+            </div>
+
+            {/* Terms Acceptance */}
+            {booking.status !== 'confirmed' && (
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <FaCheckCircle className="text-purple-600" /> Terms Acceptance
+                </h3>
+                <p className="text-gray-600">Please accept the terms and conditions to confirm your booking.</p>
+                <button
+                  onClick={() => alert('Terms acceptance functionality to be implemented')}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  Accept Terms
+                </button>
               </div>
             )}
 
@@ -335,6 +460,87 @@ const BookingDetail = () => {
                 </div>
               </div>
             </div>
+
+            {/* Feedback Form */}
+            {showFeedbackForm && (
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <FaCheckCircle className="text-purple-600" /> Feedback
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Rating</p>
+                      <select 
+                        value={rating}
+                        onChange={(e) => setRating(e.target.value)}
+                        className="block w-full pl-10 p-2 text-gray-700 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      >
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Comment</p>
+                      <textarea 
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        className="block w-full p-2 text-gray-700 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <button 
+                        onClick={submitFeedback}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                      >
+                        Submit Feedback
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Damage Report Form */}
+            {showDamageForm && (
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <FaTimesCircle className="text-purple-600" /> Damage Report
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Description</p>
+                      <textarea 
+                        value={damageDescription}
+                        onChange={(e) => setDamageDescription(e.target.value)}
+                        className="block w-full p-2 text-gray-700 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Images</p>
+                      <input 
+                        type="file"
+                        multiple
+                        onChange={(e) => setDamageImages(e.target.files)}
+                        className="block w-full p-2 text-gray-700 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <button 
+                        onClick={submitDamage}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                      >
+                        {damageUploading ? 'Uploading...' : 'Submit Damage Report'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 justify-end mt-8">

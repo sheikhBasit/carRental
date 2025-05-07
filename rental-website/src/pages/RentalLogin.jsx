@@ -33,7 +33,7 @@ const CompanyLogin = () => {
     setError("");
 
     try {
-      const response = await fetch("https://car-rental-backend-black.vercel.app/rental-companies/login", {
+      const response = await fetch("https://car-rental-backend-black.vercel.app/api/rental-companies/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -42,7 +42,7 @@ const CompanyLogin = () => {
       });
 
       const data = await response.json();
-
+      console.log("data",data);
       if (!response.ok) {
         throw new Error(data.message || "Login failed. Please try again.");
       }
@@ -54,11 +54,12 @@ const CompanyLogin = () => {
         companyName: data.company.companyName,
         isCompany: true
       }), { expires: 7 });
-      
+      Cookies.remove("user");
       if (data.token) {
         Cookies.set("token", data.token, { expires: 7 });
       }
-
+      localStorage.setItem("token", data.token);
+      console.log("token", data.token);
       navigate("/company-dashboard");
 
     } catch (error) {
@@ -130,22 +131,6 @@ const CompanyLogin = () => {
               {isLoading ? "Please wait..." : "Sign In"}
             </button>
             
-            <div className="my-6 flex items-center">
-              <div className="flex-grow h-px bg-gray-300"></div>
-              <span className="px-4 text-sm text-gray-500">OR</span>
-              <div className="flex-grow h-px bg-gray-300"></div>
-            </div>
-            
-            <div id="google-login-button" ref={googleButtonRef}>
-              <button
-                type="button"
-                onClick={signInWithGoogle}
-                className="w-full text-black bg-white flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <FaGoogle className="text-red-500" />
-                <span className="text-gray-700">Continue with Google</span>
-              </button>
-            </div>
           </form>
           
           <div className="mt-8 text-center">

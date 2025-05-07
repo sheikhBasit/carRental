@@ -106,7 +106,7 @@ const Drivers = ({ drivers, company }) => {
             <Filter size={18} className="mr-2" />
             Filters
           </button>
-          {/* <button 
+          <button 
             onClick={() => {
               setSelectedDriver(null);
               setShowDriverForm(true);
@@ -115,7 +115,7 @@ const Drivers = ({ drivers, company }) => {
           >
             <Plus size={18} className="mr-2" />
             Add New Driver
-          </button> */}
+          </button>
         </div>
       </div>
 
@@ -335,11 +335,20 @@ const Drivers = ({ drivers, company }) => {
       </div>
 
       {showDriverForm && (
-        <DriverForm 
-          onClose={() => setShowDriverForm(false)} 
-          company={company}
-          driver={selectedDriver}
-        />
+       <DriverForm 
+       onClose={() => setShowDriverForm(false)} 
+       company={company}
+       driver={selectedDriver}
+       onDriverAdded={() => {
+         // refresh driver list or show success message
+         console.log("Driver added successfully");
+       }}
+       onDriverUpdated={() => {
+         // refresh driver list or show update success
+         console.log("Driver updated successfully");
+       }}
+     />
+     
       )}
     </div>
   );

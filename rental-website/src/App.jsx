@@ -5,19 +5,18 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import CarList from "./pages/CarList";
 import BookNow from "./pages/BookNow";
-import Profile from "./pages/Profile";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import CarDetail from "./pages/CarDetail";
 import Service from "./pages/Service";
 import Contact from "./pages/Contact";
+import VerificationScreen from "./pages/Verification";
 import CarRentalMarket from "./pages/CarMarket";
 import AboutUs from "./pages/AboutUs";
 import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import CarRentalMarketWrapper from "./components/CarRentalMarketWrapper";
 import RentalCompanyDashboard from './pages/RentalCompanyDashboard';
 import LandingPage from "./pages/Landing";
-// import AdminDashboard from "./pages/AdminDashboard";
 import ChatApplication from "./pages/Inbox";
 import FavoritesPage from "./pages/Favorites";
 import UserTripsPage from "./pages/Trips";
@@ -32,6 +31,7 @@ import MotorwayGuide from "./pages/Guide";
 import NorthernGuide from "./pages/ReadMore";
 import ExploreRoadTrips from "./pages/Explore";
 import BookingDetails from "./pages/BookingDetails";
+import CompanyVerificationScreen from "./pages/RentalVerification";
 
 function Layout() {
   const location = useLocation();
@@ -42,7 +42,6 @@ function Layout() {
     "/rental-login", 
     "/rental-signup",
     "/auth/reset-password",
-    // "/admin-dashboard",
     "/company-dashboard",
   ].some(path => location.pathname.includes(path));
 
@@ -58,20 +57,20 @@ function Layout() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/cars" element={<CarList />} />
           <Route path="/booking/:id" element={<BookNow />} />
-          <Route path="/profile" element={<Profile />} />
           <Route path="/car-detail/:vehicleId" element={<CarDetail />} />
           <Route path="/car-rental/:brand" element={<CarRentalMarketWrapper />} />
           <Route path="/bookings/:id" element={<BookingDetails />} />
           <Route path="/company-dashboard" element={<RentalCompanyDashboard />} />
-          {/* <Route path="/admin-dashboard" element={<AdminDashboard />} /> */}
           <Route path="/inbox" element={<ChatApplication />} />
           <Route path="/trips" element={<UserTripsPage />} />
+          <Route path="/verify-email" element={<VerificationScreen />} />
           <Route path="/rental-signup" element={<RentalCompanySignUp />} />
           <Route path="/rental-login" element={<CompanyLogin />} />
           <Route path="/how-it-works" element={<DriveFleetHomepage />} />
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/legal" element={<LegalMattersPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/rental-verification" element={<CompanyVerificationScreen />} />
           <Route path="/booking-confirmation/:bookingId" element={<BookingDetail />} />
           <Route path="/service" element={<Service />} />
           <Route path="/contact" element={<Contact />} />

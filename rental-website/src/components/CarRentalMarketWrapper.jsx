@@ -19,14 +19,13 @@ const CarRentalMarketWrapper = () => {
       setError(null);
   
       try {
-        const response = await fetch(`https://car-rental-backend-black.vercel.app/vehicles/manufacturer/${brand}`);
+        const response = await fetch(`https://car-rental-backend-black.vercel.app/api/vehicles/manufacturer/${brand}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch car data');
         }
   
         const data = await response.json();
-        console.log(data);
         
         // Transform the API response to match your component's expected structure
         setCarData({

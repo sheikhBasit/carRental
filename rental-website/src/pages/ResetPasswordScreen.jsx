@@ -16,7 +16,7 @@ const ResetPasswordScreen = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`https://car-rental-backend-black.vercel.app/users/reset-password/${token}`, {
+      const response = await fetch(`https://car-rental-backend-black.vercel.app/api/users/reset-password/${token}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import Cookies from 'js-cookie';
 import DashboardLayout from './DashboardLayout';
-import LoadingIndicator from './LoadingIndicator';
-import ErrorDisplay from './ErrorDisplay';
-
-const BASE_URL = 'https://car-rental-backend-black.vercel.app';
+import { api } from '../../utils/api';
+import { getCompanyFromCookies } from '../../utils/auth';
 
 const RentalCompanyDashboard = () => {
     const [dashboardData, setDashboardData] = useState({
@@ -21,12 +18,9 @@ const RentalCompanyDashboard = () => {
   
     // Fetch company from cookies on component mount
     useEffect(() => {
-      const companyData = Cookies.get('company');
-      console.log('Company data from cookies:', companyData);
+      const companyData = getCompanyFromCookies();
       if (companyData) {
-        const parsedCompany = JSON.parse(companyData);
-        console.log('Parsed company data:', parsedCompany);
-        setCompany(parsedCompany);
+        setCompany(companyData);
       }
     }, []);
   
@@ -34,49 +28,47 @@ const RentalCompanyDashboard = () => {
     useEffect(() => {
       const fetchDashboardData = async () => {
         if (!company?.id) {
-          console.log('No company ID found, skipping data fetch');
           return;
         }
+
+        console.log("company",company)
   
         try {
-          console.log('Starting to fetch dashboard data for company ID:', company.id);
           setDashboardData(prev => ({ ...prev, loading: true, error: null }));
           
-          const queryParams = { company: company.id };
-          
-          console.log('API request URLs:', {
-            vehicles: `${BASE_URL}/vehicles/company?company=${company.id}`,
-            drivers: `${BASE_URL}/drivers/company?company=${company.id}`,
-            bookings: `${BASE_URL}/bookings/companyBookings?company=${company.id}`,
-            transactions: `${BASE_URL}/transaction/company/${company.id}`
-          });
-        
+          // Use the API utility for fetching data with authentication
           const [
             vehiclesRes, 
             driversRes, 
             bookingsRes,
             transactionsRes
-          ] = await Promise.all([
-            axios.get(`${BASE_URL}/vehicles/company`, { params: queryParams }),
-            axios.get(`${BASE_URL}/drivers/company`, { params: queryParams }),
-            axios.get(`${BASE_URL}/bookings/companyBookings`, { params: queryParams }),
-            axios.get(`${BASE_URL}/transaction/company/${company.id}`)
+          ] = await Promise.allSettled([
+            api.getVehicles(company.id),
+            api.getDrivers(company.id),
+            api.getBookings(company.id),
+            fetch(`https://car-rental-backend-black.vercel.app/api/transaction/company/${company.id}`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            }).then(res => res.json())
           ]);
+          console.log("vehiclesRes",vehiclesRes)
+          console.log("driversRes",driversRes)
+          console.log("bookingsRes",bookingsRes)
+          console.log("transactionsRes",transactionsRes)
           
-          console.log("booking",bookingsRes.data)
-          // Process responses
-          const vehiclesData = vehiclesRes.data?.vehicles || [];
-          const driversData = driversRes.data.data || [];
-          const bookingsData = bookingsRes.data || [];
-          const transactionsData = transactionsRes.data || []; // This is now an array of transactions
-          
-          console.log('API Responses:', {
-            vehicles: vehiclesData,
-            drivers: driversData,
-            bookings: bookingsData,
-            transactions: transactionsData
-          });
-        
+          const vehiclesData = vehiclesRes.status === 'fulfilled' ? vehiclesRes.value.data?.vehicles || [] : [];
+          const driversData = driversRes.status === 'fulfilled' ? driversRes.value.data.data || [] : [];
+          const bookingsData = bookingsRes.status === 'fulfilled' ? bookingsRes.value.data || [] : [];
+          const transactionsData = transactionsRes.status === 'fulfilled' ? transactionsRes.value || [] : [];
+          console.log("transactionsData",transactionsData)
+          console.log("bookingsData",bookingsData)
+          console.log("vehiclesData",vehiclesData)
+          console.log("driversData",driversData)
+
+
+
+
           // Calculate statistics
           const activeBookings = bookingsData.filter(b => b.status === 'active');
           
@@ -114,12 +106,7 @@ const RentalCompanyDashboard = () => {
           });
         
         } catch (error) {
-          console.error('Error fetching dashboard data:', {
-            message: error.message,
-            config: error.config,
-            response: error.response?.data
-          });
-          
+          console.error("Dashboard data fetch error:", error);
           setDashboardData(prev => ({
             ...prev,
             loading: false,
@@ -129,17 +116,8 @@ const RentalCompanyDashboard = () => {
       };
   
       if (company) {
-        console.log('Company detected, fetching dashboard data');
         fetchDashboardData();
       }
-    }, [company]);
-    
-    useEffect(() => {
-      console.log('Current dashboard data state:', dashboardData);
-    }, [dashboardData]);
-    
-    useEffect(() => {
-      console.log('Current company state:', company);
     }, [company]);
   
     return (
@@ -152,4 +130,4 @@ const RentalCompanyDashboard = () => {
     );
 };
 
-export default RentalCompanyDashboard;  
+export default RentalCompanyDashboard;

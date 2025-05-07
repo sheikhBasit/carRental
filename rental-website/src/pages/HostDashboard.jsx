@@ -7,9 +7,13 @@ import {
   RefreshCw, AlertCircle, Edit, Trash2, X, Check,
   Plus, Upload, ChevronDown
 } from 'lucide-react';
+import DamageReports from './DamageReports';
+import { api } from '../utils/api';
+import { getAuthToken, getCompanyFromCookies } from '../utils/auth';
+
 
 // Base URL for API calls
-const BASE_URL = 'https://car-rental-backend-black.vercel.app';
+const BASE_URL = 'https://car-rental-backend-black.vercel.app/api';
 
 const RentalCompanyDashboard = () => {
   const [activeSection, setActiveSection] = useState('overview');
@@ -49,9 +53,17 @@ const RentalCompanyDashboard = () => {
 
   // Fetch company from cookies on component mount
   useEffect(() => {
-    const companyData = Cookies.get('company');
+    const token = getAuthToken();
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+    
+    const companyData = getCompanyFromCookies();
     if (companyData) {
-      setCompany(JSON.parse(companyData));
+      setCompany(companyData);
+    } else {
+      window.location.href = '/login';
     }
   }, []);
 
@@ -62,27 +74,14 @@ const RentalCompanyDashboard = () => {
 
       try {
         const [vehiclesRes, driversRes, bookingsRes] = await Promise.all([
-          axios.get(`${BASE_URL}/vehicles/company`, { 
-            params: { company: company.id }
-          }),
-          axios.get(`${BASE_URL}/drivers/company`, { 
-            params: { company: company.id }
-          }),
-          axios.get(`${BASE_URL}/bookings/companyBookings`, { 
-            params: { company: company.id }
-          })
+          api.getVehicles(company.id),
+          api.getDrivers(company.id),
+          api.getBookings(company.id)
         ]);
         
-        // Extract the actual data from the responses
         const vehiclesData = vehiclesRes.data.vehicles || [];
         const driversData = driversRes.data.drivers || [];
         const bookingsData = bookingsRes.data.bookings || [];
-
-        console.log('API responses:', {
-          vehicles: vehiclesData,
-          drivers: driversData,
-          bookings: bookingsData
-        });
 
         setDashboardData({
           stats: {
@@ -143,8 +142,6 @@ const RentalCompanyDashboard = () => {
           profileimg: mockImageUrl
         }));
       }
-    } catch (error) {
-      console.error('Image upload failed:', error);
     } finally {
       setImageUploading(false);
     }
@@ -159,21 +156,18 @@ const RentalCompanyDashboard = () => {
       };
 
       if (activeSection === 'vehicles') {
-        await axios.post(`${BASE_URL}/vehicles`, requestData);
+        await api.addVehicle(requestData);
         setShowVehicleForm(false);
       } else {
-        await axios.post(`${BASE_URL}/drivers`, requestData);
+        await api.addDriver(requestData);
         setShowDriverForm(false);
       }
       
       // Refresh data
-      const response = await axios.get(
-        activeSection === 'vehicles' 
-          ? `${BASE_URL}/vehicles/company?company=${company._id}`
-          : `${BASE_URL}/drivers/company?company=${company._id}`
-      );
+      const response = activeSection === 'vehicles' 
+        ? await api.getVehicles(company._id)
+        : await api.getDrivers(company._id);
       
-      // Extract the actual data from the response
       const updatedData = activeSection === 'vehicles' 
         ? response.data.vehicles || []
         : response.data.drivers || [];
@@ -202,7 +196,6 @@ const RentalCompanyDashboard = () => {
         companyId: ''
       });
     } catch (error) {
-      console.error('Submission failed:', error);
       setDashboardData(prev => ({
         ...prev,
         error: `Submission failed: ${error.response?.data?.message || error.message}`
@@ -213,24 +206,19 @@ const RentalCompanyDashboard = () => {
   const handleDelete = async (id) => {
     try {
       if (activeSection === 'vehicles') {
-        await axios.delete(`${BASE_URL}/vehicles/${id}`, {
-          params: { company: company._id }
-        });
+        await api.deleteVehicle(id, company._id);
         setDashboardData(prev => ({
           ...prev,
           vehicles: prev.vehicles.filter(v => v._id !== id)
         }));
       } else {
-        await axios.delete(`${BASE_URL}/drivers/${id}`, {
-          params: { company: company._id }
-        });
+        await api.deleteDriver(id, company._id);
         setDashboardData(prev => ({
           ...prev,
           drivers: prev.drivers.filter(d => d._id !== id)
         }));
       }
     } catch (error) {
-      console.error('Deletion failed:', error);
       setDashboardData(prev => ({
         ...prev,
         error: `Deletion failed: ${error.response?.data?.message || error.message}`
@@ -346,8 +334,8 @@ const RentalCompanyDashboard = () => {
       <div className="flex h-screen items-center justify-center bg-red-50">
         <div className="text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
-          <h2 className="text-2xl font-bold text-red-700">Dashboard Error</h2>
-          <p className="text-red-500">{dashboardData.error}</p>
+          <h2 className="text-2xl font-bold text-black">No Data is added</h2>
+          {/* <p className="text-red-500">{dashboardData.error}</p> */}
           <button 
             onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -373,7 +361,8 @@ const RentalCompanyDashboard = () => {
           { icon: Users, label: 'Drivers', section: 'drivers' },
           { icon: DollarSign, label: 'Bookings', section: 'bookings' },
           { icon: Shield, label: 'Maintenance', section: 'maintenance' },
-          { icon: FileText, label: 'Reports', section: 'reports' }
+          { icon: FileText, label: 'Reports', section: 'reports' },
+          { icon: FileText, label: 'Damage Reports', section: 'damageReports' },
         ].map((item) => (
           <button
             key={item.section}
@@ -996,6 +985,12 @@ const RentalCompanyDashboard = () => {
     </div>
   );
 
+  const renderDamageReports = () => (
+    <React.Suspense fallback={<div>Loading...</div>}>
+      <DamageReports />
+    </React.Suspense>
+  );
+
   return (
     <div className="flex h-screen bg-gray-100">
       {renderSidebar()}
@@ -1007,12 +1002,14 @@ const RentalCompanyDashboard = () => {
             {activeSection === 'vehicles' && 'Vehicle Fleet Management'}
             {activeSection === 'drivers' && 'Driver Management'}
             {activeSection === 'bookings' && 'Booking Management'}
+            {activeSection === 'damageReports' && 'Damage Reports'}
           </h1>
           
           {activeSection === 'overview' && renderOverview()}
           {activeSection === 'vehicles' && renderVehicles()}
           {activeSection === 'drivers' && renderDrivers()}
           {activeSection === 'bookings' && renderBookings()}
+          {activeSection === 'damageReports' && renderDamageReports()}
         </div>
       </main>
 

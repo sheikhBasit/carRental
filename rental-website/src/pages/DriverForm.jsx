@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { X, Upload, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import Cookies from 'js-cookie';
+
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const vehicleTypes = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Van', 'Truck'];
 
 const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }) => {
   const [formData, setFormData] = useState(driver || {
@@ -13,14 +13,17 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
     age: '',
     experience: '',
     cnic: '',
-    company: '',
+    company: company ? company._id : '',
     baseHourlyRate: '',
     baseDailyRate: '',
     availability: {
       days: [],
       startTime: '08:00',
       endTime: '20:00'
-    },  
+    },
+    pricingTiers: [],
+    currentPromotion: null,
+    blackoutDates: [],
     rating: 0,
     completedTrips: 0,
     currentAssignment: null,
@@ -94,10 +97,17 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
         throw new Error('File size exceeds 5MB limit');
       }
       
+      // Ensure the file has a proper named extension
+      const imageFileWithExtension = new File(
+        [file], 
+        `driver_profile_${Date.now()}.${fileExtension}`, 
+        { type: file.type }
+      );
+      
       setFormData(prev => ({
         ...prev,
         profileimg: mockImageUrl,
-        profileFile: file // Store the file object for later submission
+        profileFile: imageFileWithExtension // Store the renamed file object for later submission
       }));
     } catch (error) {
       console.error('Image upload failed:', error);
@@ -118,10 +128,20 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
         throw new Error('CNIC must be in format XXXXX-XXXXXXX-X');
       }
   
-      // Validate phone number format
-      const cleanPhNo = formData.phNo.replace(/[^\d+]/g, '');
-      if (!/^((\+92|0)3[0-9]{2}[0-9]{7})$/.test(cleanPhNo)) {
-        throw new Error('Phone number must be in format +923XX-XXXXXXX or 03XX-XXXXXXX');
+      // Validate phone number format (strict Pakistani format)
+      const cleanPhNo = formData.phNo.replace(/\s/g, '').replace(/-/g, '');
+      if (!/^((\+92|0)3[0-9]{9})$/.test(cleanPhNo)) {
+        throw new Error('Phone number must be in format +923XXXXXXXXXX or 03XXXXXXXXXX');
+      }
+  
+      // Validate age
+      if (formData.age < 18 || formData.age > 70) {
+        throw new Error('Age must be between 18 and 70');
+      }
+  
+      // Validate experience
+      if (formData.experience < 0 || formData.experience > 50) {
+        throw new Error('Experience must be between 0 and 50 years');
       }
   
       // Validate profile image
@@ -131,6 +151,13 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
       
       if (formData.profileFile && !['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(formData.profileFile.type)) {
         throw new Error('Profile image must be a JPG, JPEG, PNG, or WEBP file');
+      }
+  
+      // Validate required fields
+      if (!formData.name || !formData.license || !formData.phNo || !formData.age || 
+          !formData.experience || !formData.cnic || !formData.baseHourlyRate || 
+          !formData.baseDailyRate || formData.availability.days.length === 0) {
+        throw new Error('Please fill in all required fields');
       }
   
       const companyData = Cookies.get('company');
@@ -144,39 +171,92 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
       }
   
       // Create FormData object for submission
-      const formDataToSend = new FormData();
-      
-      // Append all regular fields
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('license', formData.license.toUpperCase());
-      formDataToSend.append('phNo', cleanPhNo);
-      formDataToSend.append('age', formData.age);
-      formDataToSend.append('experience', formData.experience);
-      formDataToSend.append('cnic', formData.cnic);
-      formDataToSend.append('company', company.id);
-      formDataToSend.append('baseHourlyRate', formData.baseHourlyRate);
-      formDataToSend.append('baseDailyRate', formData.baseDailyRate);
-      
-      // FIXED: Send individual days as separate array elements instead of a JSON string
-      formData.availability.days.forEach((day, index) => {
-        formDataToSend.append(`availability[days][${index}]`, day);
-      });
-      formDataToSend.append('availability[startTime]', formData.availability.startTime);
-      formDataToSend.append('availability[endTime]', formData.availability.endTime);
+    // Replace the entire form data construction section with this code
+// To ensure we're using the correct format
+
+// Create FormData object for submission
+const formDataToSend = new FormData();
+
+// Append all regular fields
+formDataToSend.append('name', formData.name);
+formDataToSend.append('license', formData.license.toUpperCase());
+formDataToSend.append('phNo', cleanPhNo); // Send the cleaned phone number
+formDataToSend.append('age', formData.age);
+formDataToSend.append('experience', formData.experience);
+formDataToSend.append('cnic', formData.cnic);
+formDataToSend.append('company', company.id);
+formDataToSend.append('baseHourlyRate', formData.baseHourlyRate);
+formDataToSend.append('baseDailyRate', formData.baseDailyRate);
+
+// Availability - IMPORTANT: Use bracket notation as strings in the key name
+// Note that the key strings have '[' and ']' characters in them
+// Replace your current availability FormData append with this:
+// Alternative approach - stringify the entire availability object
+formDataToSend.append('availability', JSON.stringify({
+  days: formData.availability.days,
+  startTime: formData.availability.startTime,
+  endTime: formData.availability.endTime
+}));// Pricing Tiers
+if (formData.pricingTiers && formData.pricingTiers.length > 0) {
+  formData.pricingTiers.forEach((tier, index) => {
+    Object.entries(tier).forEach(([key, value]) => {
+      formDataToSend.append(`pricingTiers[${index}][${key}]`, value);
+    });
+  });
+} else {
+  // Send an empty array indicator
+  formDataToSend.append('pricingTiers', '');
+}
+
+// Blackout Dates
+if (formData.blackoutDates && formData.blackoutDates.length > 0) {
+  formData.blackoutDates.forEach((date, index) => {
+    formDataToSend.append(`blackoutDates[${index}]`, date);
+  });
+} else {
+  // Send an empty array indicator
+  formDataToSend.append('blackoutDates', '');
+}
+
+// Current Promotion
+if (formData.currentPromotion) {
+  formDataToSend.append('currentPromotion[discountPercentage]', formData.currentPromotion.discountPercentage);
+  if (formData.currentPromotion.validUntil) {
+    formDataToSend.append('currentPromotion[validUntil]', formData.currentPromotion.validUntil);
+  }
+} else {
+  formDataToSend.append('currentPromotion', '');
+}
+
+// Append the profile image file if it exists
+if (formData.profileFile) {
+  // Make sure we only send an image file with proper extension
+  const fileExtension = formData.profileFile.name.split('.').pop().toLowerCase();
+  if (!['jpg', 'jpeg', 'png', 'webp'].includes(fileExtension)) {
+    throw new Error('Profile image must have a valid image extension (.jpg, .jpeg, .png, or .webp)');
+  }
   
-      // Append the profile image file if it exists
-      if (formData.profileFile) {
-        // Make sure we only send an image file with proper extension
-        const fileExtension = formData.profileFile.name.split('.').pop().toLowerCase();
-        if (!['jpg', 'jpeg', 'png', 'webp'].includes(fileExtension)) {
-          throw new Error('Profile image must have a valid image extension (.jpg, .jpeg, .png, or .webp)');
-        }
-        formDataToSend.append('profileimg', formData.profileFile);
-      }
+  // Rename the file to ensure it has a proper extension in the uploaded filename
+  const renamedFile = new File(
+    [formData.profileFile], 
+    `driver_profile_${Date.now()}.${fileExtension}`, 
+    { type: formData.profileFile.type }
+  );
   
+  formDataToSend.append('profileimg', renamedFile);
+}
+
+// Add debugging
+console.log('Form data to send (check key format):');
+setTimeout(() => {
+  formDataToSend.forEach((value, key) => {
+    console.log(`${key} => ${value}`);
+  });
+}, 10);
+
       const url = driver 
-        ? `https://car-rental-backend-black.vercel.app/drivers/${driver._id}`
-        : 'https://car-rental-backend-black.vercel.app/drivers/postDriver';
+        ? `https://car-rental-backend-black.vercel.app/api/drivers/${driver._id}`
+        : 'https://car-rental-backend-black.vercel.app/api/drivers/postDriver';
       
       const method = driver ? 'PUT' : 'POST';
   
@@ -188,7 +268,7 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
         // Don't set Content-Type header - it will be set automatically with the correct boundary
         // for multipart/form-data
       });
-      
+      console.log(response)
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || errorData.error || 'Something went wrong');
@@ -197,8 +277,11 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
       const result = await response.json();
       
       if (driver) {
+        console.log('Driver updated:', result);
         onDriverUpdated(result);
+
       } else {
+        console.log('Driver added:', result);
         onDriverAdded(result);
       }
       
@@ -292,8 +375,9 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
                 onChange={handleInputChange}
                 className="w-full p-2 border rounded text-black"
                 required
-                placeholder="0300-1234567 or +92300-1234567"
+                placeholder="+923001234567 or 03001234567"
               />
+              <p className="text-xs text-gray-500 mt-1">Format: +923XXXXXXXXXX or 03XXXXXXXXXX</p>
             </div>
 
             <div>
@@ -381,7 +465,7 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
             {showAvailability && (
               <div className="border text-black p-4 rounded-lg">
                 <div className="mb-3">
-                  <label className="block text-black text-sm font-medium mb-1">Available Days</label>
+                  <label className="block text-black text-sm font-medium mb-1">Available Days*</label>
                   <div className="flex flex-wrap gap-2">
                     {daysOfWeek.map(day => (
                       <button
@@ -398,27 +482,32 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
                       </button>
                     ))}
                   </div>
+                  {formData.availability.days.length === 0 && (
+                    <p className="text-xs text-red-500 mt-1">Please select at least one day</p>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-black text-sm font-medium mb-1">Start Time</label>
+                    <label className="block text-black text-sm font-medium mb-1">Start Time*</label>
                     <input
                       type="time"
                       name="startTime"
                       value={formData.availability.startTime}
                       onChange={handleAvailabilityChange}
                       className="w-full p-2 border rounded text-black"
+                      required
                     />
                   </div>
                   <div>
-                    <label className="block text-black text-sm font-medium mb-1">End Time</label>
+                    <label className="block text-black text-sm font-medium mb-1">End Time*</label>
                     <input
                       type="time"
                       name="endTime"
                       value={formData.availability.endTime}
                       onChange={handleAvailabilityChange}
                       className="w-full p-2 border rounded text-black"
+                      required
                     />
                   </div>
                 </div>

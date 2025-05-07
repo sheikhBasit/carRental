@@ -18,7 +18,10 @@ const Sidebar = ({ activeSection, setActiveSection, company }) => {
 
   const handleLogout = () => {
     // Clear company data cookie
-    Cookies.remove('companyData');
+    Cookies.remove('company');
+    Cookies.remove('companyToken');
+    Cookies.remove('token');
+
     // Navigate to root
     navigate('/');
   };

@@ -36,7 +36,7 @@ const Login = () => {
 
     try {
       // First try user login
-      const response = await fetch("https://car-rental-backend-black.vercel.app/users/login", {
+      const response = await fetch("https://car-rental-backend-black.vercel.app/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -45,7 +45,8 @@ const Login = () => {
       });
 
       const data = await response.json();
-      
+      console.log("respnose",response);  
+      console.log(data);
       if (!response.ok) {
         throw new Error(`Error ${data.message}` || "Login failed. Please try again.");
       }
@@ -56,9 +57,11 @@ const Login = () => {
           id: data.user._id,
           email: data.user.email,
           name: data.user.name,
-          city: data.user.city
+          city: data.user.city,
+          token: data.token
         }), { expires: 7 });
-
+        console.log("token", data.token);
+        localStorage.setItem("token", data.token);
         if (data.token) {
           Cookies.set("token", data.token, { expires: 7 });
         }
