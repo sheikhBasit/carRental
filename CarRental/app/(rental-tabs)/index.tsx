@@ -8,6 +8,7 @@ import { AppConstants } from "@/constants/appConstants";
 import { loadCompanyId } from "@/utils/storageUtil";
 import { useRouter } from "expo-router";
 import { Picker } from '@react-native-picker/picker';
+import { apiFetch } from "@/utils/api";
 
 type Vehicle = {
   _id: string;
@@ -220,81 +221,69 @@ const transmissions = [...new Set(cars.map(car => car.transmission))];
 
   const fetchCompanyVehicles = useCallback(async (id: string) => {
     if (!id) return;
-    
+  
     try {
-      const response = await fetch(`${AppConstants.LOCAL_URL}/vehicles/company?company=${id}`);
-      const data = await response.json();
-
-      if (response.ok) {
+      const data = await apiFetch(`/vehicles/company?company=${id}`);
+      
+      if (data && Array.isArray(data.vehicles)) {
         console.log("Vehicles:", data.vehicles);
         setCars(data.vehicles as Vehicle[]);
       } else {
-        // console.log("Error:", data.error);
+        console.warn("Unexpected response structure:", data);
       }
     } catch (error) {
-      // console.log("Error fetching vehicles:", error);
+      console.error("Error fetching vehicles:", error);
     }
   }, []);
-
   const fetchTransactionData = useCallback(async (id: string) => {
     if (!id) {
       console.log("[RentalHome] No company ID provided for transaction fetch");
       return;
     }
-    
+  
     try {
       console.log(`[RentalHome] Fetching transaction data for company ${id}`);
-      const response = await fetch(`${AppConstants.LOCAL_URL}/transaction/company/${id}`);
       
-      if (!response.ok) {
-        console.log(`[RentalHome] Error response from server: ${response.status}`);
-        const errorData = await response.json();
-        console.log("[RentalHome] Error details:", errorData);
-        return;
-      }
-
-      const data = await response.json();
+      const data = await apiFetch(`/transaction/company/${id}`);
       console.log("[RentalHome] Raw transaction data:", data);
   
-      if (response.ok) {
-        // Handle both array and object responses
-        const transactionsArray = Array.isArray(data) ? data : 
-                                (data.transactions ? data.transactions : []);
-        
-        console.log("[RentalHome] Processed transactions array:", transactionsArray);
-        
-        // Calculate totals
-        const totalTransactions = transactionsArray.length;
-        const totalRevenue = transactionsArray
-          .filter((txn: Transaction) => {
-            console.log(`[RentalHome] Checking transaction ${txn._id}:`, {
-              paymentStatus: txn.paymentStatus,
-              amount: txn.amount
-            });
-            return txn.paymentStatus === 'completed';
-          })
-          .reduce((sum: number, txn: Transaction) => {
-            console.log(`[RentalHome] Adding to revenue: ${txn.amount}`);
-            return sum + txn.amount;
-          }, 0);
-
-        console.log("[RentalHome] Calculated totals:", {
-          totalTransactions,
-          totalRevenue
-        });
-
-        setTransactionData({
-          transactions: transactionsArray,
-          totalTransactions,
-          totalRevenue
-        });
-      } else {
-        console.log("[RentalHome] Error in transaction data:", data.error);
-      }
+      // Handle both array and object responses
+      const transactionsArray = Array.isArray(data)
+        ? data
+        : data.transactions || [];
+  
+      console.log("[RentalHome] Processed transactions array:", transactionsArray);
+  
+      // Calculate totals
+      const totalTransactions = transactionsArray.length;
+      const totalRevenue = transactionsArray
+        .filter((txn: Transaction) => {
+          console.log(`[RentalHome] Checking transaction ${txn._id}:`, {
+            paymentStatus: txn.paymentStatus,
+            amount: txn.amount
+          });
+          return txn.paymentStatus === 'completed';
+        })
+        .reduce((sum: number, txn: Transaction) => {
+          console.log(`[RentalHome] Adding to revenue: ${txn.amount}`);
+          return sum + txn.amount;
+        }, 0);
+  
+      console.log("[RentalHome] Calculated totals:", {
+        totalTransactions,
+        totalRevenue
+      });
+  
+      setTransactionData({
+        transactions: transactionsArray,
+        totalTransactions,
+        totalRevenue
+      });
     } catch (error) {
       console.log("[RentalHome] Error fetching transaction data:", error);
     }
   }, []);
+  
   
 
 

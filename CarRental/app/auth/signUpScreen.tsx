@@ -19,6 +19,7 @@ import { loadCity, loadUserId, saveCity } from "@/utils/storageUtil";
 import * as Notifications from "expo-notifications";
 import { AppConstants } from "@/constants/appConstants";
 import ProvinceSelector from "@/components/ui/ProvinceSelector";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type ImageUri = string | null;
 
@@ -187,15 +188,15 @@ const SignUpScreen: React.FC = () => {
       });
 
       const result = await response.json();
-
       if (response.ok) {
         Alert.alert("Success", "Sign-up successful! Redirecting...");
         const { user } = result;
         const userId = user._id; // Document ID of the newly created user
+        await AsyncStorage.setItem('userEmail', user.email);
         loadUserId().then(userId);
         // Store the user ID in local storage or state for future use
         console.log("User created successfully! User ID:", userId);
-
+        
         router.push("./verification"); // Redirect to verification screen
       } else {
         Alert.alert("Error", result.message || "Sign-up failed. Please try again.");

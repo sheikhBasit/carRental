@@ -12,7 +12,8 @@ import { router } from 'expo-router';
 import { useLikedVehicles } from '@/components/layout/LikedVehicleContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-
+import { apiFetch } from '@/utils/api';
+  
 type CarProps = {
   _id: string;
   manufacturer: string;
@@ -86,11 +87,8 @@ const ExploreScreen = () => {
 
   const fetchManufacturers = async () => {
     try {
-      const response = await fetch(`${AppConstants.LOCAL_URL}/vehicles/getManufacturers`);
-      if (response.status === 500) {
-        throw new Error('Failed to fetch manufacturers');
-      }
-      const data: string[] = await response.json();
+
+      const data: string[] = await apiFetch(`/vehicles/getManufacturers`,{},undefined,  'user');
       console.log('Manufacturers API response:', data);
       setManufacturers(['All', ...data]);
     } catch (err: any) {
@@ -108,35 +106,16 @@ const ExploreScreen = () => {
       }
       setUserCity(storedCity);
       setSelectedCity(storedCity);
-  
-      const url = `${AppConstants.LOCAL_URL}/vehicles/getCityVehicle?city=${storedCity}`;
-      console.log('Fetching vehicles from:', url);
-      
-      const response = await fetch(url);
-      
-      console.log('Response status:', response.status);
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.log("No Vehicles found for the city.");
-          setVehicles([]);
-          setAllVehicles([]);
-          setLoading(false);
-          return;
-        }
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-  
-      const responseData = await response.json();
-      console.log("Raw response data:", responseData);
-      
+
+      const responseData = await apiFetch(`/vehicles/getCityVehicle?city=${storedCity}`,{},undefined,  'user');
+      console.log('Raw response data:', responseData);
       if (!responseData.data || !Array.isArray(responseData.data)) {
-        console.log("Response data is not in the expected format:", responseData);
+        console.log('Response data is not in the expected format:', responseData);
         setVehicles([]);
         setAllVehicles([]);
         setLoading(false);
         return;
       }
-  
       setVehicles(responseData.data);
       setAllVehicles(responseData.data);
       console.log('Fetched vehicles:', responseData.data);
@@ -398,7 +377,7 @@ const ExploreScreen = () => {
         </View>
 
         {loading && <ActivityIndicator size="large" color="white" />}
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {/* {error ? <Text style={styles.errorText}>{error}</Text> : null} */}
 
         <ScrollView showsVerticalScrollIndicator={false}>
           {vehicles.length > 0 ? (
@@ -471,7 +450,7 @@ const ExploreScreen = () => {
                   onPress={() => handleBookNow(car)}
                 >
                   <Text style={styles.bookNowText}>
-                  Book Now: Rs.${car.rent}/day
+                  Book Now: Rs.{car.rent}/day
                   </Text>
                 </TouchableOpacity>
               </View>

@@ -14,7 +14,7 @@ import { getStoredUserId } from "@/utils/storageUtil";
 import { AppConstants } from "@/constants/appConstants";
 import AppLayout from "../screens/AppLayout";
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
+import { apiFetch } from '@/utils/api';
 
 type ChatItem = {
   id: string;
@@ -42,11 +42,7 @@ const ChatScreen = () => {
         Alert.alert("Error", "User ID not found.");
         return;
       }
-
-      const response = await axios.get(`${AppConstants.SOCKETS_URL}/chat/chats/${userId}`);
-      const chatData = response.data;
-
-      // Process the chat data from backend
+      const chatData = await apiFetch(`/chat/chats/${userId}`, {}, AppConstants.SOCKETS_URL);
       const processedChats = await processChatData(chatData, userId);
       setChats(processedChats);
     } catch (error) {
@@ -96,14 +92,14 @@ const ChatScreen = () => {
     try {
       // First try to fetch as a rental company
       try {
-        const response = await axios.get(`${AppConstants.LOCAL_URL}/rental-companies/${userId}`);
+        const response = await apiFetch(`/rental-companies/${userId}`, {}, AppConstants.LOCAL_URL);
         return {
           name: response.data.companyName,
           profilePhoto: response.data.profilePhoto,
         };
       } catch (companyError) {
         // If not a company, try to fetch as a regular user
-        const userResponse = await axios.get(`${AppConstants.LOCAL_URL}/users/${userId}`);
+        const userResponse = await apiFetch(`/users/${userId}`, {}, AppConstants.LOCAL_URL);
         return {
           name: `${userResponse.data.firstName} ${userResponse.data.lastName}`,
           profilePhoto: userResponse.data.profilePhoto,

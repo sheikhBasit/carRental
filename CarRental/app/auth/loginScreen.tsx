@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import InputField from '../../components/ui/InputField';
 import { Ionicons } from '@expo/vector-icons';
 import { AppConstants } from '@/constants/appConstants';
-import { getStoredUserId, loadCity, loadUserId, saveCity, saveUserId, saveUserName, saveUserPicture } from '@/utils/storageUtil';
+import { getStoredUserId, loadCity, loadUserId, saveCity, saveUserId, saveUserName } from '@/utils/storageUtil';
 
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -41,52 +41,61 @@ const LoginScreen: React.FC = () => {
   const handleLogin = async () => {
     console.log('Logging in with:', email, password);
     setIsLoading(true);
-
+  
     try {
-      const response = await fetch(`${AppConstants.LOCAL_URL}/users/login`, {
+      const response = await fetch(`${AppConstants.LOCAL_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
       });
-
+  
       const data = await response.json();
       console.log('Response:', data);
-
+  
       if (response.ok) {
+        // Validate token exists before storing
+        if (!data.token) {
+          throw new Error('No access token received from server');
+        }
+  
         // Save login status and user data
-        await AsyncStorage.setItem('isLoggedIn', 'true');
-        await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-
+        await AsyncStorage.multiSet([
+          ['isLoggedIn', 'true'],
+          ['userData', JSON.stringify(data.user)],
+          ['accessToken', data.token]
+        ]);
+  
         // Save user details to AsyncStorage
         setCity(data.user.city);
         setUserId(data.user._id);
-        await saveUserId(data.user._id);
-        await saveCity(data.user.city);
-        await saveUserName(data.user.name); // Save user name
-        await saveUserPicture(data.user.profilePhoto); // Save profile picture
-
+        
+        // Validate user data before saving
+        if (data.user._id) await saveUserId(data.user._id);
+        if (data.user.city) await saveCity(data.user.city);
+        if (data.user.name) await saveUserName(data.user.name);
+      
         console.log('Logged in successfully');
         router.push('/(tabs)');
       } else {
         console.log('Login failed:', data.message);
-        alert(data.message);
+        alert(data.message || 'Login failed. Please try again.');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      alert('Something went wrong. Please try again.');
+      console.log('Login error:', error);
+      // Clear any partial stored data if login fails
+      await AsyncStorage.multiRemove(['isLoggedIn', 'userData', 'accessToken']);
     } finally {
       setIsLoading(false);
     }
   };
-
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.container}>
       
         <Image source={require('../../assets/images/loginBanner.jpg')} style={styles.image} />
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.push('/auth/startScreen')}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.title}>Ready to Rent Dream Car?</Text>
@@ -94,7 +103,7 @@ const LoginScreen: React.FC = () => {
         <View style={styles.formContainer}>
           <InputField
             label="User Name"
-            placeholder="Enter Email or Mobile Number"
+            placeholder="Enter your Email "
             value={email}
             onChangeText={setEmail}
             style={styles.input}

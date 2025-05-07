@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AppConstants } from '@/constants/appConstants';
 import { loadCompanyId } from '@/utils/storageUtil';
+import { apiFetch } from '@/utils/api';
 
 const CompanyAccountScreen = () => {
   const [companyData, setCompanyData] = useState<any>(null);
@@ -21,23 +22,20 @@ const CompanyAccountScreen = () => {
     const fetchCompanyData = async () => {
       try {
         const companyId = await loadCompanyId();
-        console.log('Company ID:', companyId);
         if (!companyId) {
           router.push('/(rental-tabs)');
           return;
         }
 
-        const response = await fetch(`${AppConstants.LOCAL_URL}/rental-companies/${companyId}`);
-        const data = await response.json();
-        console.log('Company Data:', data.company);
+        const data = await apiFetch(`/rental-companies/${companyId}`,{},undefined,'company');
+        console.log("[CompanyAccountScreen] Company data:", data);
         if (data) {
           setCompanyData(data);
-
         } else {
-          console.log('Error fetching company data:', data.message);
+          console.error('Error fetching company data:', data.message);
         }
       } catch (error) {
-        console.log('Error:', error);
+        console.error('Error:', error);
       } finally {
         setIsLoading(false);
       }
@@ -57,7 +55,7 @@ const CompanyAccountScreen = () => {
   if (!companyData) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>No company data found </Text>
+        <Text style={styles.errorText}>No company data found</Text>
       </View>
     );
   }
@@ -65,7 +63,7 @@ const CompanyAccountScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color="#003366" />
+        <Ionicons name="arrow-back" size={24} color="#fff" />
       </TouchableOpacity>
 
       <View style={styles.header}>
@@ -149,26 +147,32 @@ const CompanyAccountScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
+    marginTop:40,
     flex: 1,
     backgroundColor: '#fff',
   },
   backButton: {
     position: 'absolute',
-    top: 45,
+    top: 20,
     left: 20,
     zIndex: 1,
+    color:'#fff',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 5,
   },
   header: {
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    backgroundColor: '#003366',
+  
   },
   title: {
-    marginTop: 20,
-    marginLeft: 30,
+    marginLeft:50,
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#003366',
+    color: '#fff',
   },
   section: {
     padding: 20,
@@ -211,7 +215,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ff0000',
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 400,
   },
 });
 

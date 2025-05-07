@@ -1,282 +1,264 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  FlatList,
-  ActivityIndicator,
-  RefreshControl,
-  Alert,
-  TouchableOpacity,
-} from "react-native";
-import { useRouter } from "expo-router";
-import RentalAppLayout from "@/app/screens/rentalAppLayout";
+import { View, Text, StyleSheet, Image, FlatList, ActivityIndicator, TouchableOpacity } from "react-native";
+import { Button } from "react-native-paper";
+import { router, useLocalSearchParams } from "expo-router";
+import AppLayout from "../screens/AppLayout";
+import { getStoredUserId } from "@/utils/storageUtil";
 import { AppConstants } from "@/constants/appConstants";
-import { loadCompanyId } from "@/utils/storageUtil";
+import { apiFetch } from '@/utils/api';
+import RentalAppLayout from "../screens/rentalAppLayout";
 
-type Vehicle = {
+type BookingStatus = 'confirmed' | 'completed' | 'canceled' | 'ongoing';
+
+type BookingData = {
   _id: string;
-  manufacturer: string;
-  model: string;
-  carImageUrls: string[];
-  transmission: string;
-  rent: number;
+  idVehicle?: {
+    manufacturer?: string;
+    model?: string;
+    carImageUrls?: string[];
+    rent?: number;
+    capacity?: number;
+  };
+  company?: {
+    companyName?: string;
+  };
+  from?: string;
+  to?: string;
+  status?: BookingStatus;
 };
 
-type Booking = {
-  _id: string;
-  status: string;
-  idVehicle?: Vehicle | null;
-  from: string;
-  to: string;
-  user: string;
-  fromTime: string;
-  toTime: string;
-  createdAt: string;
-  updatedAt: string;
+type CarProps = {
+  id: string;
+  name: string;
+  image: string;
+  price: string;
+  fromDate: string;
+  toDate: string;
+  rentalCompany: string;
+  capacity: number;
+  status: BookingStatus;
+  bookingData: BookingData; // Now properly typed
 };
 
-const formatDisplayDate = (dateString: string): string => {
-  if (!dateString) return "N/A";
-  
-  // Try ISO format first (like createdAt/updatedAt)
-  const isoDate = new Date(dateString);
-  if (!isNaN(isoDate.getTime())) {
-    return isoDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+const getStatusColor = (status: BookingStatus) => {
+  switch(status) {
+    case 'confirmed': return styles.statusConfirmed;
+    case 'completed': return styles.statusCompleted;
+    case 'canceled': return styles.statuscanceled;
+    case 'ongoing': return styles.statusOngoing;
+    default: return {};
   }
-
-  // Handle custom format (like "1532das")
-  if (dateString.length >= 8) {
-    const year = dateString.substring(0, 4);
-    const month = dateString.substring(4, 6);
-    const day = dateString.substring(6, 8);
-    
-    // Validate numeric values
-    if (!isNaN(Number(year)) && !isNaN(Number(month)) && !isNaN(Number(day))) {
-      const date = new Date(Number(year), Number(month) - 1, Number(day));
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        });
-      }
-    }
-  }
-
-  // Fallback to raw value if can't parse
-  return dateString;
-};
-
-const calculateDays = (fromDate: string, toDate: string): number => {
-  // Handle exact same date case immediately
-  if (fromDate === toDate) {
-    return 1; // Same day rental
-  }
-
-  // Try to parse dates
-  let startDate, endDate;
-  
-  // Try ISO format first
-  startDate = new Date(fromDate);
-  endDate = new Date(toDate);
-  
-  // If the dates aren't valid, try to extract numeric part from the beginning
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-    // Extract numeric prefix from the date strings
-    const fromNumericMatch = fromDate.match(/^\d+/);
-    const toNumericMatch = toDate.match(/^\d+/);
-    
-    if (fromNumericMatch && toNumericMatch) {
-      const fromNumeric = fromNumericMatch[0];
-      const toNumeric = toNumericMatch[0];
-      
-      // If both date strings have at least 8 digits, try to parse as YYYYMMDD
-      if (fromNumeric.length >= 8 && toNumeric.length >= 8) {
-        const fromYear = fromNumeric.substring(0, 4);
-        const fromMonth = fromNumeric.substring(4, 6);
-        const fromDay = fromNumeric.substring(6, 8);
-        
-        const toYear = toNumeric.substring(0, 4);
-        const toMonth = toNumeric.substring(4, 6);
-        const toDay = toNumeric.substring(6, 8);
-        
-        startDate = new Date(Number(fromYear), Number(fromMonth) - 1, Number(fromDay));
-        endDate = new Date(Number(toYear), Number(toMonth) - 1, Number(toDay));
-      }
-    }
-  }
-  
-  // If we still don't have valid dates, return 1 as default (assume same day rental)
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-    console.warn("Could not parse dates properly:", fromDate, toDate);
-    return 1; // Default to 1 day if dates can't be parsed
-  }
-  
-  // Calculate the difference in milliseconds
-  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-  // Convert to days (add 1 because the rental includes both the start and end dates)
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-  
-  return diffDays;
 };
 
 const RentalHomeScreen = () => {
-  const router = useRouter();
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [confirmedCars, setConfirmedCars] = useState<CarProps[]>([]);
+  const [completedCars, setCompletedCars] = useState<CarProps[]>([]);
+  const [canceledCars, setcanceledCars] = useState<CarProps[]>([]);
+  const [ongoingCars, setOngoingCars] = useState<CarProps[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<BookingStatus>("confirmed");
+  const { refresh } = useLocalSearchParams<{ refresh: string }>();
 
-  const fetchCompanyBookings = async (id: string) => {
+  console.log("[RentalHomeScreen] Initial state:", {
+    confirmedCars: confirmedCars.length,
+    completedCars: completedCars.length,
+    canceledCars: canceledCars.length,
+    loading,
+    activeTab,
+    refresh
+  });
+
+  const handleHomeNavigation = () => {
+    console.log("[RentalHomeScreen] Navigating to home screen");
+    router.push("/");
+  };
+
+  const fetchBookings = async (status: BookingStatus) => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${AppConstants.LOCAL_URL}/bookings/companyBookings?company=${id}&status=confirmed`
-      );
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          setBookings([]);
-          return;
-        }
-        throw new Error(`Failed to load bookings (Status: ${response.status})`);
+      const userId = await getStoredUserId();
+      if (!userId) {
+        console.log("[RentalHomeScreen] User ID not found in storage");
+        setLoading(false);
+        return;
       }
-      
-      const data = await response.json();
-      setBookings(data);
+      const result = await apiFetch(`/bookings/userBookings?userId=${userId}&status=${status}`,{},undefined,  'user');
+      if (Array.isArray(result)) {
+        const formattedCars = result.map((booking: any) => {
+          const vehicle = booking.idVehicle || {};
+          const company = booking.company || {};
+          return {
+            id: booking._id || "N/A",
+            name: `${vehicle.manufacturer || "Unknown"} ${vehicle.model || ""}`.trim(),
+            image: vehicle.carImageUrls && vehicle.carImageUrls.length > 0 ? vehicle.carImageUrls[0] : "https://via.placeholder.com/150",
+            price: vehicle.rent || "N/A",
+            fromDate: booking.from || "N/A",
+            toDate: booking.to || "N/A",
+            rentalCompany: company.companyName || "Unknown",
+            capacity: vehicle.capacity || "N/A",
+            status: booking.status,
+            bookingData: booking,
+          };
+        });
+        if (status === "confirmed") setConfirmedCars(formattedCars);
+        if (status === "completed") setCompletedCars(formattedCars);
+        if (status === "canceled") setcanceledCars(formattedCars);
+        if (status === "ongoing") setOngoingCars(formattedCars);
+      } else {
+        if (status === "confirmed") setConfirmedCars([]);
+        if (status === "completed") setCompletedCars([]);
+        if (status === "canceled") setcanceledCars([]);
+        if (status === "ongoing") setOngoingCars([]);
+      }
     } catch (error) {
-      console.error("Error fetching bookings:", error);
-      Alert.alert("Error", "Failed to load bookings. Please try again.");
+      console.log(`[RentalHomeScreen] Error fetching ${status} bookings:`, error);
+      if (status === "confirmed") setConfirmedCars([]);
+      if (status === "completed") setCompletedCars([]);
+      if (status === "canceled") setcanceledCars([]);
+      if (status === "ongoing") setOngoingCars([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    if (companyId) await fetchCompanyBookings(companyId);
-    setRefreshing(false);
-  };
+  useEffect(() => {
+    console.log("[RentalHomeScreen] Active tab changed to:", activeTab);
+    fetchBookings(activeTab);
+  }, [activeTab]);
 
-  const handleBookingPress = (booking: Booking) => {
+  useEffect(() => {
+    if (refresh === 'true') {
+      console.log("[RentalHomeScreen] Refresh triggered");
+      fetchBookings(activeTab);
+    }
+  }, [refresh, activeTab]);
+
+  const handleCardPress = (booking: CarProps) => {
+    console.log("[RentalHomeScreen] Card pressed for booking:", booking.id);
     router.push({
       pathname: "/screens/BookingDetail/[booking]",
-      params: { 
-        booking: JSON.stringify(booking),
-        id: booking._id 
-      }
+      params: { booking: JSON.stringify(booking.bookingData) },
     });
   };
 
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        const storedCompanyId = await loadCompanyId();
-        if (!storedCompanyId) {
-          throw new Error("Company ID not found");
-        }
-        setCompanyId(storedCompanyId);
-        await fetchCompanyBookings(storedCompanyId);
-      } catch (error) {
-        console.error("Initialization error:", error);
-        setLoading(false);
-      }
-    };
+  const renderCarItem = ({ item }: { item: CarProps }) => {
+    console.log(`[RentalHomeScreen] Rendering car item ${item.id}`);
+    return (
+      <TouchableOpacity onPress={() => handleCardPress(item)}>
+        <View style={styles.card}>
+          <Image source={{ uri: item.image }} style={styles.carImage} />
+          <View style={styles.cardContent}>
+            <Text style={styles.carName}>{item.name}</Text>
+            <Text style={styles.carPrice}>{item.price} per day</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Rental Company:</Text>
+              <Text style={styles.value}>{item.rentalCompany}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Capacity:</Text>
+              <Text style={styles.value}>{item.capacity} seats</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Booking Dates:</Text>
+              <Text style={styles.value}>
+                {item.fromDate} → {item.toDate}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Status:</Text>
+              <Text style={[styles.value, getStatusColor(item.status)]}>
+                {item.status}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
-    initialize();
-  }, []);
+  const renderEmptyState = () => {
+    console.log("[RentalHomeScreen] Rendering empty state for tab:", activeTab);
+    return (
+      <View style={styles.emptyContainer}>
+        <Image source={require('../../assets/images/trip.jpg')} style={styles.image} />
+        <Text style={styles.emptyText}>
+          {activeTab === "confirmed" && "No confirmed bookings available."}
+          {activeTab === "completed" && "No completed bookings available."}
+          {activeTab === "canceled" && "No canceled bookings available."}
+          {activeTab === "ongoing" && "No ongoing bookings available."}
+        </Text>
+
+      </View>
+    );
+  };
+
+  console.log("[RentalHomeScreen] Rendering with state:", {
+    confirmedCars: confirmedCars.length,
+    completedCars: completedCars.length,
+    canceledCars: canceledCars.length,
+    loading,
+    activeTab
+  });
 
   return (
-    <RentalAppLayout title="Confirmed Bookings">
+    <RentalAppLayout title="Your Trips">
       <View style={styles.container}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FFFFFF" />
-            <Text style={styles.loadingText}>Loading Bookings...</Text>
-          </View>
-        ) : bookings.length > 0 ? (
-          <FlatList
-            data={bookings}
-            keyExtractor={(item) => item._id}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                colors={["#FFFFFF"]}
-                tintColor="#FFFFFF"
-              />
-            }
-            renderItem={({ item }) => {
-              const durationDays = calculateDays(item.from, item.to);
-              
-              return (
-                <TouchableOpacity 
-                  style={styles.bookingCard}
-                  onPress={() => handleBookingPress(item)}
-                >
-                  <Text style={styles.bookingHeader}>Booking #{item._id.substring(0, 8)}</Text>
-                  
-                  <View style={styles.dateContainer}>
-                    <View style={styles.dateColumn}>
-                      <Text style={styles.dateLabel}>From</Text>
-                      <Text style={styles.dateValue}>{formatDisplayDate(item.from)}</Text>
-                      <Text style={styles.timeValue}>{item.fromTime || 'N/A'}</Text>
-                    </View>
-                    
-                    <View style={styles.dateColumn}>
-                      <Text style={styles.dateLabel}>To</Text>
-                      <Text style={styles.dateValue}>{formatDisplayDate(item.to)}</Text>
-                      <Text style={styles.timeValue}>{item.toTime || 'N/A'}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.durationContainer}>
-                    <Text style={styles.durationLabel}>
-                      Duration: <Text style={styles.durationValue}>{durationDays} {durationDays === 1 ? 'day' : 'days'}</Text>
-                    </Text>
-                  </View>
-
-                  {item.idVehicle ? (
-                    <>
-                      <View style={styles.vehicleInfo}>
-                        <Image
-                          source={{ uri: item.idVehicle.carImageUrls[0] || 'https://via.placeholder.com/150' }}
-                          style={styles.vehicleImage}
-                        />
-                        <View style={styles.vehicleDetails}>
-                          <Text style={styles.vehicleText}>
-                            {item.idVehicle.manufacturer} {item.idVehicle.model}
-                          </Text>
-                          <Text style={styles.vehicleSubtext}>
-                            {item.idVehicle.transmission} • ${item.idVehicle.rent}/day
-                          </Text>
-                          <Text style={styles.totalRentText}>
-                            Total: ${(item.idVehicle.rent * durationDays).toFixed(2)}
-                          </Text>
-                        </View>
-                      </View>
-                    </>
-                  ) : (
-                    <Text style={styles.warningText}>No vehicle assigned</Text>
-                  )}
-
-                  <Text style={styles.footerText}>
-                    Booked on {formatDisplayDate(item.createdAt)}
-                  </Text>
-                </TouchableOpacity>
-              );
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === "confirmed" && styles.activeTab]}
+            onPress={() => {
+              console.log("[RentalHomeScreen] Switching to confirmed tab");
+              setActiveTab("confirmed");
             }}
-          />
+          >
+            <Text style={styles.tabText}>Upcoming</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === "ongoing" && styles.activeTab]}
+            onPress={() => {
+              console.log("[RentalHomeScreen] Switching to ongoing tab");
+              setActiveTab("ongoing");
+            }}
+          >
+            <Text style={styles.tabText}>Ongoing</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === "completed" && styles.activeTab]}
+            onPress={() => {
+              console.log("[RentalHomeScreen] Switching to completed tab");
+              setActiveTab("completed");
+            }}
+          >
+            <Text style={styles.tabText}>Previous</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === "canceled" && styles.activeTab]}
+            onPress={() => {
+              console.log("[RentalHomeScreen] Switching to canceled tab");
+              setActiveTab("canceled");
+            }}
+          >
+            <Text style={styles.tabText}>canceled</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <ActivityIndicator size="large" color="#FFF" />
         ) : (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No confirmed bookings found</Text>
-          </View>
+          <FlatList
+            data={
+              activeTab === "confirmed" ? confirmedCars :
+              activeTab === "ongoing" ? ongoingCars :
+              activeTab === "completed" ? completedCars :
+              activeTab === "canceled" ? canceledCars :
+              []
+            }
+            keyExtractor={(item) => item.id}
+            renderItem={renderCarItem}
+            ListEmptyComponent={renderEmptyState}
+            onEndReached={() => console.log("[RentalHomeScreen] Reached end of list")}
+            onEndReachedThreshold={0.5}
+          />
         )}
       </View>
     </RentalAppLayout>
@@ -287,122 +269,99 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#003366",
-    padding: 16,
+    padding: 10,
+    marginBottom: 60,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  tabContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 15,
   },
-  loadingText: {
-    color: "#FFFFFF",
-    marginTop: 12,
+  tabButton: {
+    padding: 10,
+    borderRadius: 5,
+  },
+  activeTab: {
+    backgroundColor: "#007AFF",
+  },
+  tabText: {
     fontSize: 16,
+    color: "#FFF",
+  },
+  card: {
+    backgroundColor: "#1E5A82",
+    borderRadius: 10,
+    overflow: "hidden",
+    marginBottom: 15,
+  },
+  statusOngoing: {
+    color: '#ff9900', // example: orange
+    fontWeight: 'bold',
+  },
+  carImage: {
+    width: "100%",
+    height: 150,
+  },
+  cardContent: {
+    padding: 15,
+  },
+  carName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FFF",
+  },
+  carPrice: {
+    fontSize: 16,
+    color: "#ADD8E6",
+    marginTop: 5,
+  },
+  image: {
+    width: '100%',
+    height: 180,
+    resizeMode: 'contain',
+    marginTop: 80,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 5,
+  },
+  label: {
+    fontSize: 14,
+    color: "#ADD8E6",
+    fontWeight: "600",
+  },
+  value: {
+    fontSize: 14,
+    color: "#FFF",
+  },
+  statusConfirmed: {
+    color: "#00FF00", // Green for confirmed
+  },
+  statusCompleted: {
+    color: "#808080", // Gray for completed
+  },
+  statuscanceled: {
+    color: "#FF0000", // Red for canceled
+  },
+  backButton: {
+    marginVertical: 20,
+    alignSelf: "center",
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: "center",
     alignItems: "center",
+    marginTop: 50,
   },
   emptyText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    opacity: 0.8,
-  },
-  bookingCard: {
-    backgroundColor: "#1E5A82",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  bookingHeader: {
-    color: "#FFFFFF",
-    fontSize: 18,
+    marginTop: 20,
+    fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 12,
-  },
-  dateContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    color: "white",
     marginBottom: 10,
-  },
-  dateColumn: {
-    flex: 1,
-  },
-  dateLabel: {
-    color: "#FFFFFF",
-    opacity: 0.8,
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  dateValue: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  timeValue: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    opacity: 0.8,
-  },
-  durationContainer: {
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.2)",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.2)",
-    marginBottom: 12,
-  },
-  durationLabel: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  durationValue: {
-    fontWeight: "bold",
-    color: "#FFD700",
-  },
-  vehicleInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  vehicleImage: {
-    width: 80,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  vehicleDetails: {
-    flex: 1,
-  },
-  vehicleText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  vehicleSubtext: {
-    color: "#FFFFFF",
-    opacity: 0.8,
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  totalRentText: {
-    color: "#FFD700",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
-  warningText: {
-    color: "#FFD700",
-    fontStyle: "italic",
-    marginVertical: 8,
-  },
-  footerText: {
-    color: "#FFFFFF",
-    opacity: 0.7,
-    fontSize: 12,
-    marginTop: 8,
   },
 });
 

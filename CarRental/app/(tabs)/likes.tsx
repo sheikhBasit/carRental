@@ -9,6 +9,7 @@ import { AppConstants } from '@/constants/appConstants';
 import { router } from 'expo-router';
 import AppLayout from '../screens/AppLayout';
 import { useLikedVehicles } from '@/components/layout/LikedVehicleContext'; // Ensure this path is correct
+import { apiFetch } from '@/utils/api';
 
 type CarProps = {
   _id: string;
@@ -60,18 +61,10 @@ const LikedVehiclesScreen = () => {
         setLoading(false);
         return;
       }
-
-      const response = await fetch(`${AppConstants.LOCAL_URL}/vehicles/getLikedVehicles`, {
+      const data = await apiFetch(`/vehicles/getLikedVehicles`,{
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vehicleIds: likedVehicles }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch liked vehicles');
-      }
-
-      const data: CarProps[] = await response.json();
+        body: JSON.stringify({ vehicleIds: likedVehicles })
+      },undefined,  'user');
       setLikedCars(data);
     } catch (error: any) {
       console.error('Error fetching liked vehicles:', error.message);

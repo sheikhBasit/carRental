@@ -4,6 +4,15 @@ import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native
 import { useColorScheme } from '@/hooks/useColorScheme';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { LogBox } from 'react-native'; // Add this import
+
+// Ignore specific warnings
+LogBox.ignoreLogs([
+  'expo-notifications functionality is not fully supported in Expo Go',
+]);
+LogBox.ignoreLogs([
+  'expo-notifications: Push is not fully supported in Expo Go',
+]);
 
 SplashScreen.preventAutoHideAsync();
 

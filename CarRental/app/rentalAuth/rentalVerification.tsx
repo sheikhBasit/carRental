@@ -23,7 +23,7 @@ const VerificationCodeScreen: React.FC = () => {
 
     // API call to verify the code
     try {
-      const response = await fetch(`${AppConstants.LOCAL_URL}/users/verify-email`, {
+      const response = await fetch(`${AppConstants.LOCAL_URL}/rental-companies/verify/rental-company`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -48,35 +48,35 @@ const VerificationCodeScreen: React.FC = () => {
     }
   };
 
-    const handleResendVerifyCode = async () => {
-      setIsLoading(true); // Start loading
-  
-      const email = await AsyncStorage.getItem('userEmail');
-      // API call to verify the code
-      try {
-        const response = await fetch(`${AppConstants.LOCAL_URL}/users/resend-verification`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email: email }),
-        });
-  
-        const result = await response.json();
-       
-        if (response.ok) {
-          Alert.alert("Success", "Verification Code Sended");
-        } else {
-          Alert.alert("Error", result.message || "Verification failed. Please try again.");
-        }
-      } catch (error) {
-        console.error("Error verifying code:", error);
-        Alert.alert("Error", "Something went wrong. Please try again.");
-      } finally {
-        setIsLoading(false); // Stop loading
+  const handleResendVerifyCode = async () => {
+    setIsLoading(true); // Start loading
+
+    const email = await AsyncStorage.getItem('email');
+    // API call to verify the code
+    try {
+      const response = await fetch(`${AppConstants.LOCAL_URL}/rental-companies/resend-verification/rental-company`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email }),
+      });
+
+      const result = await response.json();
+     
+      if (response.ok) {
+        Alert.alert("Success", "Verification Code Send");
+      } else {
+        Alert.alert("Error", result.message || "Verification failed. Please try again.");
       }
-    };
-  
+    } catch (error) {
+      console.error("Error verifying code:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false); // Stop loading
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Enter Verification Code</Text>

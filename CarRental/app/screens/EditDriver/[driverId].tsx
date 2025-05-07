@@ -19,6 +19,7 @@ import { AppConstants } from '@/constants/appConstants';
 import { useNavigation, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { apiFetch } from '@/utils/api';
 
 type DriverDetails = {
   _id?: string;
@@ -91,10 +92,9 @@ const EditDriverScreen = () => {
     const fetchDriverDetails = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${AppConstants.LOCAL_URL}/drivers/${driverId}`);
-        const { data } = await response.json();
-
-        if (response.ok) {
+        const result = await apiFetch(`/drivers/${driverId}`,{},undefined,'company');
+        const data = result.data || result;
+        if (data) {
           setDriverDetails({
             name: data.name || '',
             profileimg: data.profileimg || '',
@@ -122,7 +122,6 @@ const EditDriverScreen = () => {
           Alert.alert('Error', 'Failed to fetch driver details.');
         }
       } catch (error) {
-        console.error('Error fetching driver details:', error);
         Alert.alert('Error', 'An error occurred while fetching driver details.');
       } finally {
         setIsLoading(false);
@@ -217,7 +216,6 @@ const EditDriverScreen = () => {
           setCameraVisible(false);
         }
       } catch (error) {
-        console.error('Error taking picture:', error);
         Alert.alert('Error', 'Failed to take picture');
       }
     }
@@ -231,6 +229,47 @@ const EditDriverScreen = () => {
     setCameraType((current) => (current === 'back' ? 'front' : 'back'));
   };
 
+  const handleDelete = async () => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this driver? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              const response = await apiFetch(`/drivers/${driverId}`, {
+                method: 'DELETE'
+              },undefined,'company');
+              
+              if (response && response.success) {
+                Alert.alert('Success', 'Driver deleted successfully!', [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      navigation.goBack();
+                    },
+                  },
+                ]);
+              } else {
+                Alert.alert('Error', response.message || 'Failed to delete driver');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete the driver.');
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
   const handleSubmit = async () => {
     if (
       !driverDetails.name ||
@@ -252,40 +291,17 @@ const EditDriverScreen = () => {
 
     // Validate age
     if (driverDetails.age < 18 || driverDetails.age > 70) {
-      Alert.alert('Error', 'Age must be between 18 and 70 years.');
-      return;
-    }
-
-    // Validate experience
-    if (driverDetails.experience < 0 || driverDetails.experience > 50) {
-      Alert.alert('Error', 'Experience must be between 0 and 50 years.');
-      return;
-    }
-
-    // Validate CNIC format
-    if (!/^\d{5}-\d{7}-\d$/.test(driverDetails.cnic)) {
-      Alert.alert('Error', 'CNIC must be in format XXXXX-XXXXXXX-X');
-      return;
-    }
-
-    // Validate phone number
-    if (!/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$/.test(driverDetails.phNo)) {
-      Alert.alert('Error', 'Please enter a valid phone number');
+      Alert.alert('Error', 'Driver age must be between 18 and 70.');
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${AppConstants.LOCAL_URL}/drivers/${driverId}`, {
+      const response = await apiFetch(`/drivers/${driverId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(driverDetails),
-      });
-
-      const result = await response.json();
-      if (response.ok) {
+        body: JSON.stringify(driverDetails)
+      },undefined,'company');
+      if (response && response.success) {
         Alert.alert('Success', 'Driver updated successfully!', [
           {
             text: 'OK',
@@ -295,10 +311,9 @@ const EditDriverScreen = () => {
           },
         ]);
       } else {
-        Alert.alert('Error', result.message || 'Something went wrong');
+        Alert.alert('Error', response.message || 'Something went wrong');
       }
     } catch (error) {
-      console.error('Error:', error);
       Alert.alert('Error', 'Failed to update the driver.');
     } finally {
       setIsLoading(false);
@@ -648,6 +663,18 @@ const EditDriverScreen = () => {
             <Text style={styles.buttonText}>Update Driver</Text>
           )}
         </TouchableOpacity>
+        {/* Delete Button */}
+<TouchableOpacity
+  style={[styles.button, styles.deleteButton, isLoading && styles.buttonDisabled]}
+  onPress={handleDelete}
+  disabled={isLoading}
+>
+  {isLoading ? (
+    <ActivityIndicator color="white" />
+  ) : (
+    <Text style={styles.buttonText}>Delete Driver</Text>
+  )}
+</TouchableOpacity>
       </ScrollView>
     </RentalAppLayout>
   );
@@ -657,6 +684,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  deleteButton: {
+    backgroundColor: '#dc3545',
+    marginTop: 10,
   },
   loadingContainer: {
     flex: 1,

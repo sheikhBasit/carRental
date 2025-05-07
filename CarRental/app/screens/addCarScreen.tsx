@@ -107,7 +107,7 @@ const AddCarScreen = () => {
         setCarDetails(prev => ({ ...prev, company: storedCompanyId }));
       }
     } catch (error) {
-      console.error("Error fetching company ID:", error);
+      Alert.alert('Error', 'Failed to fetch company ID');
     }
   };
 
@@ -164,7 +164,6 @@ const AddCarScreen = () => {
         }
         setCameraVisible(false);
       } catch (error) {
-        console.error('Error taking picture:', error);
         Alert.alert('Error', 'Failed to take picture');
       }
     }
@@ -306,70 +305,56 @@ const AddCarScreen = () => {
   };
 
   const handleSubmit = async () => {
-    console.log('Starting handleSubmit...');
-    console.log('Car Details:', JSON.stringify(carDetails, null, 2));
-    
     // Basic validation
-    console.log('Performing basic validation...');
-  if (
-    !carDetails.manufacturer ||
-    !carDetails.model ||
+    if (
+      !carDetails.manufacturer ||
+      !carDetails.model ||
       !carDetails.year ||
-    !carDetails.numberPlate ||
-    !carDetails.rent ||
-    !carDetails.capacity ||
-    !carDetails.transmission ||
+      !carDetails.numberPlate ||
+      !carDetails.rent ||
+      !carDetails.capacity ||
+      !carDetails.transmission ||
       !carDetails.fuelType ||
       !carDetails.vehicleType ||
       !carDetails.insuranceExpiry ||
       carDetails.carImageUrls.length === 0 ||
-    carDetails.availability.days.length === 0 ||
+      carDetails.availability.days.length === 0 ||
       !carDetails.company
-  ) {
-      console.log('Validation failed - missing required fields');
-    Alert.alert('Error', 'Please fill in all required fields.');
-    return;
-  }
+    ) {
+      Alert.alert('Error', 'Please fill in all required fields.');
+      return;
+    }
 
     // Validate number plate format
     if (!/^[A-Z]{3}-[0-9]{4}$/.test(carDetails.numberPlate)) {
-      console.log('Validation failed - invalid number plate format');
       Alert.alert('Error', 'Number plate must be in format ABC-1234');
-    return;
-  }
-    console.log('Basic validation passed');
+      return;
+    }
 
     // Validate cities
-    console.log('Validating cities...');
     for (const city of carDetails.cities) {
       if (!city.name) {
-        console.log('City validation failed - missing city name');
         Alert.alert('Error', 'Please fill in all city names.');
-    return;
-  }
+        return;
+      }
     }
-    console.log('City validation passed');
 
     if (!companyId) {
-      console.log('Company ID validation failed');
       Alert.alert('Error', 'Company ID not found. Please login again.');
       return;
     }
-    console.log('Company ID validation passed');
 
     // Prepare form data
-    console.log('Preparing form data...');
-  const formData = new FormData();
+    const formData = new FormData();
     
     // Add simple fields
-    console.log('Adding basic fields to form data...');
-  formData.append('manufacturer', carDetails.manufacturer.toLowerCase());
-  formData.append('model', carDetails.model.toLowerCase());
+    formData.append('manufacturer', carDetails.manufacturer.toLowerCase());
+    formData.append('model', carDetails.model.toLowerCase());
     formData.append('year', carDetails.year);
     formData.append('numberPlate', carDetails.numberPlate.toUpperCase());
     formData.append('rent', carDetails.rent);
     formData.append('capacity', carDetails.capacity);
-  formData.append('transmission', carDetails.transmission);
+    formData.append('transmission', carDetails.transmission);
     formData.append('fuelType', carDetails.fuelType);
     formData.append('vehicleType', carDetails.vehicleType);
     formData.append('mileage', carDetails.mileage || '0');
@@ -377,10 +362,8 @@ const AddCarScreen = () => {
     formData.append('minimumRentalHours', carDetails.minimumRentalHours);
     formData.append('maximumRentalDays', carDetails.maximumRentalDays);
     formData.append('companyId', companyId);
-    console.log('Basic fields added to form data');
   
     // Add availability
-    console.log('Adding availability data...');
     const formattedDays = carDetails.availability.days.map(day => {
       const dayMap: Record<string, string> = {
         'monday': 'Monday',
@@ -395,17 +378,11 @@ const AddCarScreen = () => {
     });
     formattedDays.forEach((day, idx) => {
       formData.append(`availability[days][${idx}]`, day);
-  });
-  formData.append('availability[startTime]', carDetails.availability.startTime);
-  formData.append('availability[endTime]', carDetails.availability.endTime);
-    console.log('Availability data added:', {
-      days: formattedDays,
-      startTime: carDetails.availability.startTime,
-      endTime: carDetails.availability.endTime
     });
+    formData.append('availability[startTime]', carDetails.availability.startTime);
+    formData.append('availability[endTime]', carDetails.availability.endTime);
     
     // Add cities
-    console.log('Adding cities data...');
     const formattedCities = carDetails.cities.map(city => ({
       name: city.name.toLowerCase().trim(),
       additionalFee: parseFloat(city.additionalFee) || 0
@@ -413,11 +390,9 @@ const AddCarScreen = () => {
     formattedCities.forEach((city, idx) => {
       formData.append(`cities[${idx}][name]`, city.name);
       formData.append(`cities[${idx}][additionalFee]`, city.additionalFee.toString());
-  });
-    console.log('Cities data added:', formattedCities);
+    });
     
     // Add features
-    console.log('Adding features data...');
     const validFeatures = [
       'AC', 'Heating', 'Bluetooth', 'Navigation', 'Sunroof', 
       'Backup Camera', 'Keyless Entry', 'Leather Seats', 'Child Seat',
@@ -429,85 +404,52 @@ const AddCarScreen = () => {
     formattedFeatures.forEach((feature, idx) => {
       formData.append(`features[${idx}]`, feature);
     });
-    console.log('Features data added:', formattedFeatures);
     
     // Add images
-    console.log('Adding images...');
     carImages.forEach((uri, index) => {
       const filename = uri.split('/').pop();
-    const match = /\.(\w+)$/.exec(filename || '');
-    const type = match ? `image/${match[1]}` : 'image';
+      const match = /\.(\w+)$/.exec(filename || '');
+      const type = match ? `image/${match[1]}` : 'image';
 
-      console.log(`Adding image ${index}:`, {
-        filename,
-        type,
-        uri
-      });
-
-    formData.append('carImages', {
+      formData.append('carImages', {
         uri,
-      type,
+        type,
         name: filename || `carImage_${index}.jpg`,
-    } as any);
-  });
-    console.log('All images added to form data');
-
-    // Log the complete form data for debugging
-    console.log('Complete FormData:', {
-      availability: {
-        days: formattedDays,
-        startTime: carDetails.availability.startTime,
-        endTime: carDetails.availability.endTime
-      },
-      cities: formattedCities,
-      features: formattedFeatures,
-      carImages: carImages.length
+      } as any);
     });
-
-  setIsLoading(true);
-    console.log('Making API request...');
-  try {
-      console.log('Request URL:', `${AppConstants.LOCAL_URL}/vehicles/postVehicle`);
-    const response = await fetch(`${AppConstants.LOCAL_URL}/vehicles/postVehicle`, {
-      method: 'POST',
-      body: formData,
+    const companyAccessToken = await AsyncStorage.getItem('companyAccessToken');
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${AppConstants.LOCAL_URL}/vehicles/postVehicle`, {
+        method: 'POST',
+        body: formData,
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${companyAccessToken}`,
         },
-    });
-
-      console.log('Response status:', response.status);
-    const result = await response.json();
-      console.log('Response data:', result);
-
-    if (response.ok) {
-        console.log('Car posted successfully');
-      Alert.alert('Success', 'Car posted successfully!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            navigation.goBack();
-          },
-        },
-      ]);
-    } else {
-        console.log('Error response:', result);
-      Alert.alert('Error', result.message || 'Something went wrong');
-    }
-    } catch (error: any) {
-      console.error('Error in handleSubmit:', error);
-      console.error('Error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name
       });
-    Alert.alert('Error', 'Failed to post the car.');
-  } finally {
-      console.log('Cleaning up...');
-    setIsLoading(false);
-  }
-};
+
+      const result = await response.json();
+
+      if (response.ok) {
+        Alert.alert('Success', 'Car posted successfully!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              navigation.goBack();
+            },
+          },
+        ]);
+      } else {
+        Alert.alert('Error', result.message || 'Something went wrong');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to post the car.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const onInsuranceDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || new Date();

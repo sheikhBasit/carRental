@@ -32,13 +32,11 @@
 //   useEffect(() => {
 //     const fetchUserId = async () => {
 //       const storedUserId = await loadUserId();
-//       console.log(`storedUserId ${storedUserId}`);
       
 //       if (storedUserId) {
 //         setUserId(storedUserId);
 //         fetchBookings(storedUserId);
 //       } else {
-//         // console.error("User ID not found in storage");
 //         setLoading(false);
 //       }
 //     };
@@ -54,11 +52,9 @@
 //       const response = await fetch(
 //         `${AppConstants.LOCAL_URL}/bookings/userBookings?userId=${userId}&status=ongoing`
 //       );
-//       console.log("API Response:", response);
 
 //       if (!response.ok) {
 //         if (response.status === 404) {
-//           console.log("No bookings found for the user.");
 //           setCars([]); // Set cars to an empty array
 //           return;
 //         }
@@ -66,7 +62,6 @@
 //       }
 
 //       const data = await response.json();
-//       console.log("API Data:", data);
 
 //       if (!Array.isArray(data)) {
 //         throw new Error("Invalid response format: Expected an array");
@@ -91,14 +86,13 @@
 
 //       setCars(formattedCars);
 //     } catch (error) {
-//       console.error("Error fetching bookings:", error);
+//       throw error;
 //     } finally {
 //       setLoading(false);
 //     }
 //   };
 
 //   const navigateToBookNow = (car: CarProps) => {
-//     console.log("Navigating with car:", car);
 //     navigation.navigate("CarDetailScreen", { car });
 //   };
 

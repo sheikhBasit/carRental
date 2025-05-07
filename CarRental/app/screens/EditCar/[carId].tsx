@@ -18,6 +18,7 @@ import { AppConstants } from '@/constants/appConstants';
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { apiFetch } from '@/utils/api';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -84,7 +85,6 @@ const EditCarScreen = () => {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   useEffect(() => {
-    console.log('Car ID:', carId);
     if (!carId) {
       Alert.alert('Error', 'No car ID provided');
       router.back();
@@ -94,11 +94,9 @@ const EditCarScreen = () => {
     const fetchCarDetails = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${AppConstants.LOCAL_URL}/vehicles/${carId}`);
-        const data = await response.json();
-        console.log('Car Details:', data);
-        if (response.ok) {
-          const car = data.data;
+        const result = await apiFetch(`/vehicles/${carId}`,{},undefined,'company');
+        if (result.data) {
+          const car = result.data;
           setCarDetails({
             manufacturer: car.manufacturer || '',
             model: car.model || '',
@@ -107,14 +105,11 @@ const EditCarScreen = () => {
             rent: car.rent || 0,
             capacity: car.capacity || 0,
             transmission: car.transmission || 'Manual',
-            company: typeof car.company === 'string' ? car.company : (car.company?.companyName || ''),
-            cities: Array.isArray(car.cities) ? car.cities.map((c: any) => ({
-              name: c.name || '',
-              additionalFee: c.additionalFee || 0
-            })) : [],
+            company: car.company || '',
+            cities: car.cities || [],
             availability: car.availability
               ? {
-                  days: Array.isArray(car.availability.days) ? car.availability.days : [],
+                  days: car.availability.days || [],
                   startTime: car.availability.startTime || '',
                   endTime: car.availability.endTime || ''
                 }
@@ -122,10 +117,9 @@ const EditCarScreen = () => {
           });
           setCarImageUrls(Array.isArray(car.carImageUrls) ? car.carImageUrls : []);
         } else {
-          Alert.alert('Error', data.message || 'Failed to fetch car details.');
+          Alert.alert('Error', result.message || 'Failed to fetch car details.');
         }
       } catch (error) {
-        console.error('Error fetching car details:', error);
         Alert.alert('Error', 'An error occurred while fetching car details.');
       } finally {
         setIsLoading(false);
@@ -243,7 +237,6 @@ const EditCarScreen = () => {
       setCameraVisible(true);
       }
     } catch (error) {
-      console.error('Error handling image upload:', error);
       Alert.alert('Error', 'Failed to upload image');
     }
   };
@@ -258,7 +251,6 @@ const EditCarScreen = () => {
       setCameraVisible(false);
         }
       } catch (error) {
-        console.error('Error taking picture:', error);
         Alert.alert('Error', 'Failed to take picture');
       }
     }
@@ -301,17 +293,11 @@ const EditCarScreen = () => {
         carImageUrls: carImageUrls,
         ...(removedImages.length > 0 && { removeImages: removedImages })
       };
-      const response = await fetch(`${AppConstants.LOCAL_URL}/vehicles/${carId}`, {
+      const response = await apiFetch(`/vehicles/${carId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedCarDetails),
-      });
-  
-      const result = await response.json();
-      console.log('EditCarScreen PUT response:', result, 'Vehicle ID:', carId);
-      if (response.ok) {
+        body: JSON.stringify(updatedCarDetails)
+      },undefined,'company');
+      if (response && response.success) {
         Alert.alert('Success', 'Car updated successfully!', [
           {
             text: 'OK',
@@ -321,10 +307,9 @@ const EditCarScreen = () => {
           },
         ]);
       } else {
-        Alert.alert('Error', result.message || 'Something went wrong');
+        Alert.alert('Error', response.message || 'Something went wrong');
       }
     } catch (error) {
-      console.error('Error:', error);
       Alert.alert('Error', 'Failed to update the car.');
     } finally {
       setIsLoading(false);
@@ -344,20 +329,16 @@ const EditCarScreen = () => {
           onPress: async () => {
             try {
               setIsDeleting(true);
-              const response = await fetch(`${AppConstants.LOCAL_URL}/vehicles/${carId}`, {
-                method: 'DELETE',
-              });
-  
-              const data = await response.json();
-  
-              if (response.ok) {
+              const response = await apiFetch(`/vehicles/${carId}`, {
+                method: 'DELETE'
+              },undefined,'company');
+              if (response && response.success) {
                 Alert.alert('Success', 'Car deleted successfully!');
                 router.back();
               } else {
-                Alert.alert('Error', data?.message || 'Failed to delete car.');
+                Alert.alert('Error', response?.message || 'Failed to delete car.');
               }
             } catch (error) {
-              console.error('Error deleting car:', error);
               Alert.alert('Error', 'An error occurred while deleting the car.');
             } finally {
               setIsDeleting(false);

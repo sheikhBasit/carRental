@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, Image } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { AppConstants } from "@/constants/appConstants";
+import { apiFetch } from '@/utils/api';
 
 interface Comment {
   _id: string;
@@ -24,15 +25,17 @@ const CommentsPage = () => {
   useEffect(() => {
     const fetchComments = async () => {
       try {
-        const response = await fetch(`${AppConstants.LOCAL_URL}/comment/${vehicleId}`);
-        const result = await response.json();
-        if (response.ok) {
-          setComments(result.comments || []);
+        const result = await apiFetch(`/comment/${vehicleId}`);
+        if (result && Array.isArray(result.comments)) {
+          setComments(result.comments);
+        } else if (Array.isArray(result)) {
+          setComments(result);
         } else {
-          console.error("Failed to fetch comments:", result.error);
+          setComments([]);
         }
       } catch (error) {
-        console.error("Error fetching comments:", error);
+        setComments([]);
+        console.error('Error fetching comments:', error);
       }
     };
 

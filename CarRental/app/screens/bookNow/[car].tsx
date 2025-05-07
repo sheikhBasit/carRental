@@ -6,12 +6,12 @@ import { StripeProvider } from '@stripe/stripe-react-native';
 import { useLocalSearchParams, useNavigation, router } from "expo-router";
 import { AppConstants } from "@/constants/appConstants";
 import { getStoredUserId } from "@/utils/storageUtil";
+import { apiFetch } from '@/utils/api';
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator } from 'react-native';
 import { useStripe, usePaymentSheet } from '@stripe/stripe-react-native';
 
-const API_URL = `${AppConstants.LOCAL_URL}/bookings/postBooking`;
 const STRIPE_PUBLIC_KEY = "pk_test_51RCixfPOwJcw4TunDpaIvFjYc3FWO69gD7ivHSBQKgR4vPWWzhIy0oqfvnilYSe3dlkdwQCvGMUvikRPAWw1BKYX00NnJmVGqW";
 
 const formatDate = (date: Date) => {
@@ -242,121 +242,191 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
   const handlePayment = async () => {
     try {
+      console.log('[Payment] Starting payment process...');
       setLoading(true);
       
       // 1. Create booking with pending status
-      const bookingResponse = await fetch(`${AppConstants.LOCAL_URL}/bookings/postBooking`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idVehicle: car._id,
-          user: await getStoredUserId(),
-          company: car.company._id || null,
-          driver: selectedDriver || null,
-          from: formatDate(fromDate),
-          to: formatDate(toDate),
-          intercity,
-          toTime: formatTime(toTime),
-          fromTime: formatTime(fromTime),
-          cityName: intercity ? "" : cityName,
-          status: "pending",
-          totalAmount: totalAmount,
-        }),
+      console.log('[Payment] Creating booking record...');
+      const bookingPayload = {
+        idVehicle: car._id,
+        user: await getStoredUserId(),
+        company: car.company._id || null,
+        driver: selectedDriver || null,
+        from: formatDate(fromDate),
+        to: formatDate(toDate),
+        intercity,
+        toTime: formatTime(toTime),
+        fromTime: formatTime(fromTime),
+        cityName: intercity ? "" : cityName,
+        status: "pending",
+        termsAccepted: true,
+        totalAmount: totalAmount,
+        paymentStatus:"pending"
+      };
+      console.log('[Payment] Booking payload:', bookingPayload);
+  
+      const bookingResponse = await apiFetch(
+        `/bookings/postBooking`,
+        {
+          method: "POST",
+          body: JSON.stringify(bookingPayload),
+        },
+        undefined,
+        'user'
+      );
+      console.log('[Payment] Raw Booking Raw API response:', {
+        status: bookingResponse.success,
+        data: bookingResponse
+      });
+      const bookingResult = await bookingResponse;
+      console.log('[Payment] Booking API response:', {
+        status: bookingResponse.success,
+        data: bookingResult
       });
   
-      const bookingResult = await bookingResponse.json();
-      
-      if (!bookingResponse.ok) {
+      if (!bookingResponse.success) {
+        console.log('[Payment] Booking creation failed:', bookingResult.error);
         throw new Error(bookingResult.error || "Failed to create booking");
       }
-  
+    
       const bookingId = bookingResult.booking._id;
       setLastBookingId(bookingId);
-
-      // 2. Create payment intent
-      const paymentResponse = await fetch(`${AppConstants.LOCAL_URL}/stripe/create-payment-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          amount: Math.round(totalAmount),
-          currency: 'pkr'
-        }),
-      });
+      console.log('[Payment] Booking created successfully. ID:', bookingId);
   
-      if (!paymentResponse.ok) {
+      // 2. Create payment intent
+      console.log('[Payment] Creating payment intent...');
+      const paymentIntentPayload = { 
+        amount: Math.round(totalAmount),
+        currency: 'pkr'
+      };
+      console.log('[Payment] Payment intent payload:', paymentIntentPayload);
+  
+      const paymentResponse = await apiFetch(
+        `/stripe/create-payment-intent`,
+        {
+          method: 'POST',
+          body: JSON.stringify(paymentIntentPayload),
+        },
+        undefined,
+        'user'
+      );
+      
+      console.log('[Payment] Payment intent response status:', paymentResponse);
+      if (!paymentResponse) {
+        const errorResult = await paymentResponse;
+        console.log('[Payment] Payment intent creation failed:', errorResult);
         throw new Error(`HTTP error! status: ${paymentResponse.status}`);
       }
       
-      const { clientSecret, ephemeralKey, customer, paymentIntentId } = await paymentResponse.json();
-  
-      // 3. Initialize payment sheet
-      const { error: initError } = await initPaymentSheet({
-        merchantDisplayName: "Drive Fleet",
-        customerId: customer,
-        customerEphemeralKeySecret: ephemeralKey,
-        paymentIntentClientSecret: clientSecret,
-        allowsDelayedPaymentMethods: true,
+      const paymentIntentData = await paymentResponse;
+      console.log('[Payment] Payment intent data:', {
+        clientSecret: paymentIntentData.clientSecret ? '*****' : 'MISSING',
+        ephemeralKey: paymentIntentData.ephemeralKey ? '*****' : 'MISSING',
+        customer: paymentIntentData.customer || 'MISSING',
+        paymentIntentId: paymentIntentData.paymentIntentId || 'MISSING'
       });
   
+      // 3. Initialize payment sheet
+      console.log('[Payment] Initializing payment sheet...');
+      const initOptions = {
+        merchantDisplayName: "Drive Fleet",
+        customerId: paymentIntentData.customer,
+        customerEphemeralKeySecret: paymentIntentData.ephemeralKey,
+        paymentIntentClientSecret: paymentIntentData.clientSecret,
+        allowsDelayedPaymentMethods: true,
+      };
+      console.log('[Payment] Payment sheet init options:', initOptions);
+  
+      const { error: initError } = await initPaymentSheet(initOptions);
+    
       if (initError) {
+        console.log('[Payment] Payment sheet initialization failed:', initError);
         throw initError;
       }
+      console.log('[Payment] Payment sheet initialized successfully');
   
       // 4. Present payment sheet
+      console.log('[Payment] Presenting payment sheet to user...');
       const { error: paymentError } = await presentPaymentSheet();
       
       if (paymentError) {
         if (paymentError.code === 'Canceled') {
-          console.log('User canceled payment');
+          console.log('[Payment] User canceled payment');
           // Delete the pending booking if payment is canceled
-          await fetch(`${AppConstants.LOCAL_URL}/bookings/delete/${bookingId}`, {
-            method: 'DELETE',
-          });
+          console.log('[Payment] Deleting pending booking due to cancellation...');
+          const deleteResponse = await apiFetch(
+            `/bookings/delete/${bookingId}`,
+            { method: 'DELETE' },
+            undefined,
+            'user'
+          );
+          
+          if (deleteResponse.ok) {
+            console.log('[Payment] Pending booking deleted successfully');
+          } else {
+            console.log('[Payment] Failed to delete pending booking');
+          }
           return;
         } else {
+          console.log('[Payment] Payment sheet presentation error:', paymentError);
           throw paymentError;
         }
-      } else {
-
-        // 5. Store transaction
-        const transactionResponse = await fetch(`${AppConstants.LOCAL_URL}/transaction/post`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            transactionId: paymentIntentId,
-            bookingId: bookingId,
-            amount: totalAmount,
-            paymentStatus: 'completed',
-            paymentMethod: 'card'
-          })
-        });
-  
-        if (!transactionResponse.ok) {
-          throw new Error('Failed to store transaction');
-        }
-
-        // 6. Confirm booking after successful transaction
-
-
-        
-        const confirmResponse = await fetch(`${AppConstants.LOCAL_URL}/bookings/confirm/${bookingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            bookingId,
-            paymentIntentId
-          })
-        });
-  
-        const confirmResult = await confirmResponse.json();
-        
-        if (!confirmResponse.ok) {
-          throw new Error(confirmResult.error || 'Failed to confirm booking');
-        }
-
-        Alert.alert('Success', 'Payment completed and booking confirmed!');
-        onSuccess();
       }
+  
+      console.log('[Payment] Payment successful! Proceeding with transaction recording...');
+      
+      // 5. Store transaction
+      const transactionPayload = {
+        transactionId: paymentIntentData.paymentIntentId,
+        bookingId: bookingId,
+        amount: totalAmount,
+        paymentStatus: 'completed',
+        paymentMethod: 'card'
+      };
+      console.log('[Payment] Transaction payload:', transactionPayload);
+  
+      const transactionResponse = await apiFetch(
+        `/transaction/post`,
+        {
+          method: 'POST',
+          body: JSON.stringify(transactionPayload),
+        },
+        undefined,
+        'user'
+      );
+  
+      console.log('[Payment] Transaction API response status:', transactionResponse.status);
+      if (!transactionResponse) {
+        const errorResult = await transactionResponse;
+        console.log('[Payment] Transaction recording failed:', errorResult);
+        throw new Error('Failed to store transaction');
+      }
+      console.log('[Payment] Transaction recorded successfully');
+  
+      // 6. Confirm booking after successful transaction
+      console.log('[Payment] Confirming booking...');
+      const confirmResponse = await apiFetch(
+        `/bookings/confirm/${bookingId}`,
+        { method: 'POST' },
+        undefined,
+        'user'
+      );
+  
+      const confirmResult = await confirmResponse;
+      console.log('[Payment] Booking confirmation response:', {
+        status: confirmResponse.status,
+        data: confirmResult
+      });
+  
+      if (!confirmResponse) {
+        console.log('[Payment] Booking confirmation failed:', confirmResult);
+        throw new Error(confirmResult.error || 'Failed to confirm booking');
+      }
+  
+      console.log('[Payment] Booking confirmed successfully!');
+      Alert.alert('Success', 'Payment completed and booking confirmed!');
+      
+      onSuccess();
     } catch (error) {
       let errorMessage = 'Payment failed';
       if (error instanceof Error) {
@@ -365,13 +435,16 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         errorMessage = error;
       }
       
-      console.log("Payment error:", errorMessage);
+      console.log("[Payment] Error in payment process:", {
+        error: error,
+        message: errorMessage
+      });
       Alert.alert('Payment Error', errorMessage);
     } finally {
+      console.log('[Payment] Payment process completed');
       setLoading(false);
     }
   };
-
   return (
     <View style={styles.paymentModal}>
       <Text style={styles.paymentTitle}>Payment Details</Text>
@@ -442,34 +515,114 @@ const isTimeInRange = (time: string, startTime: string, endTime: string): boolea
 };
 
 const checkVehicleAvailability = (vehicle: any, fromDate: Date, toDate: Date, fromTime: string, toTime: string): boolean => {
-  if (!vehicle.availability) return true; // If no availability set, assume always available
+  console.log('--- Starting availability check ---');
+  console.log('Vehicle:', {
+    availability: vehicle.availability,
+    blackoutPeriods: vehicle.blackoutPeriods
+  });
+  console.log('Requested booking:', {
+    fromDate: fromDate.toISOString(),
+    toDate: toDate.toISOString(),
+    fromTime,
+    toTime
+  });
 
+  if (!vehicle.availability) {
+    console.log('No availability set - assuming always available');
+    return true;
+  }
+
+  // Blackout period check
+  if (vehicle.blackoutPeriods && vehicle.blackoutPeriods.length > 0) {
+    console.log('Checking blackout periods...');
+    
+    const bookingStart = new Date(fromDate);
+    const [fromHours, fromMins] = fromTime.split(':').map(Number);
+    bookingStart.setHours(fromHours, fromMins);
+    
+    const bookingEnd = new Date(toDate);
+    const [toHours, toMins] = toTime.split(':').map(Number);
+    bookingEnd.setHours(toHours, toMins);
+
+    console.log('Booking time range:', {
+      bookingStart: bookingStart.toISOString(),
+      bookingEnd: bookingEnd.toISOString()
+    });
+
+    for (const period of vehicle.blackoutPeriods) {
+      const blackoutStart = new Date(period.from);
+      const blackoutEnd = new Date(period.to);
+      
+      console.log('Checking against blackout period:', {
+        blackoutStart: blackoutStart.toISOString(),
+        blackoutEnd: blackoutEnd.toISOString(),
+        reason: period.reason
+      });
+
+      // Check if booking overlaps with blackout period
+      const overlapStart = bookingStart >= blackoutStart && bookingStart <= blackoutEnd;
+      const overlapEnd = bookingEnd >= blackoutStart && bookingEnd <= blackoutEnd;
+      const containsBlackout = bookingStart <= blackoutStart && bookingEnd >= blackoutEnd;
+
+      console.log('Overlap checks:', {
+        overlapStart,
+        overlapEnd,
+        containsBlackout
+      });
+
+      if (overlapStart || overlapEnd || containsBlackout) {
+        console.log('❌ Blackout period conflict found');
+        return false;
+      }
+    }
+    console.log('✅ No blackout period conflicts');
+  } else {
+    console.log('No blackout periods to check');
+  }
+
+  // Regular availability check
+  console.log('Checking regular availability...');
   const currentDate = new Date(fromDate);
   while (currentDate <= toDate) {
     const dayOfWeek = getDayOfWeek(currentDate);
+    console.log(`Checking ${currentDate.toISOString()} (${dayOfWeek})`);
     
-    // Check if the day is in available days
+    // Check day availability
     if (!vehicle.availability.days.includes(dayOfWeek)) {
+      console.log(`❌ Day not available: ${dayOfWeek}`);
       return false;
     }
 
-    // Check if time is within available hours
+    // Check time availability for start/end dates
     if (currentDate.getTime() === fromDate.getTime()) {
+      console.log('Checking start time availability:', {
+        fromTime,
+        availableStart: vehicle.availability.startTime,
+        availableEnd: vehicle.availability.endTime
+      });
       if (!isTimeInRange(fromTime, vehicle.availability.startTime, vehicle.availability.endTime)) {
+        console.log('❌ Start time not available');
         return false;
       }
     }
     if (currentDate.getTime() === toDate.getTime()) {
+      console.log('Checking end time availability:', {
+        toTime,
+        availableStart: vehicle.availability.startTime,
+        availableEnd: vehicle.availability.endTime
+      });
       if (!isTimeInRange(toTime, vehicle.availability.startTime, vehicle.availability.endTime)) {
+        console.log('❌ End time not available');
         return false;
       }
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
   }
+  
+  console.log('✅ All availability checks passed');
   return true;
 };
-
 const checkDriverAvailability = (driver: any, fromDate: Date, toDate: Date, fromTime: string, toTime: string): boolean => {
   if (!driver.availability) return true; // If no availability set, assume always available
 
@@ -572,15 +725,17 @@ const getAvailableDrivers = (drivers: Driver[], fromDate: Date, toDate: Date, fr
   });
 };
 
-const isDateBlackedOut = (date: Date, blackoutDates: Date[]): boolean => {
-  if (!blackoutDates || blackoutDates.length === 0) return false;
+const isDateBlackedOut = (date: Date, blackoutPeriods: Array<{from: Date, to: Date}>): boolean => {
+  if (!blackoutPeriods || blackoutPeriods.length === 0) return false;
+  console.log("BV",blackoutPeriods)
+  const checkDate = date.getTime();
   
-  const dateString = date.toISOString().split('T')[0];
-  return blackoutDates.some(blackoutDate => 
-    blackoutDate.toISOString().split('T')[0] === dateString
-  );
+  return blackoutPeriods.some(period => {
+    const fromDate = new Date(period.from).getTime();
+    const toDate = new Date(period.to).getTime();
+    return checkDate >= fromDate && checkDate <= toDate;
+  });
 };
-
 const checkAllDaysAvailable = (fromDate: Date, toDate: Date, availableDays: string[]): boolean => {
   const currentDate = new Date(fromDate);
   while (currentDate <= toDate) {
@@ -644,27 +799,18 @@ const BookNowScreen = () => {
       setError(null);
 
       try {
-        console.log("Making API call to:", `${AppConstants.LOCAL_URL}/drivers/company?company=${car.company._id}`);
-        const response = await fetch(`${AppConstants.LOCAL_URL}/drivers/company?company=${car.company._id}`);
-        console.log("Drivers API response status:", response.status);
-        
-        const result = await response.json();
+        console.log("Making API call to:", `/drivers/company?company=${car.company._id}`);
+        const result = await apiFetch(`/drivers/company?company=${car.company._id}`,undefined,'user');
         console.log("Raw drivers response:", result);
-
-        if (response.ok) {
-          if (result.data && Array.isArray(result.data)) {
-            console.log("Setting drivers:", result.data);
-            setDrivers(result.data);
-          } else {
-            console.log("No drivers found in response data");
-            setDrivers([]);
-          }
+        if (result.data && Array.isArray(result.data)) {
+          console.log("Setting drivers:", result.data);
+          setDrivers(result.data);
         } else {
-          console.error("Failed to fetch drivers:", result.error);
-          setError("Failed to fetch drivers.");
+          console.log("No drivers found in response data");
+          setDrivers([]);
         }
       } catch (error) {
-        console.error("Error in fetchDrivers:", error);
+        console.log("Error in fetchDrivers:", error);
         setError("Error fetching drivers. Please try again.");
       } finally {
         setLoading(false);
@@ -674,20 +820,18 @@ const BookNowScreen = () => {
     const fetchComments = async () => {
       try {
         console.log('Fetching comments for vehicle:', car._id);
-        const response = await fetch(`${AppConstants.LOCAL_URL}/comment/${car._id}`);
-        console.log('Comments API response status:', response.status);
-        
-        const result = await response.json();
+        const result = await apiFetch(`/comment/${car._id}`,undefined,'user');
         console.log('Raw comments response:', result);
-        
-        if (response.ok) {
-          console.log('Setting comments:', result || []);
-          setComments(result || []);
+        if (Array.isArray(result)) {
+          setComments(result);
+        } else if (result.comments && Array.isArray(result.comments)) {
+          setComments(result.comments);
         } else {
-          // console.error('Failed to fetch comments:', result.error);
+          setComments([]);
         }
       } catch (error) {
-        // console.error('Error in fetchComments:', error);
+        setComments([]);
+        console.log('Error in fetchComments:', error);
       }
     };
 
@@ -765,11 +909,11 @@ const BookNowScreen = () => {
   const handleFromDateChange = (event: any, selectedDate?: Date) => {
     setShowFromPicker(false);
     if (selectedDate) {
-      // Check if date is blacked out
-      if (isDateBlackedOut(selectedDate, car.blackoutDates || [])) {
+      // Check if date is in a blackout period
+      if (isDateBlackedOut(selectedDate, car.blackoutPeriods || [])) {
         Alert.alert(
           "Date Not Available",
-          "This date is blacked out. Please select a different date."
+          "This date is within a blackout period. Please select a different date."
         );
         return;
       }
@@ -805,11 +949,11 @@ const BookNowScreen = () => {
   const handleToDateChange = (event: any, selectedDate?: Date) => {
     setShowToPicker(false);
     if (selectedDate) {
-      // Check if date is blacked out
-      if (isDateBlackedOut(selectedDate, car.blackoutDates || [])) {
+      // Check if date is in a blackout period
+      if (isDateBlackedOut(selectedDate, car.blackoutPeriods || [])) {
         Alert.alert(
           "Date Not Available",
-          "This date is blacked out. Please select a different date."
+          "This date is within a blackout period. Please select a different date."
         );
         return;
       }
@@ -835,6 +979,25 @@ const BookNowScreen = () => {
       
       setToDate(selectedDate);
     }
+  };
+
+  const isRangeBlackedOut = (startDate: Date, endDate: Date, blackoutPeriods: Array<{from: Date, to: Date}>): boolean => {
+    if (!blackoutPeriods || blackoutPeriods.length === 0) return false;
+    
+    const startTime = startDate.getTime();
+    const endTime = endDate.getTime();
+    
+    return blackoutPeriods.some(period => {
+      const periodStart = new Date(period.from).getTime();
+      const periodEnd = new Date(period.to).getTime();
+      
+      // Check if our booking range overlaps with any blackout period
+      return (
+        (startTime >= periodStart && startTime <= periodEnd) ||
+        (endTime >= periodStart && endTime <= periodEnd) ||
+        (startTime <= periodStart && endTime >= periodEnd)
+      );
+    });
   };
 
   const handleFromTimeChange = (event: any, selectedTime?: Date) => {
@@ -873,8 +1036,8 @@ const BookNowScreen = () => {
         const toTimeInMinutes = toTime.getHours() * 60 + toTime.getMinutes();
         const timeDifference = toTimeInMinutes - fromTimeInMinutes;
         
-        if (timeDifference < 30) {
-          // Add 30 minutes to the selected time for the end time
+        if (timeDifference < 60) {
+          // Add 60 minutes to the selected time for the end time
           const newToTime = new Date(selectedTime);
           newToTime.setMinutes(newToTime.getMinutes() + 30);
           setToTime(newToTime);
@@ -911,16 +1074,16 @@ const BookNowScreen = () => {
         return;
       }
       
-      // If it's the same day as fromDate, ensure time is at least 30 minutes after fromTime
+      // If it's the same day as fromDate, ensure time is at least 60 minutes after fromTime
       if (toDate.toDateString() === fromDate.toDateString()) {
         const fromTimeInMinutes = fromTime.getHours() * 60 + fromTime.getMinutes();
         const toTimeInMinutes = selectedTime.getHours() * 60 + selectedTime.getMinutes();
         const timeDifference = toTimeInMinutes - fromTimeInMinutes;
         
-        if (timeDifference < 30) {
+        if (timeDifference < 60) {
           Alert.alert(
             "Invalid Time",
-            "End time must be at least 30 minutes after start time for same-day bookings."
+            "End time must be at least 60 minutes after start time for same-day bookings."
           );
           return;
         }
@@ -929,7 +1092,6 @@ const BookNowScreen = () => {
       setToTime(selectedTime);
     }
   };
-
   const validateDates = () => {
     const now = new Date();
     const from = new Date(fromDate);
@@ -953,11 +1115,25 @@ const BookNowScreen = () => {
       return false;
     }
     
+    // Check if any date in the range is blacked out
+    if (isRangeBlackedOut(from, to, car.blackoutPeriods || [])) {
+      Alert.alert(
+        "Date Range Not Available",
+        "Some dates in your selected range are blacked out. Please adjust your dates."
+      );
+      return false;
+    }
+    
     return true;
   };
 
   const handleConfirmBooking = async () => {
     try {
+      console.log("Blackout period found for date:", car.blackoutPeriods);
+      console.log("selected date:", fromDate);
+      console.log("selected date:", toDate);
+
+
       // Check if all days in the booking period are available
       if (!checkAllDaysAvailable(fromDate, toDate, car.availability.days)) {
         Alert.alert(
@@ -967,16 +1143,16 @@ const BookNowScreen = () => {
         return;
       }
 
-      // Check if dates are the same and time gap is less than 30 minutes
+      // Check if dates are the same and time gap is less than 60 minutes
       if (fromDate.toDateString() === toDate.toDateString()) {
         const fromTimeInMinutes = fromTime.getHours() * 60 + fromTime.getMinutes();
         const toTimeInMinutes = toTime.getHours() * 60 + toTime.getMinutes();
         const timeDifference = toTimeInMinutes - fromTimeInMinutes;
         
-        if (timeDifference < 30) {
+        if (timeDifference < 60) {
           Alert.alert(
             "Invalid Time Selection",
-            "For same-day bookings, the time difference must be at least 30 minutes."
+            "For same-day bookings, the time difference must be at least 60 minutes."
           );
           return;
         }
@@ -984,6 +1160,7 @@ const BookNowScreen = () => {
 
       // Check vehicle availability
       if (!checkVehicleAvailability(car, fromDate, toDate, formatTime(fromTime), formatTime(toTime))) {
+        console.log("Vehicle Not Available",checkVehicleAvailability(car, fromDate, toDate, formatTime(fromTime), formatTime(toTime)));
         Alert.alert(
           "Vehicle Not Available",
           "The vehicle is not available for the selected dates and times. Please check the vehicle's availability schedule."
@@ -1008,7 +1185,7 @@ const BookNowScreen = () => {
         setShowPaymentForm(true);
       }
     } catch (error) {
-      console.error("Error checking availability:", error);
+      console.log("Error checking availability:", error);
       Alert.alert("Error", "There was an error checking availability. Please try again.");
     }
   };
@@ -1125,16 +1302,16 @@ const BookNowScreen = () => {
               <Ionicons name="time" size={16} color="#ADD8E6" />
               <Text style={styles.carDetailText}>Available Times: {car.availability?.startTime} - {car.availability?.endTime}</Text>
             </View>
-            {car.blackoutDates && car.blackoutDates.length > 0 && (
-              <View style={styles.detailRow}>
-                <Ionicons name="alert-circle" size={16} color="#FF6B6B" />
-                <Text style={styles.blackoutText}>
-                  Not Available on: {car.blackoutDates.map((date: string | Date) => 
-                    new Date(date).toLocaleDateString()
-                  ).join(', ')}
-                </Text>
-              </View>
-            )}
+            {car.blackoutPeriods && car.blackoutPeriods.length > 0 && (
+  <View style={styles.detailRow}>
+    <Ionicons name="alert-circle" size={16} color="#FF6B6B" />
+    <Text style={styles.blackoutText}>
+      Blackout Periods: {car.blackoutPeriods.map((period: any, index: number) => (
+        `${new Date(period.from).toLocaleDateString()} to ${new Date(period.to).toLocaleDateString()}${index < car.blackoutPeriods.length - 1 ? ', ' : ''}`
+      ))}
+    </Text>
+  </View>
+)}
             <View style={styles.detailRow}>
               <Ionicons name="cash" size={16} color="#ADD8E6" />
               <Text style={styles.carDetailText}>Rent: Rs.{car.rent}/day</Text>

@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { getStoredUserId, setStoredNotificationPreference, getStoredNotificationPreference } from "@/utils/storageUtil";
 import { AppConstants } from "@/constants/appConstants";
+import { apiFetch } from '@/utils/api';
 
 type PaymentMethod = {
   cardNumber: string;
@@ -75,13 +76,7 @@ const EditProfileScreen = () => {
         Alert.alert("Error", "User ID not found.");
         return;
       }
-
-      const response = await fetch(`${AppConstants.LOCAL_URL}/users/${userId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch user profile.");
-      }
-
-      const data = await response.json();
+      const data = await apiFetch(`/users/${userId}`,{},undefined,'user');
       setUser(data);
     } catch (error) {
       console.error("Error fetching user profile:", error);

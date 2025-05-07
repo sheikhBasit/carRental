@@ -40,8 +40,9 @@ const RentalLoginScreen: React.FC = () => {
             });
     
             const data = await response.json();
-    
+            
             if (response.ok) {
+                await AsyncStorage.setItem('accessToken', data.token);
                 console.log('Login successful:', data);
                 await AsyncStorage.setItem('isLoggedIn', "true");
                 // Store companyId if returned from API
@@ -106,7 +107,7 @@ const RentalLoginScreen: React.FC = () => {
     return (
         <ScrollView contentContainerStyle={styles.scrollContainer}>
             <View style={styles.container}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.push('/auth/startScreen')}>
                     <Ionicons name="arrow-back" size={24} color="white" />
                 </TouchableOpacity>
 

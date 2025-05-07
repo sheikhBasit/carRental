@@ -74,7 +74,7 @@ const AddDriverScreen = () => {
                 setDriverDetails(prev => ({ ...prev, company: companyId }));
             }
         } catch (error) {
-            console.error("Error fetching company ID:", error);
+            throw error;
         }
     };
 
@@ -216,7 +216,6 @@ const AddDriverScreen = () => {
                     // Remove any existing hyphen for validation
                     const cleanValue = value.replace(/-/g, '');
                     if (!/^(\+92|0)3[0-4][0-9][0-9]{7}$/.test(cleanValue)) {
-                        console.log('Validation failed for:', cleanValue);
                         return 'Phone must be in format: +923XX-XXXXXXX or 03XX-XXXXXXX';
                     }
                 }
@@ -234,7 +233,6 @@ const AddDriverScreen = () => {
             case 'cnic':
                 if (typeof value === 'string') {
                     if (!/^[0-9]{5}-[0-9]{7}-[0-9]$/.test(value)) {
-                        console.log(value);
                         return 'CNIC must be in format: XXXXX-XXXXXXX-X';
                     }
                 }
@@ -335,23 +333,16 @@ const AddDriverScreen = () => {
     };
 
     const handleSubmit = async () => {
-        console.log('handleSubmit triggered');
-        console.log('Current driver details:', JSON.stringify(driverDetails, null, 2));
-        
         if (!profileImage) {
-          console.warn('No profile image uploaded');
-            Alert.alert('Error', 'Please upload a profile image');
+          Alert.alert('Error', 'Please upload a profile image');
             return;
         }
 
         if (!validateAllFields()) {
-          console.warn('Validation failed for driver details');
-          console.log('Field errors:', fieldErrors);
-            return;
+          return;
         }
 
         setIsLoading(true);
-        console.log('Loading set to true');
         
         const formattedDetails = {
           ...driverDetails,
@@ -364,8 +355,6 @@ const AddDriverScreen = () => {
           phNo: driverDetails.phNo.trim(),
         };
         
-        console.log('Formatted Driver Details:', formattedDetails);
-
         const formData = new FormData();
         
         // Append basic fields
@@ -375,7 +364,6 @@ const AddDriverScreen = () => {
             key !== 'blackoutDates' &&
             key !== 'profileimg'
           ) {
-            console.log(`Appending field: ${key} = ${formattedDetails[key as keyof typeof formattedDetails]}`);
             formData.append(
               key,
               String(formattedDetails[key as keyof typeof formattedDetails])
@@ -385,13 +373,11 @@ const AddDriverScreen = () => {
       
         // Append availability days
         formattedDetails.availability.days.forEach((day, index) => {
-          console.log(`Appending availability day ${index}: ${day}`);
           formData.append(`availability[days][${index}]`, day);
         });
       
         formData.append('availability[startTime]', formattedDetails.availability.startTime);
         formData.append('availability[endTime]', formattedDetails.availability.endTime);
-        console.log('Appended availability times');
       
         // Add profile image
         const imageUri = profileImage;
@@ -399,21 +385,20 @@ const AddDriverScreen = () => {
         const match = /\.(\w+)$/.exec(filename!);
         const type = match ? `image/${match[1]}` : `image`;
 
-        console.log(`Appending profile image: ${filename}, type: ${type}, uri: ${imageUri}`);
-      
         formData.append('profileimg', {
             uri: imageUri,
             type,
             name: filename || 'profile.jpg',
         } as any);
 
+        const companyAccessToken = await AsyncStorage.getItem('companyAccessToken');    
         try {
-          console.log('Sending POST request...');
           const response = await fetch(`${AppConstants.LOCAL_URL}/drivers/postDriver`, {
             method: 'POST',
             body: formData,
             headers: {
               'Content-Type': 'multipart/form-data',
+              'Authorization': `Bearer ${companyAccessToken}`,
             },
           });
 
@@ -423,11 +408,8 @@ const AddDriverScreen = () => {
             result = await response.json();
           } else {
             const text = await response.text();
-            console.error('Non-JSON response:', text);
             throw new Error('Server returned non-JSON response');
           }
-
-          console.log('Server response:', result);
 
           if (response.ok) {
             Alert.alert('Success', 'Driver added successfully!', [
@@ -441,7 +423,6 @@ const AddDriverScreen = () => {
             Alert.alert('Error', errorMessage);
           }
         } catch (error) {
-          console.error('Error posting driver:', error);
           let errorMessage = 'Failed to add the driver';
           if (error instanceof Error) {
             errorMessage = error.message;
@@ -449,7 +430,6 @@ const AddDriverScreen = () => {
           Alert.alert('Error', errorMessage);
         } finally {
           setIsLoading(false);
-          console.log('Loading set to false');
         }
     };
 

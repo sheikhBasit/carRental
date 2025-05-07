@@ -17,6 +17,7 @@ import { getStoredCompanyId } from '@/utils/storageUtil';
 import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { apiFetch } from '@/utils/api';
 
 interface Driver {
   _id: string;
@@ -112,6 +113,7 @@ const DriverScreen = () => {
     setFilteredDrivers(drivers);
   };
 
+
   useFocusEffect(
     React.useCallback(() => {
       const fetchDrivers = async () => {
@@ -121,39 +123,28 @@ const DriverScreen = () => {
           const companyId = await getStoredCompanyId();
           if (!companyId) {
             setError('Company ID not found.');
-            setLoading(false);
             return;
           }
-
-          const response = await fetch(
-            `${AppConstants.LOCAL_URL}/drivers/company?company=${companyId}`
-          );
-          
-          if (!response.ok) {
-            const errorData = await response.text();
-            throw new Error(errorData || `Server responded with ${response.status}`);
-          }
-          
-          const data = await response.json();
-          
-          if (data && data.data && Array.isArray(data.data)) {
-            setDrivers(data.data);
-            setFilteredDrivers(data.data);
+  
+          const response = await apiFetch(`/drivers/company?company=${companyId}`);
+  
+          if (response?.data && Array.isArray(response.data)) {
+            setDrivers(response.data);
+            setFilteredDrivers(response.data);
           } else {
             throw new Error('Unexpected response format: drivers array not found');
           }
         } catch (err) {
-          console.error("Error fetching drivers:", err);
+          console.log("Error fetching drivers:", err);
           setError(err instanceof Error ? err.message : 'An error occurred while fetching drivers.');
         } finally {
           setLoading(false);
         }
       };
-
+  
       fetchDrivers();
     }, [])
   );
-
   if (loading) {
     return (
       <RentalAppLayout title="Drivers">
@@ -171,6 +162,8 @@ const DriverScreen = () => {
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
+                      <Image source={require('../../assets/images/explore.jpg')} style={styles.image} />
+        
       </RentalAppLayout>
     );
   }
@@ -400,7 +393,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ff4444',
     textAlign: 'center',
-    padding: 20,
+    padding: 10,
   },
   emptyContainer: {
     flex: 1,
@@ -413,6 +406,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
     padding: 20,
+  },image: {
+    width: '100%',
+    height: 250,
+    borderRadius: 10,
+    marginBottom:100,
   },
   searchContainer: {
     flexDirection: 'row',

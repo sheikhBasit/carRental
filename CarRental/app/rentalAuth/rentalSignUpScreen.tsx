@@ -17,6 +17,7 @@ import { AppConstants } from "@/constants/appConstants";
 import { saveCompanyId, saveCompanyName } from "@/utils/storageUtil";
 import * as ImagePicker from "expo-image-picker";
 import PakistaniProvinceSelector from "../../components/ui/ProvinceSelector";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type ImageUri = string | null;
 
@@ -157,6 +158,9 @@ const RentalSignUpScreen = () => {
             
             // Check if the response has company property instead of rentalCompany
             if (data && data.company && data.company._id) {
+              await AsyncStorage.setItem('accessToken', data.token);
+              await AsyncStorage.setItem('email', data.company.email);
+              
               await saveCompanyId(data.company._id);
               await saveCompanyName(data.company.companyName);
               console.log("Company ID saved:", data.company._id);
