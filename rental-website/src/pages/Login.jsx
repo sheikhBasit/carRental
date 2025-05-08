@@ -113,7 +113,7 @@ const Login = () => {
               />
             </div>
             <div className="d-flex justify-content-between text-black align-items-center mb-4">
-              <a href="#" className="text-primary text-decoration-none">Forgot Password?</a>
+              <a href="/forgot-password" className="text-primary text-decoration-none">Forgot Password?</a>
             </div>
             <button 
               type="submit" 

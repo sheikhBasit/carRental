@@ -118,7 +118,7 @@ const CompanyLogin = () => {
             </div>
             
             <div className="flex justify-end mb-6">
-              <a href="#" className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors">
+              <a href="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors">
                 Forgot Password?
               </a>
             </div>

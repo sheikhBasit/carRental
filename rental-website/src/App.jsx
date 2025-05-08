@@ -57,6 +57,8 @@ function Layout() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/cars" element={<CarList />} />
           <Route path="/booking/:id" element={<BookNow />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordScreen />} />
           <Route path="/car-detail/:vehicleId" element={<CarDetail />} />
           <Route path="/car-rental/:brand" element={<CarRentalMarketWrapper />} />
           <Route path="/bookings/:id" element={<BookingDetails />} />
