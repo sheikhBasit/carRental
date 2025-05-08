@@ -148,7 +148,7 @@ const RentalSignUpScreen = () => {
           try {
             data = JSON.parse(responseText);
           } catch (parseError) {
-            console.error("Failed to parse response:", parseError);
+            console.log("Failed to parse response:", parseError);
             Alert.alert("Error", "Server response could not be processed. Please try again later.");
             return;
           }
@@ -171,15 +171,15 @@ const RentalSignUpScreen = () => {
                 }
               ]);
             } else {
-              console.error("Invalid response structure:", data);
+              console.log("Invalid response structure:", data);
               Alert.alert("Error", "Account created but could not retrieve company ID. Please contact support.");
             }
           } else {
-            console.error("Signup failed:", response.status, data);
+            console.log("Signup failed:", response.status, data);
             Alert.alert("Signup Failed", data.message || "Please try again later.");
           }
         } catch (error) {
-          console.error("Signup error:", error);
+          console.log("Signup error:", error);
           Alert.alert("Error", "Something went wrong. Please try again later.");
         } finally {
           setIsLoading(false);

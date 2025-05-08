@@ -260,6 +260,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         cityName: intercity ? "" : cityName,
         status: "pending",
         termsAccepted: true,
+        bookingChannel:'mobile',
         totalAmount: totalAmount,
         paymentStatus:"pending"
       };

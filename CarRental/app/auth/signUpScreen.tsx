@@ -202,7 +202,7 @@ const SignUpScreen: React.FC = () => {
         Alert.alert("Error", result.message || "Sign-up failed. Please try again.");
       }
     } catch (error) {
-      console.error("Error signing up:", error);
+      console.log("Error signing up:", error);
       Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false); // Stop loading regardless of success or failure

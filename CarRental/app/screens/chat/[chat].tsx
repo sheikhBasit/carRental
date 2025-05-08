@@ -47,7 +47,7 @@ const useChatController = (userId: string, receiverId: string) => {
         }
       }
     } catch (err) {
-      console.error("Error loading cached messages:", err);
+      console.log("Error loading cached messages:", err);
     }
   };
 
@@ -55,7 +55,7 @@ const useChatController = (userId: string, receiverId: string) => {
     try {
       await AsyncStorage.setItem(cacheKey, JSON.stringify(messages));
     } catch (err) {
-      console.error("Error saving messages to cache:", err);
+      console.log("Error saving messages to cache:", err);
     }
   };
 
@@ -97,7 +97,7 @@ const useChatController = (userId: string, receiverId: string) => {
         saveMessagesToCache(processedMessages);
       })
       .catch((err) => {
-        console.error("Error fetching messages:", err);
+        console.log("Error fetching messages:", err);
         setError(err.response?.status === 404 
           ? "No messages found." 
           : "Failed to load messages.");
@@ -167,7 +167,7 @@ const useChatController = (userId: string, receiverId: string) => {
       );
     })
     .catch((error) => {
-      console.error("Error sending message:", error);
+      console.log("Error sending message:", error);
       setMessages(prev =>
         prev.map(msg =>
           msg._id === tempId ? { 

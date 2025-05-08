@@ -32,10 +32,10 @@ const CompanyAccountScreen = () => {
         if (data) {
           setCompanyData(data);
         } else {
-          console.error('Error fetching company data:', data.message);
+          console.log('Error fetching company data:', data.message);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.log('Error:', error);
       } finally {
         setIsLoading(false);
       }

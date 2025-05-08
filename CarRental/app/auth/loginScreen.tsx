@@ -21,7 +21,7 @@ const LoginScreen: React.FC = () => {
         const storedCity = await loadCity();
         if (storedCity) setCity(storedCity);
       } catch (error) {
-        console.error("Error loading city:", error);
+        console.log("Error loading city:", error);
       }
     };
 
@@ -30,7 +30,7 @@ const LoginScreen: React.FC = () => {
         const storedUserId = await loadUserId();
         if (storedUserId) setUserId(storedUserId);
       } catch (error) {
-        console.error("Error loading user id:", error);
+        console.log("Error loading user id:", error);
       }
     };
 

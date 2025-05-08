@@ -35,7 +35,7 @@ const CommentsPage = () => {
         }
       } catch (error) {
         setComments([]);
-        console.error('Error fetching comments:', error);
+        console.log('Error fetching comments:', error);
       }
     };
 

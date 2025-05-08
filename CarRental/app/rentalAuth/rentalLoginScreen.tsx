@@ -64,7 +64,7 @@ const RentalLoginScreen: React.FC = () => {
                 alert('Login failed: ' + data.message);
             }
         } catch (error) {
-            console.error('Error logging in:', error);
+            console.log('Error logging in:', error);
             alert('Something went wrong. Please try again later.');
         }
     };
@@ -84,10 +84,10 @@ const RentalLoginScreen: React.FC = () => {
           if (response.ok) {
             console.log('Expo push token updated successfully:', data);
           } else {
-            console.error('Failed to update Expo push token:', data.message);
+            console.log('Failed to update Expo push token:', data.message);
           }
         } catch (error) {
-          console.error('Error updating Expo push token:', error);
+          console.log('Error updating Expo push token:', error);
         }
       };
     

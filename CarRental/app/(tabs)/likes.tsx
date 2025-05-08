@@ -67,7 +67,7 @@ const LikedVehiclesScreen = () => {
       },undefined,  'user');
       setLikedCars(data);
     } catch (error: any) {
-      console.error('Error fetching liked vehicles:', error.message);
+      console.log('Error fetching liked vehicles:', error.message);
     } finally {
       setLoading(false);  
     }
@@ -82,7 +82,7 @@ const LikedVehiclesScreen = () => {
         },
       });
     } catch (error) {
-      console.error("Navigation error:", error);
+      console.log("Navigation error:", error);
     }
   };
 
@@ -95,7 +95,7 @@ const LikedVehiclesScreen = () => {
     try {
       await fetchLikedVehicles();
     } catch (error) {
-      console.error('Error refreshing:', error);
+      console.log('Error refreshing:', error);
     } finally {
       setRefreshing(false);
     }

@@ -44,7 +44,7 @@ const HostScreen = () => {
       // Navigate to the login or start screen
       router.replace("/auth/startScreen");
     } catch (error) {
-      console.error("Failed to clear storage on logout:", error);
+      console.log("Failed to clear storage on logout:", error);
     }
   };
   const navigateToScreen = (screenName: string) => {

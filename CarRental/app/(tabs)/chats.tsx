@@ -46,7 +46,7 @@ const ChatScreen = () => {
       const processedChats = await processChatData(chatData, userId);
       setChats(processedChats);
     } catch (error) {
-      console.error("Error fetching chats:", error);
+      console.log("Error fetching chats:", error);
       Alert.alert("Error", "Failed to fetch chats.");
     } finally {
       setLoading(false);
@@ -106,7 +106,7 @@ const ChatScreen = () => {
         };
       }
     } catch (error) {
-      console.error("Error fetching user details:", error);
+      console.log("Error fetching user details:", error);
       return null;
     }
   };

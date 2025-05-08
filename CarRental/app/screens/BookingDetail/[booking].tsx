@@ -111,7 +111,7 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
       const updatedBooking = await apiFetch(`/bookings/getBookingById/${booking._id}`,{},undefined,userType);
       setBooking(updatedBooking);
     } catch (err) {
-      console.error("Error checking booking status:", err);
+      console.log("Error checking booking status:", err);
     }
   };
 

@@ -41,7 +41,7 @@ const VerificationCodeScreen: React.FC = () => {
         Alert.alert("Error", result.message || "Verification failed. Please try again.");
       }
     } catch (error) {
-      console.error("Error verifying code:", error);
+      console.log("Error verifying code:", error);
       Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false); // Stop loading
@@ -70,7 +70,7 @@ const VerificationCodeScreen: React.FC = () => {
         Alert.alert("Error", result.message || "Verification failed. Please try again.");
       }
     } catch (error) {
-      console.error("Error verifying code:", error);
+      console.log("Error verifying code:", error);
       Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false); // Stop loading

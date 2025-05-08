@@ -92,7 +92,7 @@ const ExploreScreen = () => {
       console.log('Manufacturers API response:', data);
       setManufacturers(['All', ...data]);
     } catch (err: any) {
-      console.error('Error fetching manufacturers:', err.message);
+      console.log('Error fetching manufacturers:', err.message);
     }
   };
 
@@ -120,7 +120,7 @@ const ExploreScreen = () => {
       setAllVehicles(responseData.data);
       console.log('Fetched vehicles:', responseData.data);
     } catch (err: any) {
-      console.error('Error fetching vehicles:', err);
+      console.log('Error fetching vehicles:', err);
       setError(err.message || 'Failed to fetch vehicles');
     } finally {
       setLoading(false);
@@ -137,7 +137,7 @@ const ExploreScreen = () => {
         },
       });
     } catch (error) {
-      console.error("Navigation error:", error);
+      console.log("Navigation error:", error);
       Alert.alert('Error', 'Failed to navigate to booking page. Please try again.');
     }
   };

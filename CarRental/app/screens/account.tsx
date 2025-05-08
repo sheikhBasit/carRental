@@ -79,7 +79,7 @@ const EditProfileScreen = () => {
       const data = await apiFetch(`/users/${userId}`,{},undefined,'user');
       setUser(data);
     } catch (error) {
-      console.error("Error fetching user profile:", error);
+      console.log("Error fetching user profile:", error);
       Alert.alert("Error", "Failed to fetch user profile.");
     } finally {
       setLoading(false);
@@ -93,7 +93,7 @@ const EditProfileScreen = () => {
         setIsAgreed(preference === "true");
       }
     } catch (error) {
-      console.error("Error loading notification preference:", error);
+      console.log("Error loading notification preference:", error);
     }
   };
 
@@ -109,7 +109,7 @@ const EditProfileScreen = () => {
         Alert.alert("Success", "You will be notified about updates.");
       }
     } catch (error) {
-      console.error("Error saving notification preference:", error);
+      console.log("Error saving notification preference:", error);
     } finally {
       setIsDialogVisible(false);
     }

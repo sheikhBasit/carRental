@@ -232,7 +232,7 @@ const transmissions = [...new Set(cars.map(car => car.transmission))];
         console.warn("Unexpected response structure:", data);
       }
     } catch (error) {
-      console.error("Error fetching vehicles:", error);
+      console.log("Error fetching vehicles:", error);
     }
   }, []);
   const fetchTransactionData = useCallback(async (id: string) => {
