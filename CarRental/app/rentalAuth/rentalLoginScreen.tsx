@@ -42,7 +42,7 @@ const RentalLoginScreen: React.FC = () => {
             const data = await response.json();
             
             if (response.ok) {
-                await AsyncStorage.setItem('accessToken', data.token);
+                await AsyncStorage.setItem('companyAccessToken', data.token);
                 console.log('Login successful:', data);
                 await AsyncStorage.setItem('isLoggedIn', "true");
                 // Store companyId if returned from API

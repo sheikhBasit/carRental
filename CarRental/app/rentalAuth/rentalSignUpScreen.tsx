@@ -158,7 +158,8 @@ const RentalSignUpScreen = () => {
             
             // Check if the response has company property instead of rentalCompany
             if (data && data.company && data.company._id) {
-              await AsyncStorage.setItem('accessToken', data.token);
+              
+              await AsyncStorage.setItem('companyAccessToken', data.token);
               await AsyncStorage.setItem('email', data.company.email);
               
               await saveCompanyId(data.company._id);
@@ -167,7 +168,7 @@ const RentalSignUpScreen = () => {
               Alert.alert("Success", "Signup Successful!", [
                 { 
                   text: "OK", 
-                  onPress: () => router.push("/(rental-tabs)") 
+                  onPress: () => router.push("/rentalAuth/rentalVerification") 
                 }
               ]);
             } else {

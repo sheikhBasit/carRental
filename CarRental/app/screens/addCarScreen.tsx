@@ -355,14 +355,16 @@ const AddCarScreen = () => {
     formData.append('rent', carDetails.rent);
     formData.append('capacity', carDetails.capacity);
     formData.append('transmission', carDetails.transmission);
-    formData.append('fuelType', carDetails.fuelType);
+    formData.append('fuelType', carDetails.fuelType.toLowerCase());
     formData.append('vehicleType', carDetails.vehicleType);
     formData.append('mileage', carDetails.mileage || '0');
     formData.append('insuranceExpiry', carDetails.insuranceExpiry);
     formData.append('minimumRentalHours', carDetails.minimumRentalHours);
     formData.append('maximumRentalDays', carDetails.maximumRentalDays);
     formData.append('companyId', companyId);
-  
+    formData.append('features[seats]', carDetails.capacity);
+    formData.append('features[transmission]', carDetails.transmission.toLowerCase());
+    formData.append('features[fuelType]', carDetails.fuelType.toLowerCase());
     // Add availability
     const formattedDays = carDetails.availability.days.map(day => {
       const dayMap: Record<string, string> = {
@@ -391,6 +393,8 @@ const AddCarScreen = () => {
       formData.append(`cities[${idx}][name]`, city.name);
       formData.append(`cities[${idx}][additionalFee]`, city.additionalFee.toString());
     });
+
+
     
     // Add features
     const validFeatures = [
@@ -402,8 +406,9 @@ const AddCarScreen = () => {
       .filter(feature => feature && validFeatures.includes(feature))
       .map(feature => feature);
     formattedFeatures.forEach((feature, idx) => {
-      formData.append(`features[${idx}]`, feature);
+      formData.append(`characteristics[${idx}]`, feature);
     });
+
     
     // Add images
     carImages.forEach((uri, index) => {
@@ -411,7 +416,7 @@ const AddCarScreen = () => {
       const match = /\.(\w+)$/.exec(filename || '');
       const type = match ? `image/${match[1]}` : 'image';
 
-      formData.append('carImages', {
+      formData.append('carImageUrls', {
         uri,
         type,
         name: filename || `carImage_${index}.jpg`,
@@ -431,7 +436,8 @@ const AddCarScreen = () => {
       });
 
       const result = await response.json();
-
+      console.log(result);
+      
       if (response.ok) {
         Alert.alert('Success', 'Car posted successfully!', [
           {
@@ -442,7 +448,7 @@ const AddCarScreen = () => {
           },
         ]);
       } else {
-        Alert.alert('Error', result.message || 'Something went wrong');
+        Alert.alert('Error', result.code || 'Something went wrong');
       }
     } catch (error: any) {
       Alert.alert('Error', 'Failed to post the car.');

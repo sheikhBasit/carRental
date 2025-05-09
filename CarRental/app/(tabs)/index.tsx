@@ -42,7 +42,7 @@ type CarProps = {
   year?: number;
   features?: string[];
   fuelType?: string;
-  blackoutDates?: string[];
+  blackoutPeriods?: string[];
 };
 
 const ExploreScreen = () => {
@@ -220,11 +220,11 @@ const ExploreScreen = () => {
   };
   const years = getYears();
 
-  const getAllFeatures = () => {
-    const features = allVehicles.flatMap(v => v.features || []);
-    return Array.from(new Set(features));
-  };
-  const allFeatures = getAllFeatures();
+  // const getAllFeatures = () => {
+  //   const features = allVehicles.flatMap(v => v.features || []);
+  //   return Array.from(new Set(features));
+  // };
+  // const allFeatures = getAllFeatures();
 
   const applyFilters = (
     manufacturer = selectedManufacturer,
@@ -324,13 +324,13 @@ const ExploreScreen = () => {
       );
     }
   
-    if (selectedFeatures.length > 0) {
-      filtered = filtered.filter(v => 
-        selectedFeatures.every(f => 
-          v.features?.some(vf => vf.toLowerCase() === f.toLowerCase())
-        )
-      );
-    }
+    // if (selectedFeatures.length > 0) {
+    //   filtered = filtered.filter(v => 
+    //     selectedFeatures.every(f => 
+    //       v.features?.some(vf => vf.toLowerCase() === f.toLowerCase())
+    //     )
+    //   );
+    // }
   
     // Apply city filter if it's different from user's city
     if (city && city !== 'All' && city !== userCity) {
@@ -370,7 +370,8 @@ const ExploreScreen = () => {
           </View>
           <TouchableOpacity 
             style={styles.filterButton}
-            onPress={() => setShowFilters(true)}
+            onPress={() => {
+              setShowFilters(true)}}
           >
             <Ionicons name="filter" size={24} color="white" />
           </TouchableOpacity>
@@ -406,7 +407,7 @@ const ExploreScreen = () => {
                   </View>
                   <View style={styles.detailRow}>
                     <Ionicons name="flash" size={16} color="#ADD8E6" />
-                    <Text style={styles.detailText}>Petrol</Text>
+                    <Text style={styles.detailText}>{car.fuelType || 'Petrol'}</Text>
                   </View>
                 </View>
                 
@@ -486,8 +487,8 @@ const ExploreScreen = () => {
                   onValueChange={(itemValue) => setSelectedManufacturer(itemValue)}
                 >
                   {manufacturers.map((mfg, index) => (
-                    <Picker.Item key={index} label={mfg} value={mfg} />
-                  ))}
+  <Picker.Item key={`mfg-${index}-${mfg}`} label={mfg} value={mfg} />
+))}
                 </Picker>
               </View>
               {/* Model Dropdown */}
@@ -579,7 +580,7 @@ const ExploreScreen = () => {
                 </Picker>
               </View>
               {/* Features */}
-              <Text style={styles.filterLabel}>Features</Text>
+              {/* <Text style={styles.filterLabel}>Features</Text>
               <View style={styles.featuresContainer}>
                 {allFeatures.map(feature => (
               <TouchableOpacity 
@@ -604,7 +605,7 @@ const ExploreScreen = () => {
                 </Text>
               </TouchableOpacity>
                 ))}
-              </View>
+              </View> */}
               {/* From Date */}
               <Text style={styles.filterLabel}>From Date</Text>
               <TouchableOpacity style={styles.filterInput} onPress={() => setShowFromDatePicker(true)}>

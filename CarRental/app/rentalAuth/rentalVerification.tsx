@@ -13,14 +13,14 @@ const VerificationCodeScreen: React.FC = () => {
   // Handle verification code submission
   const handleVerifyCode = async () => {
     setIsLoading(true); // Start loading
-
+  
     // Basic validation
     if (!verificationCode || verificationCode.length !== 6) {
       Alert.alert("Invalid Code", "Please enter a valid 6-digit verification code.");
       setIsLoading(false); // Stop loading
       return;
     }
-
+  
     // API call to verify the code
     try {
       const response = await fetch(`${AppConstants.LOCAL_URL}/rental-companies/verify/rental-company`, {
@@ -30,13 +30,17 @@ const VerificationCodeScreen: React.FC = () => {
         },
         body: JSON.stringify({ code: verificationCode }),
       });
-
+  
       const result = await response.json();
-      await AsyncStorage.setItem('accessToken', result.token);
-
+  
       if (response.ok) {
+        // Only store token if it exists in the response
+        if (result.token) {
+          await AsyncStorage.setItem('companyAccessToken', result.token);
+        }
+        
         Alert.alert("Success", "Verification successful! Redirecting...");
-        router.push("/(tabs)"); // Navigate to the next screen
+        router.push("/(rental-tabs)"); // Navigate to the next screen
       } else {
         Alert.alert("Error", result.message || "Verification failed. Please try again.");
       }
