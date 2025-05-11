@@ -575,7 +575,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-black'
                   }`}
-                >
+                > 
                   {feature}
                 </button>
               ))}

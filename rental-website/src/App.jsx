@@ -32,6 +32,7 @@ import NorthernGuide from "./pages/ReadMore";
 import ExploreRoadTrips from "./pages/Explore";
 import BookingDetails from "./pages/BookingDetails";
 import CompanyVerificationScreen from "./pages/RentalVerification";
+import ForgotPassword from "./pages/ForgotPassword";
 
 function Layout() {
   const location = useLocation();
