@@ -365,7 +365,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Something went wrong');
+        throw new Error(errorData.message || 'Something went wrong while adding vehicle ');
       }
       
       const result = await response.json();

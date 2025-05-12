@@ -32,6 +32,11 @@ const Signup = () => {
     cnicBack: null,     // Will be stored as 'cnicBackUrl' in DB
     profilePic: null,   // Will be stored as 'profilePic' in DB
   });
+  const [previews, setPreviews] = useState({
+    cnicFront: null,
+    cnicBack: null,
+    profilePic: null,
+  });
 
   const [termsAccepted, setTermsAccepted] = useState(false);
 
@@ -63,7 +68,18 @@ const Signup = () => {
 
   const handleFileChange = (e) => {
     const { name, files: fileList } = e.target;
+    const file = fileList[0];
+    if(file){
     setFiles({ ...files, [name]: fileList[0] });
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviews(prev => ({ ...prev, [name]: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setPreviews(prev => ({ ...prev, [name]: null }));
+    }}
   };
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -174,14 +190,30 @@ const Signup = () => {
       };
 
       const response = await fetch("https://car-rental-backend-black.vercel.app/api/users/create", fetchOptions);
-      
-      if (!response.ok || response.status === 500) {
+      if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        if (errorData.message?.includes("image") || errorData.message?.includes("upload") || errorData.message?.includes("server") || errorData.message?.includes("FUNCTION_INVOCATION_FAILED") ) {
+      
+        if (response.status >= 400 && response.status < 500) {
+          // Specific check for image-related client errors
+          if (
+            errorData.message?.toLowerCase().includes("image") ||
+            errorData.message?.toLowerCase().includes("upload") ||
+            errorData.message?.toLowerCase().includes("file") ||
+            errorData.message?.toLowerCase().includes("invalid")
+          ) {
+            throw new Error("Image is not valid. Please upload a correct image file.");
+          }
+      
+          throw new Error(errorData.message || "Client error occurred. Please check your input.");
+        }
+      
+        if (response.status === 500 || errorData.message?.includes("server") || errorData.message?.includes("FUNCTION_INVOCATION_FAILED")) {
           throw new Error("Image upload failed. Please check your files and try again.");
         }
-        throw new Error(errorData.message || "Registration failed. Please try again.");
+      
+        throw new Error("Registration failed. Please try again.");
       }
+      
 
       const data = await response.json();
       console.log(data)
@@ -438,92 +470,103 @@ const Signup = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* CNIC Front */}
-                <div className="border rounded-lg p-3">
-                  <h4 className="text-sm font-medium mb-2">CNIC Front</h4>
-                  <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
-                    <label htmlFor="cnicFront" className="cursor-pointer block">
-                      {files.cnicFront ? (
-                        <div className="flex items-center text-green-600">
-                          <FaCheck className="mr-2" />
-                          <span className="text-sm">{truncateFileName(files.cnicFront.name)}</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center text-gray-500">
-                          <FaUpload className="text-xl mb-1" />
-                          <span className="text-sm">Upload CNIC Front</span>
-                        </div>
-                      )}
-                      <input
-                        type="file"
-                        id="cnicFront"
-                        name="cnicFront"
-                        onChange={handleFileChange}
-                        accept="image/*,.pdf"
-                        className="hidden"
-                        required
-                      />
-                    </label>
-                  </div>
-                </div>
+                {/* CNIC Front */}
+<div className="border rounded-lg p-3">
+  <h4 className="text-sm font-medium mb-2">CNIC Front</h4>
+  <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
+    <label htmlFor="cnicFront" className="cursor-pointer block">
+      {previews.cnicFront ? (
+        <img src={previews.cnicFront} alt="CNIC Front Preview" className="h-40 w-full object-contain rounded-md" />
+      ) : files.cnicFront ? (
+        <div className="flex items-center text-green-600">
+          <FaCheck className="mr-2" />
+          <span className="text-sm">{truncateFileName(files.cnicFront.name)}</span>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center text-gray-500">
+          <FaUpload className="text-xl mb-1" />
+          <span className="text-sm">Upload CNIC Front</span>
+        </div>
+      )}
+      <input
+        type="file"
+        id="cnicFront"
+        name="cnicFront"
+        onChange={handleFileChange}
+        accept="image/*,.pdf"
+        className="hidden"
+        required
+      />
+    </label>
+  </div>
+</div>
+
                 
                 {/* CNIC Back */}
-                <div className="border rounded-lg p-3">
-                  <h4 className="text-sm font-medium mb-2">CNIC Back</h4>
-                  <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
-                    <label htmlFor="cnicBack" className="cursor-pointer block">
-                      {files.cnicBack ? (
-                        <div className="flex items-center text-green-600">
-                          <FaCheck className="mr-2" />
-                          <span className="text-sm">{truncateFileName(files.cnicBack.name)}</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center text-gray-500">
-                          <FaUpload className="text-xl mb-1" />
-                          <span className="text-sm">Upload CNIC Back</span>
-                        </div>
-                      )}
-                      <input
-                        type="file"
-                        id="cnicBack"
-                        name="cnicBack"
-                        onChange={handleFileChange}
-                        accept="image/*,.pdf"
-                        className="hidden"
-                        required
-                      />
-                    </label>
-                  </div>
-                </div>
+<div className="border rounded-lg p-3">   
+  <h4 className="text-sm font-medium mb-2">CNIC Back</h4>
+  <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
+    <label htmlFor="cnicBack" className="cursor-pointer block">
+      {previews.cnicBack ? (
+        <img src={previews.cnicBack} alt="CNIC Back Preview" className="h-40 w-full object-contain rounded-md" />
+      ) : files.cnicBack ? (
+        <div className="flex items-center text-green-600">
+          <FaCheck className="mr-2" />
+          <span className="text-sm">{truncateFileName(files.cnicBack.name)}</span>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center text-gray-500">
+          <FaUpload className="text-xl mb-1" />
+          <span className="text-sm">Upload CNIC Back</span>
+        </div>
+      )}
+      <input
+        type="file"
+        id="cnicBack"
+        name="cnicBack"
+        onChange={handleFileChange}
+        accept="image/*,.pdf"
+        className="hidden"
+        required
+      />
+    </label>
+  </div>
+</div>
+
               </div>
               
               {/* Profile Picture */}
-              <div className="border rounded-lg p-3 mb-6">
-                <h4 className="text-sm font-medium mb-2">Profile Picture</h4>
-                <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
-                  <label htmlFor="profilePic" className="cursor-pointer block">
-                    {files.profilePic ? (
-                      <div className="flex items-center text-green-600">
-                        <FaCheck className="mr-2" />
-                        <span className="text-sm">{truncateFileName(files.profilePic.name)}</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center text-gray-500">
-                        <FaUpload className="text-xl mb-1" />
-                        <span className="text-sm">Upload Profile Picture</span>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      id="profilePic"
-                      name="profilePic"
-                      onChange={handleFileChange}
-                      accept="image/*"
-                      className="hidden"
-                      required
-                    />
-                  </label>
-                </div>
-              </div>
+           
+<div className="border rounded-lg p-3">
+  <h4 className="text-sm font-medium mb-2">Profile Picture</h4>
+  <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
+    <label htmlFor="profilePic" className="cursor-pointer block">
+      {previews.profilePic ? (
+        <img src={previews.profilePic} alt="Profile Picture Preview" className="h-40 w-full object-contain rounded-md" />
+      ) : files.profilePic ? (
+        <div className="flex items-center text-green-600">
+          <FaCheck className="mr-2" />
+          <span className="text-sm">{truncateFileName(files.profilePic.name)}</span>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center text-gray-500">
+          <FaUpload className="text-xl mb-1" />
+          <span className="text-sm">Upload Profile Picture</span>
+        </div>
+      )}
+      <input
+        type="file"
+        id="profilePic"
+        name="profilePic"
+        onChange={handleFileChange}
+        accept="image/*,.pdf"
+        className="hidden"
+        required
+      />
+    </label>
+  </div>
+</div>
+
             </div>
 
             {/* Terms & Conditions */}

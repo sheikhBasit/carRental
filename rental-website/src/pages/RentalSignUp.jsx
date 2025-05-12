@@ -213,7 +213,7 @@ const RentalCompanySignUp = () => {
         expires: 7, // days
         secure: true,
         sameSite: 'strict'
-      });
+    });
       if (data.token) {
           Cookies.set("token", data.token, { expires: 7 });
         }
