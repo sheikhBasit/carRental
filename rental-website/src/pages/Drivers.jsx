@@ -342,10 +342,12 @@ const Drivers = ({ drivers, company }) => {
        onDriverAdded={() => {
          // refresh driver list or show success message
          console.log("Driver added successfully");
+         window.location.reload();
        }}
        onDriverUpdated={() => {
          // refresh driver list or show update success
          console.log("Driver updated successfully");
+         window.location.reload();
        }}
      />
      

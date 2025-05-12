@@ -21,6 +21,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
     year: new Date().getFullYear(),
     rent: '',
     transmission: 'automatic',
+    capacity: '',
     fuelType: 'petrol',
     vehicleType: 'Sedan',
     features: [],
@@ -316,6 +317,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
 
       formDataToSend.append('minimumRentalHours', formData.minimumRentalHours);
       formDataToSend.append('maximumRentalDays', formData.maximumRentalDays);
+      formDataToSend.append('capacity', formData.capacity);
   
       // Append features
       formDataToSend.append('features[seats]', '4'); // Add default or from form
@@ -331,7 +333,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
   
       // Append cities
       formData.cities.forEach((city, index) => {
-        formDataToSend.append(`cities[${index}][name]`, city.name);
+        formDataToSend.append(`cities[${index}][name]`, city.name.toLowerCase());
         formDataToSend.append(`cities[${index}][additionalFee]`, city.additionalFee.toString());
       });
   
@@ -503,11 +505,11 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
               </select>
             </div>
             <div>
-              <label className="block text-black text-sm font-medium mb-1">Mileage (km)</label>
+              <label className="block text-black text-sm font-medium mb-1">Capacity</label>
               <input
                 type="number"
-                name="mileage"
-                value={formData.mileage}
+                name="capacity"
+                value={formData.capacity}
                 onChange={handleInputChange}
                 className="w-full p-2 border rounded text-black"
                 min="0"
@@ -641,50 +643,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
             )}
           </div>
 
-          <div className="mb-4 text-black">
-            <div 
-              className="flex justify-between items-center cursor-pointer mb-2"
-              onClick={() => setShowLocation(!showLocation)}
-            >
-              <label className="block text-black text-sm font-medium">Location Settings</label>
-              {showLocation ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-            </div>
-            
-            {showLocation && (
-              <div className="border p-4 rounded-lg">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-black text-sm font-medium mb-1">Longitude</label>
-                    <input
-                      type="number"
-                      value={formData.currentLocation.coordinates[0]}
-                      onChange={(e) => handleLocationChange({
-                        target: { name: 'longitude', value: e.target.value }
-                      })}
-                      className="w-full p-2 border rounded text-black"
-                      step="0.000001"
-                      min="-180"
-                      max="180"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-black text-sm font-medium mb-1">Latitude</label>
-                    <input
-                      type="number"
-                      value={formData.currentLocation.coordinates[1]}
-                      onChange={(e) => handleLocationChange({
-                        target: { name: 'latitude', value: e.target.value }
-                      })}
-                      className="w-full p-2 border rounded text-black"
-                      step="0.000001"
-                      min="-90"
-                      max="90"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          
 
           <div className="mb-4 text-black">
             <div 
@@ -754,7 +713,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
                     </button>
                   </div>
                 </div>
-
+{/* 
                 <div>
                   <label className="block text-black text-sm font-medium mb-2">Blackout Dates</label>
                   <div className="mb-3">
@@ -787,7 +746,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
                       Add Date
                     </button>
                   </div>
-                </div>
+                </div> */}
               </div>
             )}
           </div>

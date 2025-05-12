@@ -349,11 +349,13 @@ const Vehicles = ({ vehicles, company }) => {
           vehicle={selectedVehicle}
           onVehicleAdded={() => {
             // refresh driver list or show success message
-            console.log("Driver added successfully");
+            console.log("Vehicle added successfully");
+            window.location.reload();
           }}
           onVehicleUpdated={() => {
             // refresh driver list or show update success
-            console.log("Driver updated successfully");
+            console.log("Vehicle updated successfully");
+            window.location.reload();
           }}
         />
       )}

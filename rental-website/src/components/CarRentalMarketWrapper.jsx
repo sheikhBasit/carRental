@@ -35,7 +35,7 @@ const CarRentalMarketWrapper = () => {
           topModels: []      // You might want to fetch these separately
         });
       } catch (err) {
-        setError(err.message);
+        setError("No Car Found");
         setCarData({
           brandName: brand.charAt(0).toUpperCase() + brand.slice(1),
           carModels: [],
@@ -63,8 +63,7 @@ const CarRentalMarketWrapper = () => {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-red-600 text-xl">
-          <p>Unable to load {carData.brandName} car rental options</p>
-          <p className="text-sm text-gray-500">{error}</p>
+          <p>No Car Found for {carData.brandName} car rental options</p>
           <button 
             onClick={() => window.location.reload()} 
             className="mt-4 bg-purple-600 text-white px-4 py-2 rounded"
