@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaCar, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUser, FaBuilding, FaPhone, FaMoneyBillWave, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { getAuthToken } from '../../utils/auth';
 
 const BookingDetail = () => {
   const { bookingId } = useParams();
@@ -50,18 +51,18 @@ const BookingDetail = () => {
   useEffect(() => {
     const fetchBookingDetails = async () => {
       try {
-        const response = await axios.get(`https://car-rental-backend-black.vercel.app/api/bookings/getBookingById/${bookingId}`);
+        const token = getAuthToken();
+        const response = await axios.get(`https://car-rental-backend-black.vercel.app/api/bookings/getBookingById/${bookingId}`,
+
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
         const bookingData = response.data;
         
-        // If idVehicle is null, fetch the fallback vehicle
-        if (!bookingData.idVehicle) {
-          try {
-            const fallbackResponse = await axios.get(`https://car-rental-backend-black.vercel.app/api/vehicles/68055935385a645f78086de3`);
-            setFallbackVehicle(fallbackResponse.data);
-          } catch (fallbackError) {
-            console.error('Failed to fetch fallback vehicle:', fallbackError);
-          }
-        }
+       
         
         setBooking(bookingData);
       } catch (err) {

@@ -8,24 +8,24 @@ const Footer = () => {
       title: "Company",
       links: [
         { name: 'About Us', path: '/about' },
-        { name: 'Contact Us', path: '/contact' },
-        { name: 'Service', path: '/services' }
+        { name: 'Login as a User', path: '/login' },
+        { name: 'Become a Host', path: '/rental-signup' }
       ]
     },
     {
       title: "Locations",
       links: [
-        { name: 'Lahore', path: '/locations/lahore' },
-        { name: 'Islamabad', path: '/locations/islamabad' },
-        { name: 'Karachi', path: '/locations/karachi' }
+        { name: 'Lahore'},
+        { name: 'Islamabad'},
+        { name: 'Multan'}
       ]
     },
     {
       title: "Help",
       links: [
-        { name: 'FAQs', path: '/faqs' },
+        { name: 'Contact', path: '/contact' },
         { name: 'How It Works', path: '/how-it-works' },
-        { name: 'Terms', path: '/terms' }
+
       ]
     }
   ];
@@ -54,15 +54,20 @@ const Footer = () => {
               <h4 className="font-bold text-black mb-4">{section.title}</h4>
               <ul className="space-y-2">
                 {section.links.map((link) => (
-                  <li key={link.name}>
-                    <Link 
-                      to={link.path}
-                      className="text-sm text-gray-600 hover:text-black transition-colors"
-                    >
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
+  <li key={link.name}>
+    {link.path ? (
+      <Link 
+        to={link.path}
+        className="text-sm text-gray-600 hover:text-black transition-colors"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      >
+        {link.name}
+      </Link>
+    ) : (
+      <span className="text-sm text-gray-600">{link.name}</span>
+    )}
+  </li>
+))}
               </ul>
             </div>
           ))}

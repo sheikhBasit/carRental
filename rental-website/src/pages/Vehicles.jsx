@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Edit, Trash2, Car, Filter, X } from 'lucide-react';
 import VehicleForm from './VehicleForm';
+import axios from 'axios';
 
 const Vehicles = ({ vehicles, company }) => {
   const [showVehicleForm, setShowVehicleForm] = useState(false);
@@ -87,6 +88,17 @@ const Vehicles = ({ vehicles, company }) => {
       maxCapacity: '',
       features: []
     });
+  };
+
+  const handleDelete = async (vehicleId) => {
+    // Delete driver logic here
+    const response = await axios.delete(`https://car-rental-backend-black.vercel.app/api/vehicles/${vehicleId}`);
+    console.log('Delete vehicle:', vehicleId);
+    if (response.status === 200) {
+      console.log('Vehicle deleted successfully');
+      alert('Vehicle deleted successfully');
+      window.location.reload();
+    }
   };
 
   const handleEdit = (vehicle) => {
@@ -319,8 +331,8 @@ const Vehicles = ({ vehicles, company }) => {
                 <td className="p-3 font-medium">{vehicle.manufacturer?.toUpperCase()}</td>
                 <td className="p-3">{vehicle.model?.toUpperCase()}</td>
                 <td className="p-3">{vehicle.numberPlate}</td>
-                <td className="p-3">{vehicle.features.seats} Seats</td>
-                <td className="p-3">{vehicle.features.transmission}</td>
+                <td className="p-3">{vehicle.features.seats || vehicle.capacity} Seats</td>
+                <td className="p-3">{vehicle.features.transmission || vehicle.transmission}</td>
                 <td className="p-3">Rs.{vehicle.rent}</td>
                 <td className="p-3 flex space-x-2">
                   <button 

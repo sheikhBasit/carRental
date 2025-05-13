@@ -113,7 +113,7 @@ const UserCarRentalsPage = () => {
       const response = await fetch(
         `https://car-rental-backend-black.vercel.app/api/bookings/cancelBooking/${bookingId}`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
@@ -177,7 +177,7 @@ const UserCarRentalsPage = () => {
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch bookings: ${response.status}`);
+          throw new Error(`Failed to fetch bookings`);
         }
 
         let data = await response.json();
@@ -311,12 +311,12 @@ const UserCarRentalsPage = () => {
                       : "You don't have any canceled car rentals.")}
                 </p>
                 <div className="mt-6">
-                  <button
-                    onClick={() => navigate('/cars')}
+                  {/* <button
+                    onClick={() => navigate('/Home')}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     Browse Available Cars
-                  </button>
+                  </button> */}
                 </div>
               </div>
             ) : (
@@ -441,7 +441,7 @@ const UserCarRentalsPage = () => {
                           <div className="mt-6 flex flex-wrap gap-3">
                             <button
                               onClick={() => viewBookingDetails(booking._id)}
-                              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-white bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                             >
                               <svg className="mr-2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

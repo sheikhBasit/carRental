@@ -81,9 +81,9 @@ export default function DriveFleetHomepage() {
                 <div className="w-full md:w-1/2 space-y-4">
                     <h1 className="text-4xl font-bold text-gray-900">Drive Fleet Pakistan - Rent Cars Across the Country</h1>
                     <p className="text-lg text-gray-700">Skip the rental car counter and rent quality vehicles from local hosts in Karachi, Lahore, Islamabad, and beyond</p>
-                    <button className="bg-grey-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700 transition-colors">
+                    {/* <button className="bg-grey-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700 transition-colors">
                         Find Cars in Pakistan
-                    </button>
+                    </button> */}
                 </div>
             </div>
 
@@ -148,12 +148,12 @@ export default function DriveFleetHomepage() {
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold">Popular Pakistani Car Brands</h2>
                     <div className="flex space-x-2">
-                        <button className="p-1 rounded-full hover:bg-gray-100">
+                        {/* <button className="p-1 rounded-full hover:bg-gray-100">
                             <ChevronLeft size={24} className="text-gray-400" />
                         </button>
                         <button className="p-1 rounded-full hover:bg-gray-100">
                             <ChevronRight size={24} className="text-gray-400" />
-                        </button>
+                        </button> */}
                     </div>
                 </div>
                 <div className="flex space-x-4 overflow-x-auto pb-4">
@@ -209,7 +209,7 @@ export default function DriveFleetHomepage() {
                 <p className="mb-4">Our local support team is available 24/7</p>
                 <div className="flex flex-col md:flex-row justify-center gap-4">
                     <a href="tel:+923001234567" className="bg-white text-green-600 px-6 py-2 rounded-md font-medium hover:bg-gray-100 transition-colors">
-                        Call: +92 300 1234567
+                        Call: +92 313 7976270
                     </a>
                     <a href="mailto:support@drivefleet.pk" className="bg-white text-green-600 px-6 py-2 rounded-md font-medium hover:bg-gray-100 transition-colors">
                         Email Us

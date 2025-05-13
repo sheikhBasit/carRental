@@ -63,13 +63,13 @@ const AboutUs = () => {
             <img src="/assets/team2.jpg" alt="Team Member 2" />
             <h3 className="text-black">Tayyaba Tahira</h3>
             <p className="text-black">COO</p>
-            <p className="member-bio text-black">Fatima ensures our operations run smoothly across all Pakistani cities, with a focus on customer satisfaction and cultural sensitivity.</p>
+            <p className="member-bio text-black">Tayyaba ensures our operations run smoothly across all Pakistani cities, with a focus on customer satisfaction and cultural sensitivity.</p>
           </div>
           <div className="team-member">
             <img src="/assets/team3.jpg" alt="Team Member 3" />
-            <h3 className="text-black">Tariq Mahmood</h3>
+            <h3 className="text-black">Mudassir</h3>
             <p className="text-black">CTO</p>
-            <p className="member-bio text-black">Tariq leads our technological initiatives, developing systems optimized for Pakistan's unique travel conditions and connectivity challenges.</p>
+            <p className="member-bio text-black">Mudassar leads our technological initiatives, developing systems optimized for Pakistan's unique travel conditions and connectivity challenges.</p>
           </div>
         </div>
       </div>

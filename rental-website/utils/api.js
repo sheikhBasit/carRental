@@ -35,7 +35,7 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-const fetchWithRetry = async (url, retries = 3, delay = 1000) => {
+const fetchWithRetry = async (url, retries = 1, delay = 500) => {
   try {
     return await axiosInstance.get(url);
   } catch (error) {

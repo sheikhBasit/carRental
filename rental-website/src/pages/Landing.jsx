@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+
+
 const LandingPage = () => {
   const [showCookieBanner, setShowCookieBanner] = useState(false);
   const [activeAccordion, setActiveAccordion] = useState(null);
@@ -92,14 +94,26 @@ const LandingPage = () => {
   };
 
   const handleGuideMore = () => {
+    window.scrollTo({
+    top: 0,
+    behavior: 'smooth', 
+  });
     navigate(`/guide`);
   };
   const handleReadMore = () => {
+    window.scrollTo({
+    top: 0,
+    behavior: 'smooth', 
+  });
     navigate(`/readmore`);
   };
   const handleExplore = () => {
-    navigate(`/explore`);
-  };
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth', 
+  });
+  navigate(`/explore`);
+};
 
   const toggleAccordion = (index) => {
     setActiveAccordion(activeAccordion === index ? null : index);
@@ -155,10 +169,10 @@ const LandingPage = () => {
         <div className="p-8 text-black">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Popular Car Brands in Pakistan</h2>
-            <div className="flex space-x-2">
+            {/* <div className="flex space-x-2">
               <ChevronLeft size={24} className="text-gray-400 cursor-pointer" />
               <ChevronRight size={24} className="text-gray-400 cursor-pointer" />
-            </div>
+            </div> */}
           </div>
           <div className="flex space-x-4 overflow-x-auto pb-4">
             {carMakes.map((make) => (
@@ -182,10 +196,10 @@ const LandingPage = () => {
         <div className="p-8 text-black">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Top Destinations in Pakistan</h2>
-            <div className="flex space-x-2">
+            {/* <div className="flex space-x-2">
               <ChevronLeft size={24} className="text-gray-400 cursor-pointer" />
               <ChevronRight size={24} className="text-gray-400 cursor-pointer" />
-            </div>
+            </div> */}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {destinations.map((destination) => (

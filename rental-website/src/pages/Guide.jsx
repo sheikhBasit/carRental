@@ -47,7 +47,7 @@ const MotorwayGuide = () => {
       <article>
         <header className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Pakistan's Motorway Network Guide</h1>
-          <p className="text-gray-600">Updated: June 2024 | By Drive Fleet Team</p>
+          <p className="text-gray-600"></p>
         </header>
 
         <img 
@@ -131,32 +131,7 @@ const MotorwayGuide = () => {
         </div>
       </article>
 
-      <div className="mt-12 border-t pt-8">
-        <h2 className="text-2xl font-bold mb-4">More Helpful Guides</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div 
-            className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate('/guides/northern-pakistan')}
-          >
-            <h3 className="font-bold mb-2">Northern Areas Road Trip</h3>
-            <p className="text-sm text-gray-600">Complete guide to Gilgit-Baltistan and KPK</p>
-          </div>
-          <div 
-            className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate('/guides/coastal-drive')}
-          >
-            <h3 className="font-bold mb-2">Coastal Highway Guide</h3>
-            <p className="text-sm text-gray-600">Karachi to Gwadar route details</p>
-          </div>
-          <div 
-            className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate('/guides/city-driving')}
-          >
-            <h3 className="font-bold mb-2">City Driving in Pakistan</h3>
-            <p className="text-sm text-gray-600">Navigating urban traffic</p>
-          </div>
-        </div>
-      </div>
+      
     </div>
   );
 };

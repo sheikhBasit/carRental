@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Upload, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import Cookies from 'js-cookie';
 
@@ -13,7 +13,7 @@ const featureOptions = [
 ];
 
 const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdated }) => {
-  const [formData, setFormData] = useState(vehicle || {
+  const [formData, setFormData] = useState({
     company: company?._id || '',
     numberPlate: '',
     manufacturer: '',
@@ -22,9 +22,17 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
     rent: '',
     transmission: 'automatic',
     capacity: '',
+    characteristics: [],
     fuelType: 'petrol',
     vehicleType: 'Sedan',
-    features: [],
+    features: {
+      transmission: 'automatic',
+      fuelType: 'petrol',
+      seats: 4,
+      ac: false,
+      bluetooth: false,
+      gps: false
+    },
     mileage: '',
     lastServiceDate: '',
     insuranceExpiry: '',
@@ -46,7 +54,6 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
 
   const [imageUploading, setImageUploading] = useState(false);
   const [showAvailability, setShowAvailability] = useState(false);
-  const [showLocation, setShowLocation] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newCity, setNewCity] = useState({
     name: '',
@@ -56,12 +63,77 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    if (vehicle) {
+      // Transform the existing vehicle data to match our form structure
+      const transformedData = {
+        ...vehicle,
+        // Map the features from the vehicle to our form structure
+        features: {
+          transmission: vehicle.transmission || vehicle.features?.transmission || 'automatic',
+          fuelType: vehicle.fuelType || vehicle.features?.fuelType || 'petrol',
+          seats: vehicle.capacity || vehicle.features?.seats || 4,
+          ac: vehicle.features?.ac || false,
+          bluetooth: vehicle.features?.bluetooth || false,
+          gps: vehicle.features?.gps || false,
+          // Map other features from featureOptions
+          ...featureOptions.reduce((acc, feature) => {
+            const featureKey = feature.toLowerCase().replace(/\s+/g, '');
+            acc[featureKey] = vehicle.features?.[featureKey] || false;
+            return acc;
+          }, {})
+        },
+        carImageUrls: vehicle.carImageUrls?.map(url => ({ url })) || [],
+        insuranceExpiry: vehicle.insurance?.expiry?.split('T')[0] || '',
+        lastServiceDate: vehicle.maintenanceLogs?.[0]?.date?.split('T')[0] || '',
+        blackoutDates: vehicle.blackoutPeriods?.map(period => period.from.split('T')[0]) || [],
+        // Set the main fields from features if they exist
+        transmission: vehicle.transmission || vehicle.features?.transmission || 'automatic',
+        fuelType: vehicle.fuelType || vehicle.features?.fuelType || 'petrol',
+        capacity: vehicle.capacity || vehicle.features?.seats || 4
+      };
+      
+      setFormData(transformedData);
+    }
+  }, [vehicle]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Handle special cases where we need to update both the main field and features
+    if (name === 'transmission') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        features: {
+          ...prev.features,
+          [name]: value
+        }
+      }));
+    } else if (name === 'fuelType') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        features: {
+          ...prev.features,
+          [name]: value
+        }
+      }));
+    } else if (name === 'capacity') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        features: {
+          ...prev.features,
+          seats: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleNestedInputChange = (parent, e) => {
@@ -77,19 +149,6 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
 
   const handleAvailabilityChange = (e) => {
     handleNestedInputChange('availability', e);
-  };
-
-  const handleLocationChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      currentLocation: {
-        ...prev.currentLocation,
-        coordinates: name === 'longitude' 
-          ? [parseFloat(value), prev.currentLocation.coordinates[1]]
-          : [prev.currentLocation.coordinates[0], parseFloat(value)]
-      }
-    }));
   };
 
   const handleDayToggle = (day) => {
@@ -110,14 +169,13 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
 
   const handleFeatureToggle = (feature) => {
     setFormData(prev => {
-      const newFeatures = {
-        ...prev.features,
-        [feature]: !prev.features[feature]
-      };
+      const newCharacteristics = prev.characteristics.includes(feature)
+        ? prev.characteristics.filter(f => f !== feature)
+        : [...prev.characteristics, feature];
       
       return {
         ...prev,
-        features: newFeatures
+        characteristics: newCharacteristics
       };
     });
   };
@@ -132,28 +190,21 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
     try {
       const newImageUrls = await Promise.all(
         files.map(async (file) => {
-          // Check file type and extension for each file
-          const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+          const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
           const fileExtension = file.name.split('.').pop().toLowerCase();
   
-          if (!validTypes.includes(file.type) || !['jpg', 'jpeg', 'png', 'webp'].includes(fileExtension)) {
-            throw new Error('Invalid file type. Please upload JPG, JPEG, PNG, or WEBP files.');
+          if (!validTypes.includes(file.type)) {
+            throw new Error('Invalid file type. Please upload JPG, JPEG, PNG files.');
           }
   
-          // Verify file size (max 5MB)
           if (file.size > 5 * 1024 * 1024) {
             throw new Error('File size exceeds 5MB limit');
           }
   
-          // Create mock URL for preview
           const mockImageUrl = URL.createObjectURL(file);
           return {
             url: mockImageUrl,
-            file: new File(
-              [file], 
-              `vehicle_image_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExtension}`,
-              { type: file.type }
-            )
+            file: file
           };
         })
       );
@@ -178,6 +229,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
       carImageUrls: newUrls
     }));
   };
+
   const handleAddCity = () => {
     if (!newCity.name) {
       setError('City name is required');
@@ -314,17 +366,24 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
       formDataToSend.append('vehicleType', formData.vehicleType);
       formDataToSend.append('mileage', formData.mileage || 0);
       formDataToSend.append('insuranceExpiry', new Date(formData.insuranceExpiry).toISOString());
-
       formDataToSend.append('minimumRentalHours', formData.minimumRentalHours);
       formDataToSend.append('maximumRentalDays', formData.maximumRentalDays);
       formDataToSend.append('capacity', formData.capacity);
   
-      // Append features
-      formDataToSend.append('features[seats]', '4'); // Add default or from form
-      formDataToSend.append('features[fuelType]', formData.fuelType);
-      formDataToSend.append('features[transmission]', formData.transmission);
+      // Append features - we'll use the features object which should be in sync with the main fields
+      formDataToSend.append('features[transmission]', formData.features.transmission);
+      formDataToSend.append('features[fuelType]', formData.features.fuelType);
+      formDataToSend.append('features[seats]', formData.features.seats);
+      
+      // Append other features
+      Object.entries(formData.features).forEach(([key, value]) => {
+        if (!['transmission', 'fuelType', 'seats'].includes(key)) {
+          formDataToSend.append(`features[${key}]`, value.toString());
+        }
+      });
+      formDataToSend.append('characteristics', JSON.stringify(formData.characteristics));
   
-      // Append availability days individually
+      // Append availability
       formData.availability.days.forEach((day, index) => {
         formDataToSend.append(`availability[days][${index}]`, day);
       });
@@ -336,10 +395,13 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
         formDataToSend.append(`cities[${index}][name]`, city.name.toLowerCase());
         formDataToSend.append(`cities[${index}][additionalFee]`, city.additionalFee.toString());
       });
+      // In handleSubmit:
   
       // Append blackout dates
       formData.blackoutDates.forEach((date, index) => {
-        formDataToSend.append(`blackoutDates[${index}]`, date);
+        formDataToSend.append(`blackoutPeriods[${index}][from]`, new Date(date).toISOString());
+        formDataToSend.append(`blackoutPeriods[${index}][to]`, new Date(date).toISOString());
+        formDataToSend.append(`blackoutPeriods[${index}][reason]`, 'buffer');
       });
   
       // Append location
@@ -349,9 +411,11 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
   
       // Append all image files
       formData.carImageUrls.forEach((img, index) => {
-        formDataToSend.append('carImageUrls', img.file);
+        if (img.file) {
+          formDataToSend.append('carImageUrls', img.file);
+        }
       });
-  
+      console.log("formDataToSend: ",formDataToSend);
       const url = vehicle 
         ? `https://car-rental-backend-black.vercel.app/api/vehicles/${vehicle._id}`
         : 'https://car-rental-backend-black.vercel.app/api/vehicles/postVehicle';
@@ -363,38 +427,19 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
         body: formDataToSend
       });
       
+      console.log("response: ",response);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-      
-        if (response.status >= 400 && response.status < 500) {
-          // Specific check for image-related client errors
-          if (
-            errorData.message?.toLowerCase().includes("image") ||
-            errorData.message?.toLowerCase().includes("upload") ||
-            errorData.message?.toLowerCase().includes("file") ||
-            errorData.message?.toLowerCase().includes("invalid")
-          ) {
-            throw new Error("Image is not valid. Please upload a correct image file.");
-          }
-      
-          throw new Error(errorData.message || "Client error occurred. Please check your input.");
-        }
-      
-        if (response.status === 500 || errorData.message?.includes("server") || errorData.message?.includes("FUNCTION_INVOCATION_FAILED")) {
-          throw new Error("Image upload failed. Please check your files and try again.");
-        }
-      
-        throw new Error("Registration failed. Please try again.");
+        throw new Error(errorData.message || 'Failed to submit vehicle. Please try again.');
       }
 
-      
       const result = await response.json();
-      
-      if (vehicle) {
-        onVehicleUpdated(result);
-      } else {
-        onVehicleAdded(result);
-      }
+      console.log("result: ",result);
+      // if (vehicle) {
+      //   onVehicleUpdated(result);
+      // } else {
+      //   onVehicleAdded(result);
+      // }
       
       onClose();
     } catch (error) {
@@ -404,6 +449,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
       setIsSubmitting(false);
     }
   };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -525,14 +571,15 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
               </select>
             </div>
             <div>
-              <label className="block text-black text-sm font-medium mb-1">Capacity</label>
+              <label className="block text-black text-sm font-medium mb-1">Seating Capacity*</label>
               <input
                 type="number"
                 name="capacity"
                 value={formData.capacity}
                 onChange={handleInputChange}
                 className="w-full p-2 border rounded text-black"
-                min="0"
+                min="1"
+                required
               />
             </div>
             <div>
@@ -584,26 +631,25 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
             </div>
           </div>
 
-          <div className="mb-4">
-            <label className="block text-black text-sm font-medium mb-2">Features</label>
-            <div className="flex flex-wrap gap-2">
-              {featureOptions.map(feature => (
-                <button
-                  key={feature}
-                  type="button"
-                  onClick={() => handleFeatureToggle(feature)}
-                  className={`px-3 py-1 text-sm rounded-full ${
-                    formData.features[feature]
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-black'
-                  }`}
-                > 
-                  {feature}
-                </button>
-              ))}
-            </div>
-          </div>
-
+<div className="mb-4">
+  <label className="block text-black text-sm font-medium mb-2">Features</label>
+  <div className="flex flex-wrap gap-2">
+    {featureOptions.map(feature => (
+      <button
+        key={feature}
+        type="button"
+        onClick={() => handleFeatureToggle(feature)}
+        className={`px-3 py-1 text-sm rounded-full ${
+          formData.characteristics.includes(feature)
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-200 text-black'
+        }`}
+      > 
+        {feature}
+      </button>
+    ))}
+  </div>
+</div>
           <div className="mb-4 text-black">
             <div 
               className="flex justify-between items-center cursor-pointer mb-2"
@@ -662,8 +708,6 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
               </div>
             )}
           </div>
-
-          
 
           <div className="mb-4 text-black">
             <div 
@@ -733,7 +777,7 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
                     </button>
                   </div>
                 </div>
-{/* 
+
                 <div>
                   <label className="block text-black text-sm font-medium mb-2">Blackout Dates</label>
                   <div className="mb-3">
@@ -766,55 +810,56 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
                       Add Date
                     </button>
                   </div>
-                </div> */}
+                </div>
               </div>
             )}
           </div>
 
           <div className="mb-4">
-  <label className="block text-black text-sm font-medium mb-1">Vehicle Images*</label>
-  <div className="flex items-center space-x-4">
-    <label className="cursor-pointer text-black bg-gray-100 hover:bg-gray-200 p-3 rounded-lg flex items-center">
-      <Upload className="mr-2" size={18} />
-      Upload Image
-      <input 
-        type="file" 
-        onChange={handleImageUpload} 
-        className="hidden" 
-        accept="image/jpeg, image/jpg, image/png, image/webp"
-        multiple
-      />
-    </label>
-    {imageUploading && <span className="text-black">Uploading...</span>}
-  </div>
-  {formData.carImageUrls.length === 0 && (
-    <p className="text-sm text-gray-500 mt-1">At least one image is required</p>
-  )}
-  <div className="flex flex-wrap mt-2 gap-2">
-    {formData.carImageUrls.map((img, index) => (
-      <div key={index} className="relative">
-        <img 
-          src={img.url} 
-          alt="Vehicle" 
-          className="w-16 h-12 object-cover rounded"
-          onLoad={() => URL.revokeObjectURL(img.url)} // Clean up memory
-        />
-        <button
-          type="button"
-          onClick={() => handleRemoveImage(index)}
-          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-        >
-          <X size={12} />
-        </button>
-      </div>
-    ))}
-  </div>
-</div>
+            <label className="block text-black text-sm font-medium mb-1">Vehicle Images*</label>
+            <div className="flex items-center space-x-4">
+              <label className="cursor-pointer text-black bg-gray-100 hover:bg-gray-200 p-3 rounded-lg flex items-center">
+                <Upload className="mr-2" size={18} />
+                Upload Image
+                <input 
+                  type="file" 
+                  onChange={handleImageUpload} 
+                  className="hidden" 
+                  accept="image/jpeg, image/jpg, image/png, image/webp"
+                  multiple
+                />
+              </label>
+              {imageUploading && <span className="text-black">Uploading...</span>}
+            </div>
+            {formData.carImageUrls.length === 0 && (
+              <p className="text-sm text-gray-500 mt-1">At least one image is required</p>
+            )}
+            <div className="flex flex-wrap mt-2 gap-2">
+              {formData.carImageUrls.map((img, index) => (
+                <div key={index} className="relative">
+                  <img 
+                    src={img.url} 
+                    alt="Vehicle" 
+                    className="w-16 h-12 object-cover rounded"
+                    onLoad={() => img.url.startsWith('blob:') && URL.revokeObjectURL(img.url)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="flex justify-end space-x-3">
             <button 
               type="button" 
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 text-black"
+              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 text-white"
               disabled={isSubmitting}
             >
               Cancel

@@ -14,7 +14,7 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
     experience: '',
     cnic: '',
     company: company ? company._id : '',
-    baseHourlyRate: '',
+    
     baseDailyRate: '',
     availability: {
       days: [],
@@ -79,10 +79,10 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
     if (!file) return;
   
     // Check file type and extension
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     const fileExtension = file.name.split('.').pop().toLowerCase();
     
-    if (!validTypes.includes(file.type) || !['jpg', 'jpeg', 'png', 'webp'].includes(fileExtension)) {
+    if (!validTypes.includes(file.type) || !['jpg', 'jpeg', 'png'].includes(fileExtension)) {
       setError('Please upload a JPG, JPEG, PNG, or WEBP file with the proper extension');
       return;
     }
@@ -155,7 +155,7 @@ const DriverForm = ({ onClose, company, driver, onDriverAdded, onDriverUpdated }
   
       // Validate required fields
       if (!formData.name || !formData.license || !formData.phNo || !formData.age || 
-          !formData.experience || !formData.cnic || !formData.baseHourlyRate || 
+          !formData.experience || !formData.cnic || 
           !formData.baseDailyRate || formData.availability.days.length === 0) {
         throw new Error('Please fill in all required fields');
       }
@@ -185,7 +185,6 @@ formDataToSend.append('age', formData.age);
 formDataToSend.append('experience', formData.experience);
 formDataToSend.append('cnic', formData.cnic);
 formDataToSend.append('company', company.id);
-formDataToSend.append('baseHourlyRate', formData.baseHourlyRate);
 formDataToSend.append('baseDailyRate', formData.baseDailyRate);
 
 // Availability - IMPORTANT: Use bracket notation as strings in the key name
@@ -367,7 +366,7 @@ setTimeout(() => {
             </div>
 
             <div>
-              <label className="block text-black text-sm font-medium mb-1">Phone Number* in the format 03XXXXXXXXXX</label>
+              <label className="block text-black text-sm font-medium mb-1">Phone Number*</label>
               <input
                 type="tel"
                 name="phNo"
@@ -409,7 +408,7 @@ setTimeout(() => {
             </div>
 
             <div>
-              <label className="block text-black text-sm font-medium mb-1">CNIC* in the format XXXXX-XXXXXXX-X</label>
+              <label className="block text-black text-sm font-medium mb-1">CNIC*</label>
               <input
                 type="text"
                 name="cnic"
@@ -424,7 +423,7 @@ setTimeout(() => {
               />
             </div>
 
-            <div>
+            {/* <div>
               <label className="block text-black text-sm font-medium mb-1">Base Hourly Rate (PKR)*</label>
               <input
                 type="number"
@@ -436,7 +435,7 @@ setTimeout(() => {
                 min="0"
                 step="0.01"
               />
-            </div>
+            </div> */}
 
             <div>
               <label className="block text-black text-sm font-medium mb-1">Base Daily Rate (PKR)*</label>
@@ -453,7 +452,7 @@ setTimeout(() => {
             </div>
           </div>
 
-          <div className="mb-4">
+          {/* <div className="mb-4">
             <div 
               className="flex text-black justify-between items-center cursor-pointer mb-2"
               onClick={() => setShowAvailability(!showAvailability)}
@@ -513,13 +512,71 @@ setTimeout(() => {
                 </div>
               </div>
             )}
+          </div> */}
+  <div className="mb-4 text-black">
+            <div 
+              className="flex justify-between items-center cursor-pointer mb-2"
+              onClick={() => setShowAvailability(!showAvailability)}
+            >
+              <label className="block text-black text-sm font-medium">Availability Settings*</label>
+              {showAvailability ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
+            
+            {showAvailability && (
+              <div className="border p-4 rounded-lg">
+                <div className="mb-3">
+                  <label className="block text-black text-sm font-medium mb-1">Available Days*</label>
+                  <div className="flex flex-wrap gap-2">
+                    {daysOfWeek.map(day => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => handleDayToggle(day)}
+                        className={`px-3 py-1 text-sm rounded-full ${
+                          formData.availability.days.includes(day)
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-black'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-black text-sm font-medium mb-1">Start Time*</label>
+                    <input
+                      type="time"
+                      name="startTime"
+                      value={formData.availability.startTime}
+                      onChange={handleAvailabilityChange}
+                      className="w-full p-2 border rounded text-black"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-black text-sm font-medium mb-1">End Time*</label>
+                    <input
+                      type="time"
+                      name="endTime"
+                      value={formData.availability.endTime}
+                      onChange={handleAvailabilityChange}
+                      className="w-full p-2 border rounded text-black"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end space-x-3">
             <button 
               type="button" 
               onClick={onClose}
-              className="px-4 py-2 text-black border rounded hover:bg-gray-100"
+              className="px-4 py-2 text-white border rounded hover:bg-gray-100"
               disabled={isSubmitting}
             >
               Cancel

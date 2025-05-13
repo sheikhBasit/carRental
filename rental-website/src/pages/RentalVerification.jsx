@@ -50,14 +50,17 @@ const CompanyVerificationScreen = () => {
       console.log("response",response)
       if (response.data.success) {
         // Save token and company data
-        Cookies.set('token', response.data.token, { expires: 7 });
-        Cookies.set('company', JSON.stringify(response.data.company), { expires: 7 });
         Cookies.remove('unverifiedCompanyEmail');
         Cookies.remove('unverifiedEmail');
 
-        localStorage.setItem("token", response.data.token);
         
-        navigate('/company-dashboard');
+        navigate('/company-dashboard', { 
+          state: {
+            message: response.data.message || 'Registration successful!',
+            success: true,
+            company: response.data.company
+          }
+        });
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Verification failed. Please try again.');

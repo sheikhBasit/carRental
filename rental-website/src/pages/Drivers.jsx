@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Edit, Trash2, Users, Filter, X } from 'lucide-react';
 import DriverForm from './DriverForm';
+import axios from 'axios';
 
 const Drivers = ({ drivers, company }) => {
   const [showDriverForm, setShowDriverForm] = useState(false);
@@ -89,9 +90,16 @@ const Drivers = ({ drivers, company }) => {
   };
 
   // You'll need to implement this function
-  const handleDelete = (driverId) => {
+  const handleDelete = async (driverId) => {
     // Delete driver logic here
+    const response = await axios.delete(`https://car-rental-backend-black.vercel.app/api/drivers/${driverId}`);
     console.log('Delete driver:', driverId);
+    if (response.status === 200) {
+      console.log('Driver deleted successfully'); 
+      alert('Driver deleted successfully');
+      window.location.reload();
+  
+    }
   };
 
   return (
