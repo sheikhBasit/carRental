@@ -367,7 +367,7 @@ setTimeout(() => {
             </div>
 
             <div>
-              <label className="block text-black text-sm font-medium mb-1">Phone Number*</label>
+              <label className="block text-black text-sm font-medium mb-1">Phone Number* in the format 03XXXXXXXXXX</label>
               <input
                 type="tel"
                 name="phNo"
@@ -409,7 +409,7 @@ setTimeout(() => {
             </div>
 
             <div>
-              <label className="block text-black text-sm font-medium mb-1">CNIC*</label>
+              <label className="block text-black text-sm font-medium mb-1">CNIC* in the format XXXXX-XXXXXXX-X</label>
               <input
                 type="text"
                 name="cnic"

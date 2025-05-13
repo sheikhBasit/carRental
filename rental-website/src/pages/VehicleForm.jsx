@@ -364,9 +364,29 @@ const VehicleForm = ({ onClose, company, vehicle, onVehicleAdded, onVehicleUpdat
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Something went wrong while adding vehicle ');
+        const errorData = await response.json().catch(() => ({}));
+      
+        if (response.status >= 400 && response.status < 500) {
+          // Specific check for image-related client errors
+          if (
+            errorData.message?.toLowerCase().includes("image") ||
+            errorData.message?.toLowerCase().includes("upload") ||
+            errorData.message?.toLowerCase().includes("file") ||
+            errorData.message?.toLowerCase().includes("invalid")
+          ) {
+            throw new Error("Image is not valid. Please upload a correct image file.");
+          }
+      
+          throw new Error(errorData.message || "Client error occurred. Please check your input.");
+        }
+      
+        if (response.status === 500 || errorData.message?.includes("server") || errorData.message?.includes("FUNCTION_INVOCATION_FAILED")) {
+          throw new Error("Image upload failed. Please check your files and try again.");
+        }
+      
+        throw new Error("Registration failed. Please try again.");
       }
+
       
       const result = await response.json();
       

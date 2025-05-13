@@ -55,14 +55,9 @@ const CompanyVerificationScreen = () => {
         Cookies.remove('unverifiedCompanyEmail');
         Cookies.remove('unverifiedEmail');
 
+        localStorage.setItem("token", response.data.token);
         
-        navigate('/company-dashboard', { 
-          state: {
-            message: response.data.message || 'Registration successful!',
-            success: true,
-            company: response.data.company
-          }
-        });
+        navigate('/company-dashboard');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Verification failed. Please try again.');

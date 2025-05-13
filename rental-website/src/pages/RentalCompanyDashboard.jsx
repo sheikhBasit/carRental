@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Cookies from 'js-cookie';
 import DashboardLayout from './DashboardLayout';
 import { api } from '../../utils/api';
@@ -6,128 +6,93 @@ import { getCompanyFromCookies } from '../../utils/auth';
 
 const RentalCompanyDashboard = () => {
     const [dashboardData, setDashboardData] = useState({
-      stats: null,
-      vehicles: [], 
-      drivers: [],
-      bookings: [],
-      transactions: [],
-      loading: true,
-      error: null
+        stats: null,
+        vehicles: [], 
+        drivers: [],
+        bookings: [],
+        transactions: [],
+        loading: true,
+        error: null
     });
     const [company, setCompany] = useState(null);
-  
-    // Fetch company from cookies on component mount
-    useEffect(() => {
-      const companyData = getCompanyFromCookies();
-      if (companyData) {
-        setCompany(companyData);
-      }
-    }, []);
-  
-    // Fetch dashboard data
-    useEffect(() => {
-      const fetchDashboardData = async () => {
-        if (!company?.id) {
-          return;
-        }
 
-        console.log("company",company)
-  
+    // Memoized fetch function
+    const fetchDashboardData = useCallback(async (companyId) => {
         try {
-          setDashboardData(prev => ({ ...prev, loading: true, error: null }));
-          
-          // Use the API utility for fetching data with authentication
-          const [
-            vehiclesRes, 
-            driversRes, 
-            bookingsRes,
-            transactionsRes
-          ] = await Promise.allSettled([
-            api.getVehicles(company.id),
-            api.getDrivers(company.id),
-            api.getBookings(company.id),
-            fetch(`https://car-rental-backend-black.vercel.app/api/transaction/company/${company.id}`, {
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              }
-            }).then(res => res.json())
-          ]);
-          console.log("vehiclesRes",vehiclesRes)
-          console.log("driversRes",driversRes)
-          console.log("bookingsRes",bookingsRes)
-          console.log("transactionsRes",transactionsRes)
-          
-          const vehiclesData = vehiclesRes.status === 'fulfilled' ? vehiclesRes.value.data?.vehicles || [] : [];
-          const driversData = driversRes.status === 'fulfilled' ? driversRes.value.data.data || [] : [];
-          const bookingsData = bookingsRes.status === 'fulfilled' ? bookingsRes.value.data || [] : [];
-          const transactionsData = transactionsRes.status === 'fulfilled' ? transactionsRes.value || [] : [];
-          console.log("transactionsData",transactionsData)
-          console.log("bookingsData",bookingsData)
-          console.log("vehiclesData",vehiclesData)
-          console.log("driversData",driversData)
-
-
-
-
-          // Calculate statistics
-          const activeBookings = bookingsData.filter(b => b.status === 'active');
-          
-          // Calculate revenue from completed transactions
-          const transactionRevenue = transactionsData
-            .filter(t => t.paymentStatus === 'completed')
-            .reduce((sum, transaction) => sum + (transaction.amount || 0), 0);
+            setDashboardData(prev => ({ ...prev, loading: true, error: null }));
             
-          // Fall back to bookings calculation if no transactions exist
-          const totalRevenue = transactionsData.length > 0 
-            ? transactionRevenue
-            : bookingsData.reduce((sum, booking) => sum + (booking.totalPrice || 0), 0);
-          
-          const occupancyRate = vehiclesData.length > 0 
-            ? (activeBookings.length / vehiclesData.length) * 100
-            : 0;
-        
-          const stats = {
-            totalVehicles: vehiclesData.length,
-            totalDrivers: driversData.length,
-            activeTrips: activeBookings.length,
-            revenue: totalRevenue,
-            occupancyRate: occupancyRate
-          };
-          
-          // Update state
-          setDashboardData({
-            stats,
-            vehicles: vehiclesData,
-            drivers: driversData,
-            bookings: bookingsData,
-            transactions: transactionsData, // Store transactions in state
-            loading: false,
-            error: null
-          });
-        
+            // Parallel fetch with optimized requests
+            const [vehicles, drivers, bookings, transactions] = await Promise.all([
+                api.getVehicles(companyId).then(res => res.data?.vehicles || []).catch(() => []),
+                api.getDrivers(companyId).then(res => res.data.data || []).catch(() => []),
+                api.getBookings(companyId).then(res => res.data || []).catch(() => []),
+                fetch(`https://car-rental-backend-black.vercel.app/api/transaction/company/${companyId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    cache: 'force-cache' // Enable browser caching
+                })
+                .then(res => res.json())
+                .catch(() => [])
+            ]);
+
+            // Calculate statistics in parallel with state update
+            const activeBookings = bookings.filter(b => b.status === 'active');
+            const transactionRevenue = transactions
+                .filter(t => t.paymentStatus === 'completed')
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+            
+            const stats = {
+                totalVehicles: vehicles.length,
+                totalDrivers: drivers.length,
+                activeTrips: activeBookings.length,
+                revenue: transactions.length > 0 
+                    ? transactionRevenue
+                    : bookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0),
+                occupancyRate: vehicles.length > 0 
+                    ? (activeBookings.length / vehicles.length) * 100
+                    : 0
+            };
+            
+            // Single state update with all data
+            setDashboardData({
+                stats,
+                vehicles,
+                drivers,
+                bookings,
+                transactions,
+                loading: false,
+                error: null
+            });
+            
         } catch (error) {
-          console.error("Dashboard data fetch error:", error);
-          setDashboardData(prev => ({
-            ...prev,
-            loading: false,
-            error: `Failed to fetch data: ${error.response?.data?.message || error.message}`
-          }));
+            console.error("Dashboard data fetch error:", error);
+            setDashboardData(prev => ({
+                ...prev,
+                loading: false,
+                error: `Failed to fetch data: ${error.response?.data?.message || error.message}`
+            }));
         }
-      };
-  
-      if (company) {
-        fetchDashboardData();
-      }
-    }, [company]);
-  
+    }, []);
+
+    // Initial data loading
+    useEffect(() => {
+        const companyData = getCompanyFromCookies();
+        if (companyData) {
+            setCompany(companyData);
+            fetchDashboardData(companyData.id);
+        }
+    }, [fetchDashboardData]);
+
     return (
-      <DashboardLayout 
-        company={company} 
-        dashboardData={dashboardData} 
-        error={dashboardData.error}
-        loading={dashboardData.loading}
-      />
+        <DashboardLayout 
+            company={company} 
+            dashboardData={dashboardData} 
+            error={dashboardData.error}
+            loading={dashboardData.loading}
+        />
     );
 };
 
-export default RentalCompanyDashboard;
+export default React.memo(RentalCompanyDashboard);

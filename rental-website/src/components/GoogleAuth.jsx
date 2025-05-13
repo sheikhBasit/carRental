@@ -8,15 +8,21 @@ export const useGoogleAuth = () => {
 
   // Initialize Google OAuth
   useEffect(() => {
-    // Load the Google API script
     const loadGoogleScript = () => {
+      if (document.getElementById('google-login-script')) {
+        initializeGoogleAuth();
+        return;
+      }
+    
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
+      script.id = 'google-login-script';
       script.async = true;
       script.defer = true;
       script.onload = initializeGoogleAuth;
       document.body.appendChild(script);
     };
+    
 
     loadGoogleScript();
   }, []);
@@ -24,9 +30,10 @@ export const useGoogleAuth = () => {
   const initializeGoogleAuth = () => {
     if (window.google) {
       window.google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        client_id: "653881740326-ffik3jqv62v2t5iglbjigt63qdjvtn5c.apps.googleusercontent.com",
         callback: handleGoogleCallback,
       });
+      
     }
   };
 
@@ -34,7 +41,7 @@ export const useGoogleAuth = () => {
     setIsLoading(true);
     try {
       // Send the ID token to your backend
-      const googleResponse = await fetch("http://192.168.1.4:5000/users/google-login", {
+      const googleResponse = await fetch("https://car-rental-backend-black.vercel.app/api/google/google-login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -45,7 +52,7 @@ export const useGoogleAuth = () => {
       });
 
       const data = await googleResponse.json();
-
+      console.log(data)
       if (!googleResponse.ok) {
         throw new Error(data.message || "Google login failed");
       }
@@ -67,23 +74,19 @@ export const useGoogleAuth = () => {
     }
   };
 
-  const renderGoogleButton = (customId = "google-login-button") => {
-    if (window.google) {
-      setTimeout(() => {
-        window.google.accounts.id.renderButton(
-          document.getElementById(customId),
-          { 
-            type: "standard", 
-            theme: "outline", 
-            size: "large",
-            width: "100%",
-            text: "continue_with",
-            logo_alignment: "center"
-          }
-        );
-      }, 100);
+  const renderGoogleButton = (elementId) => {
+    if (window.google && window.google.accounts) {
+      window.google.accounts.id.renderButton(
+        document.getElementById(elementId),
+        {
+          theme: "outline",
+          size: "large",
+          width: "100%",
+        }
+      );
     }
   };
+  
 
   const signInWithGoogle = () => {
     if (window.google) {

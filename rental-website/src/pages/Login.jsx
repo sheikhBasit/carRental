@@ -14,12 +14,16 @@ const Login = () => {
   const googleButtonRef = useRef(null);
 
   useEffect(() => {
-    // Render the Google sign-in button
-    if (googleButtonRef.current) {
-      renderGoogleButton("google-login-button");
-    }
-  }, [renderGoogleButton]);
-
+    const interval = setInterval(() => {
+      if (googleButtonRef.current && window.google) {
+        renderGoogleButton("google-login-button");
+        clearInterval(interval);
+      }
+    }, 300);
+  
+    return () => clearInterval(interval);
+  }, []);
+  
   const validateEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
@@ -129,16 +133,8 @@ const Login = () => {
             id="google-login-button" 
             ref={googleButtonRef}
             className="mb-3"
-          >
-            <button 
-              type="button"
-              className="btn btn-outline-secondary py-2 d-flex align-items-center justify-content-center"
-              onClick={signInWithGoogle}
-            >
-              <FaGoogle className="me-2 text-danger" />
-              Continue with Google
-            </button>
-          </div>
+          ></div>
+
 
           {/* Sign Up & Terms */}
           <div className="mt-4">

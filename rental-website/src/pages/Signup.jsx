@@ -40,11 +40,17 @@ const Signup = () => {
 
   const [termsAccepted, setTermsAccepted] = useState(false);
 
-  useEffect(() => {
-    if (googleButtonRef.current) {
-      renderGoogleButton("google-login-button");
-    }
-  }, [renderGoogleButton]);
+useEffect(() => {
+    const interval = setInterval(() => {
+      if (googleButtonRef.current && window.google) {
+        renderGoogleButton("google-login-button");
+        clearInterval(interval);
+      }
+    }, 300);
+  
+    return () => clearInterval(interval);
+  }, []);
+  
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -609,7 +615,13 @@ const Signup = () => {
             </div>
 
             {/* Google Login */}
-            <div
+            <div 
+            id="google-login-button" 
+            ref={googleButtonRef}
+            className="mb-3"
+          ></div>
+
+            {/* <div
               id="google-login-button"
               ref={googleButtonRef}
               className="mb-6"
@@ -623,7 +635,7 @@ const Signup = () => {
                 <FaGoogle className="mr-2 text-red-500" />
                 Continue with Google
               </button>
-            </div>
+            </div> */}
 
             {/* Login Link */}
             <p className="text-center text-gray-600">
