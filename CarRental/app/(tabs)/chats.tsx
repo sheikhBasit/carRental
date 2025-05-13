@@ -39,7 +39,7 @@ const ChatScreen = () => {
     try {
       const userId = await getStoredUserId();
       if (!userId) {
-        Alert.alert("Error", "User ID not found.");
+        console.log("Error User ID not found.");
         return;
       }
       const chatData = await apiFetch(`/chat/chats/${userId}`, {}, AppConstants.SOCKETS_URL);
@@ -47,7 +47,6 @@ const ChatScreen = () => {
       setChats(processedChats);
     } catch (error) {
       console.log("Error fetching chats:", error);
-      Alert.alert("Error", "Failed to fetch chats.");
     } finally {
       setLoading(false);
     }
@@ -184,7 +183,6 @@ const ChatScreen = () => {
       />
       <Text style={styles.noResultsText}>No chats yet</Text>
       <View style={styles.rowContainer}>
-        <Text style={styles.noResultsSubText}>Start a new conversation!</Text>
         <Ionicons name="chatbubbles-outline" size={24} color="#ADD8E6" style={styles.icon} />
       </View>
     </View>

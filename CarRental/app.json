@@ -61,6 +61,7 @@
       "typedRoutes": true
     },
     "extra": {
+      "googleWebClientId": "653881740326-ffik3jqv62v2t5iglbjigt63qdjvtn5c.apps.googleusercontent.com",
       "router": {
         "origin": false
       },

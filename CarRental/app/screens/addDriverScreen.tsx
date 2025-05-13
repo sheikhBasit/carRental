@@ -18,7 +18,6 @@ interface DriverDetails {
     phNo: string;
     age: string;
     experience: string;
-    baseHourlyRate: string;
     baseDailyRate: string;
     availability: {
         days: string[];
@@ -44,7 +43,6 @@ const AddDriverScreen = () => {
         age: '',
         experience: '',
         cnic: '',
-        baseHourlyRate: '',
         baseDailyRate: '',
         availability: {
             days: [],
@@ -87,7 +85,7 @@ const AddDriverScreen = () => {
         setFieldErrors(prev => ({ ...prev, [name]: '' }));
 
         // Special handling for numeric fields
-        if (['age', 'experience', 'phNo', 'cnic', 'license', 'baseHourlyRate', 'baseDailyRate'].includes(name)) {
+        if (['age', 'experience', 'phNo', 'cnic', 'license',  'baseDailyRate'].includes(name)) {
           if (name === 'cnic' && typeof value === 'string') {
             // Remove all non-digit characters
             const digitsOnly = value.replace(/\D/g, '');
@@ -237,7 +235,6 @@ const AddDriverScreen = () => {
                     }
                 }
                 break;
-            case 'baseHourlyRate':
             case 'baseDailyRate':
                 const rate = parseFloat(value as string);
                 if (isNaN(rate) || rate <= 0) return 'Rate must be greater than 0';
@@ -348,7 +345,6 @@ const AddDriverScreen = () => {
           ...driverDetails,
           age: parseInt(driverDetails.age),
           experience: parseInt(driverDetails.experience),
-          baseHourlyRate: parseFloat(driverDetails.baseHourlyRate),
           baseDailyRate: parseFloat(driverDetails.baseDailyRate),
           license: driverDetails.license.toUpperCase(),
           cnic: driverDetails.cnic.replace(/\s/g, ''),
@@ -678,29 +674,6 @@ const AddDriverScreen = () => {
                 <View style={styles.formSection}>
                     <Text style={styles.sectionTitle}>Pricing Information</Text>
                     
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Base Hourly Rate (PKR)</Text>
-                        <TextInput
-                            style={[
-                                styles.input,
-                                fieldErrors['baseHourlyRate'] && styles.inputError
-                            ]}
-                            placeholder="Enter hourly rate"
-                            keyboardType="numeric"
-                            value={driverDetails.baseHourlyRate}
-                            onChangeText={(text) => handleChange('baseHourlyRate', text)}
-                            maxLength={3}
-                           
-                            onBlur={() => {
-                                const error = validateField('baseHourlyRate', driverDetails.baseHourlyRate);
-                                setFieldErrors(prev => ({ ...prev, baseHourlyRate: error }));
-                            }}
-                        />
-                        {fieldErrors['baseHourlyRate'] && (
-                            <Text style={styles.errorText}>{fieldErrors['baseHourlyRate']}</Text>
-                        )}
-                    </View>
-
                     <View style={styles.inputContainer}>
                         <Text style={styles.label}>Base Daily Rate (PKR)</Text>
                             <TextInput

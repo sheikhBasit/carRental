@@ -31,7 +31,6 @@ type DriverDetails = {
   phNo: string;
   age: number;
   experience: number;
-  baseHourlyRate: number;
   baseDailyRate: number;
   pricingTiers: any[];
   currentPromotion?: any;
@@ -63,7 +62,6 @@ const EditDriverScreen = () => {
     phNo: '',
     age: 0,
     experience: 0,
-    baseHourlyRate: 0,
     baseDailyRate: 0,
     pricingTiers: [],
     availability: {
@@ -104,7 +102,6 @@ const EditDriverScreen = () => {
             phNo: data.phNo || '',
             age: data.age || 0,
             experience: data.experience || 0,
-            baseHourlyRate: data.baseHourlyRate || 0,
             baseDailyRate: data.baseDailyRate || 0,
             pricingTiers: data.pricingTiers || [],
             availability: {
@@ -279,7 +276,6 @@ const EditDriverScreen = () => {
       !driverDetails.phNo ||
       !driverDetails.age ||
       !driverDetails.experience ||
-      !driverDetails.baseHourlyRate ||
       !driverDetails.baseDailyRate ||
       driverDetails.availability.days.length === 0 ||
       !driverDetails.availability.startTime ||
@@ -295,31 +291,83 @@ const EditDriverScreen = () => {
       return;
     }
 
+    
+    const availability = {
+      days: driverDetails.availability.days,
+      startTime: driverDetails.availability.startTime.trim(),
+      endTime: driverDetails.availability.endTime.trim()
+    };
+  
+    // Verify time format
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(availability.startTime) || !timeRegex.test(availability.endTime)) {
+      Alert.alert('Error', 'Time must be in HH:MM format (24-hour)');
+      return;
+    }
+  
+    // Prepare the payload - minimal fields only
+    const payload = {
+      name: driverDetails.name,
+      profileimg: driverDetails.profileimg,
+      license: driverDetails.license,
+      cnic: driverDetails.cnic,
+      phNo: driverDetails.phNo,
+      age: driverDetails.age,
+      experience: driverDetails.experience,
+      baseDailyRate: driverDetails.baseDailyRate,
+      availability, // Use the cleaned availability object
+      rating: driverDetails.rating,
+      completedTrips: driverDetails.completedTrips
+    };
+  
+    console.log('Final payload:', JSON.stringify(payload, null, 2));
+  
     setIsLoading(true);
     try {
-      const response = await apiFetch(`/drivers/${driverId}`, {
-        method: 'PUT',
-        body: JSON.stringify(driverDetails)
-      },undefined,'company');
-      if (response && response.success) {
-        Alert.alert('Success', 'Driver updated successfully!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              navigation.goBack();
-            },
+      const response = await apiFetch(
+        `/drivers/${driverId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
           },
-        ]);
+          body: JSON.stringify(payload)
+        },
+        undefined,
+        'company'
+      );
+      
+      if (response && (response._id || response.success)) {
+        Alert.alert('Success', 'Driver updated successfully!');
+        navigation.goBack();
       } else {
-        Alert.alert('Error', response.message || 'Something went wrong');
+        const errorMessage = response?.error || 
+                           response?.message || 
+                           'Update failed with no error message';
+        Alert.alert('Error', errorMessage);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update the driver.');
+    } catch (error: any) {
+      console.log('API Error:', error);
+      let errorMessage = 'Failed to update driver';
+      
+      // Try to get more detailed error from response
+      if (error.response?.data) {
+        try {
+          const errorData = typeof error.response.data === 'string' 
+            ? JSON.parse(error.response.data) 
+            : error.response.data;
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+          console.log('Error parsing error response:', e);
+        }
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   if (isLoading && !driverDetails._id) {
     return (
       <RentalAppLayout title="Edit Driver">
@@ -456,16 +504,6 @@ const EditDriverScreen = () => {
         />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Base Hourly Rate (PKR)</Text>
-        <TextInput
-          style={styles.input}
-              placeholder="Enter hourly rate"
-          keyboardType="numeric"
-              value={driverDetails.baseHourlyRate?.toString() || ''}
-              onChangeText={(text) => handleChange('baseHourlyRate', Number(text))}
-        />
-          </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Base Daily Rate (PKR)</Text>

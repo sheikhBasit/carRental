@@ -7,7 +7,7 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  
 } from "react-native";
 import { useRouter } from "expo-router";
 import { getStoredCompanyId, getStoredUserId } from "@/utils/storageUtil";
@@ -37,7 +37,7 @@ const ChatScreen = () => {
     try {
       const companyId = await getStoredCompanyId();
       if (!companyId) {
-        Alert.alert("Error", "User ID not found.");
+        console.log("Error User ID not found.");
         return;
       }
 
@@ -52,8 +52,7 @@ const ChatScreen = () => {
       setChats(groupedChats);
     } catch (error) {
       console.log("Error fetching chats:", error);
-      Alert.alert("Error", "Failed to fetch chats.");
-    } finally {
+     } finally {
       setLoading(false);
     }
   };
@@ -142,7 +141,6 @@ const ChatScreen = () => {
       <Image source={require('../../assets/images/chat.jpg')} style={styles.image} />
       <Text style={styles.noResultsText}>No chats found</Text>
       <View style={styles.rowContainer}>
-        <Text style={styles.noResultsSubText}>Start a new conversation!</Text>
         <Ionicons name="chatbubbles-outline" size={24} color="#ADD8E6" style={styles.icon} />
       </View>
     </View>
