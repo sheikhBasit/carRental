@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { getStoredUserId } from "@/utils/storageUtil";
@@ -30,11 +31,9 @@ const ChatScreen = () => {
   const router = useRouter();
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchChats();
-  }, []);
-
+  // Initial load and refresh function
   const fetchChats = async () => {
     try {
       const userId = await getStoredUserId();
@@ -47,25 +46,34 @@ const ChatScreen = () => {
       setChats(processedChats);
     } catch (error) {
       console.log("Error fetching chats:", error);
+      Alert.alert("Error", "Failed to load chats");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchChats();
+  }, []);
+
+  // Pull-to-refresh handler
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchChats();
   };
 
   const processChatData = async (chatData: any[], userId: string): Promise<ChatItem[]> => {
     const processedChats: ChatItem[] = [];
 
     for (const chat of chatData) {
-      // Extract the other user's ID from the chatId
       const [id1, id2] = chat.chatId.split("_");
       const otherUserId = id1 === userId ? id2 : id1;
-
-      // Get the last message (if any)
       const lastMessage = chat.messages.length > 0 
         ? chat.messages[chat.messages.length - 1] 
         : null;
 
-      // Fetch user/company details
       const userDetails = await fetchUserDetails(otherUserId);
 
       processedChats.push({
@@ -81,7 +89,6 @@ const ChatScreen = () => {
       });
     }
 
-    // Sort chats by most recent message
     return processedChats.sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
@@ -89,7 +96,6 @@ const ChatScreen = () => {
 
   const fetchUserDetails = async (userId: string) => {
     try {
-      // First try to fetch as a rental company
       try {
         const response = await apiFetch(`/rental-companies/${userId}`, {}, AppConstants.LOCAL_URL);
         return {
@@ -97,7 +103,6 @@ const ChatScreen = () => {
           profilePhoto: response.data.profilePhoto,
         };
       } catch (companyError) {
-        // If not a company, try to fetch as a regular user
         const userResponse = await apiFetch(`/users/${userId}`, {}, AppConstants.LOCAL_URL);
         return {
           name: `${userResponse.data.firstName} ${userResponse.data.lastName}`,
@@ -158,19 +163,16 @@ const ChatScreen = () => {
     const date = new Date(dateString);
     const now = new Date();
     
-    // If today, show time
     if (date.toDateString() === now.toDateString()) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     
-    // If yesterday, show "Yesterday"
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     if (date.toDateString() === yesterday.toDateString()) {
       return "Yesterday";
     }
     
-    // Otherwise show date
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
@@ -206,6 +208,14 @@ const ChatScreen = () => {
         renderItem={renderChatItem}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={<NoResultsComponent />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#FFF"
+            colors={["#FFF"]}
+          />
+        }
       />
     </AppLayout>
   );
@@ -298,10 +308,6 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "bold",
     marginBottom: 8,
-  },
-  noResultsSubText: {
-    fontSize: 16,
-    color: "#ADD8E6",
   },
 });
 

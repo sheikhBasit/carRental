@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Dimensions,
-  Alert,
+  Alert,RefreshControl,
   TextInput,
 } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
@@ -17,6 +17,7 @@ import { apiFetch } from '@/utils/api';
 
 interface Booking {
   _id: string;
+  user?: string;
   idVehicle?: {
     manufacturer?: string;
     model?: string;
@@ -66,14 +67,14 @@ interface Transaction {
 const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'company' }) => {
   const navigation = useNavigation();
   const { booking: bookingString, id } = useLocalSearchParams<{ booking: string; id: string }>();
-  
+  const [refreshing, setRefreshing] = useState(false);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  // --- FEEDBACK, DAMAGE REPORT, TERMS ACCEPTANCE, ELIGIBILITY LOGIC ---
+  // Feedback and Damage Report states
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState("");
@@ -82,10 +83,9 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
   const [damageImages, setDamageImages] = useState<string[]>([]);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [eligibilityError, setEligibilityError] = useState<string | null>(null);
-
-  // --- Delivery/Return Reminder Logic ---
   const [reminder, setReminder] = useState<string | null>(null);
 
+  
   const confirmHandover = async () => {
     if (!booking?._id) return;
     
@@ -96,7 +96,7 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
           status: 'ongoing',
           handoverAt: new Date().toISOString() 
         })
-      },undefined,userType);
+      }, undefined, userType);
       setBooking(updatedBooking);
       Alert.alert("Handover Confirmed", "Your rental period has now started.");
     } catch (err) {
@@ -108,7 +108,7 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
     if (!booking?._id) return;
     
     try {
-      const updatedBooking = await apiFetch(`/bookings/getBookingById/${booking._id}`,{},undefined,userType);
+      const updatedBooking = await apiFetch(`/bookings/getBookingById/${booking._id}`, {}, undefined, userType);
       setBooking(updatedBooking);
     } catch (err) {
       console.log("Error checking booking status:", err);
@@ -139,28 +139,24 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
     setReminder(reminderMsg);
   }, [booking]);
 
-  // Poll for status changes (or use WebSockets)
   useEffect(() => {
-    if (booking?._id && booking.status !== 'completed' && booking.status !== 'cancelled') {
-      const interval = setInterval(checkBookingStatus, 300000); // Check every 5 minutes
+    if (booking?._id && booking.status !== 'completed' && booking.status !== 'canceled') {
+      const interval = setInterval(checkBookingStatus, 300000);
       return () => clearInterval(interval);
     }
   }, [booking?._id]);
 
-  // Load booking and transaction data
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         
-        // Load booking data
         if (bookingString) {
           try {
             const decodedString = decodeURIComponent(bookingString);
             const parsedBooking = JSON.parse(decodedString) as Booking;
             setBooking(parsedBooking);
             
-            // Fetch transaction data after booking is loaded
             if (parsedBooking._id) {
               await fetchTransactionData(parsedBooking._id);
             }
@@ -172,10 +168,8 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
         }
 
         if (id) {
-          const bookingData = await apiFetch(`/bookings/getBookingById/${id}`,{},undefined, userType);
-          console.log("Booking API Response:", bookingData);
+          const bookingData = await apiFetch(`/bookings/getBookingById/${id}`, {}, undefined, userType);
           setBooking(bookingData);
-          // Fetch transaction data
           await fetchTransactionData(bookingData._id);
         } else if (!bookingString) {
           setError("No booking information provided");
@@ -190,7 +184,6 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
     const fetchTransactionData = async (bookingId: string) => {
       try {
         const data = await apiFetch(`/transaction/booking/${bookingId}`, {}, undefined, userType);
-        console.log("Transaction API Response:", data);
         if (data.success && data.transaction) {
           setTransaction(data.transaction);
         }
@@ -202,28 +195,18 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
     loadData();
   }, [bookingString, id]);
 
-  // Show feedback form if booking is completed and no feedback exists
+  
   useEffect(() => {
-    if (booking && booking.status === 'completed') {
+    if (booking && booking.status === 'completed' && !booking.feedback) {
       setShowFeedbackForm(true);
     } else {
       setShowFeedbackForm(false);
     }
-  }, [booking]);
 
-  // Eligibility check (age, CNIC, license, vehicle status)
-  useEffect(() => {
-    if (!booking) return;
-    // Example: Assume user info is fetched elsewhere and available globally
-    const user = { age: 22, cnicVerified: true, licenseVerified: true }; // TODO: Replace with real user data
-    if (user.age < 21) {
-      setEligibilityError('You must be 21+ to book a vehicle.');
-    } else if (!user.cnicVerified || !user.licenseVerified) {
-      setEligibilityError('CNIC and License must be verified to book.');
-    } else if (booking.idVehicle && booking.idVehicle.status !== 'available') {
-      setEligibilityError('This vehicle is not available for booking.');
+    if (booking && booking.status === 'completed' && !booking.damageReport) {
+      setShowDamageForm(true);
     } else {
-      setEligibilityError(null);
+      setShowDamageForm(false);
     }
   }, [booking]);
 
@@ -232,10 +215,10 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
 
     setIsCancelling(true);
     try {
-      const updatedBooking = await apiFetch(`/bookings/updateBooking/${booking._id}`, {
-        method: 'PATCH',
+      const updatedBooking = await apiFetch(`/bookings/cancelBooking/${booking._id}`, {
+        method: 'POST',
         body: JSON.stringify({ status: 'canceled' })
-      },undefined,userType);
+      }, undefined, userType);
       setBooking(updatedBooking);
       Alert.alert(
         "Booking canceled",
@@ -243,10 +226,7 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
         [
           { 
             text: "OK", 
-            onPress: () => {
-              // Navigate back to trips screen
-              navigation.goBack();
-            }
+            onPress: () => navigation.goBack()
           }
         ]
       );
@@ -256,20 +236,53 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
       setIsCancelling(false);
     }
   };
-
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (id) {
+        const bookingData = await apiFetch(`/bookings/getBookingById/${id}`, {}, undefined, userType);
+        setBooking(bookingData);
+        if (bookingData._id) {
+          await fetchTransactionData(bookingData._id);
+        }
+      } else if (bookingString) {
+        try {
+          const decodedString = decodeURIComponent(bookingString);
+          const parsedBooking = JSON.parse(decodedString) as Booking;
+          setBooking(parsedBooking);
+          if (parsedBooking._id) {
+            await fetchTransactionData(parsedBooking._id);
+          }
+        } catch (parseError) {
+          console.log("Parsing error during refresh:", parseError);
+          setError("Failed to parse booking data");
+        }
+      }
+    } catch (err) {
+      console.log("Refresh error:", err);
+      setError(err instanceof Error ? err.message : "Failed to refresh data");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  
+  const fetchTransactionData = async (bookingId: string) => {
+    try {
+      const data = await apiFetch(`/transaction/booking/${bookingId}`, {}, undefined, userType);
+      if (data.success && data.transaction) {
+        setTransaction(data.transaction);
+      }
+    } catch (err) {
+      console.log("Error fetching transaction:", err);
+    }
+  };
   const confirmCancel = () => {
     Alert.alert(
       "Confirm Cancellation",
       "Are you sure you want to cancel this booking?",
       [
-        {
-          text: "No",
-          style: "cancel",
-        },
-        {
-          text: "Yes",
-          onPress: handleCancelBooking,
-        },
+        { text: "No", style: "cancel" },
+        { text: "Yes", onPress: handleCancelBooking },
       ]
     );
   };
@@ -282,23 +295,61 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
 
   const submitFeedback = async () => {
     try {
-      // TODO: API endpoint for feedback
-      // await fetch('/feedback', { method: 'POST', body: JSON.stringify({ ... }) })
-      setShowFeedbackForm(false);
-      Alert.alert('Feedback submitted!');
-    } catch (e) {
-      Alert.alert('Failed to submit feedback.');
+      const response = await apiFetch('/feedback', {
+        method: 'POST',
+        body: JSON.stringify({
+          booking: booking?._id,
+          rating: feedbackRating,
+          comment: feedbackComment,
+          user: booking?.user // Replace with actual user ID
+        })
+      }, undefined, userType);
+
+      if (response.success) {
+        setShowFeedbackForm(false);
+        Alert.alert('Success', 'Feedback submitted successfully!');
+        // Update booking with feedback
+        if (booking) {
+          setBooking({
+            ...booking,
+            feedback: response.feedback
+          });
+        }
+      } else {
+        throw new Error(response.message || 'Failed to submit feedback');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to submit feedback.');
     }
   };
 
-  const submitDamage = async () => {
+  const submitDamageReport = async () => {
     try {
-      // TODO: API endpoint for damage report
-      // await fetch('/damagereport', { method: 'POST', body: JSON.stringify({ ... }) })
-      setShowDamageForm(false);
-      Alert.alert('Damage report submitted!');
-    } catch (e) {
-      Alert.alert('Failed to submit damage report.');
+      const response = await apiFetch('/damagereport', {
+        method: 'POST',
+        body: JSON.stringify({
+          booking: booking?._id,
+          description: damageDescription,
+          images: damageImages,
+          user: booking?.user// Replace with actual user ID
+        })
+      }, undefined, userType);
+
+      if (response.success) {
+        setShowDamageForm(false);
+        Alert.alert('Success', 'Damage report submitted successfully!');
+        // Update booking with damage report
+        if (booking) {
+          setBooking({
+            ...booking,
+            damageReport: response.damageReport
+          });
+        }
+      } else {
+        throw new Error(response.message || 'Failed to submit damage report');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to submit damage report.');
     }
   };
 
@@ -342,7 +393,15 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
         <Ionicons name="arrow-back" size={24} color="#FFF" />
       </TouchableOpacity>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#FFF"
+          colors={["#FFF"]}
+        />
+      }>
         {reminder && (
           <View style={{ backgroundColor: '#ffe6b3', padding: 12, borderRadius: 8, margin: 10 }}>
             <Text style={{ color: '#b36b00', fontWeight: 'bold', fontSize: 16 }}>{reminder}</Text>
@@ -422,7 +481,7 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Payment Status:</Text>
-              <Text style={[styles.value, transaction.paymentStatus === 'completed' ? styles.statusConfirmed : styles.statusCancelled]}>
+              <Text style={[styles.value, transaction.paymentStatus === 'completed' ? styles.statusConfirmed : styles.statuscanceled]}>
                 {transaction.paymentStatus.toUpperCase()}
               </Text>
             </View>
@@ -447,42 +506,41 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
               booking.status === "confirmed" && styles.statusConfirmed,
               booking.status === "ongoing" && styles.statusOngoing,
               booking.status === "completed" && styles.statusCompleted,
-              booking.status === "canceled" && styles.statusCancelled,
+              booking.status === "canceled" && styles.statuscanceled,
             ]}
           >
             {booking.status ? booking.status.toUpperCase() : 'UNKNOWN'}
           </Text>
         </View>
 
-        {/* Handover confirmation button */}
         {booking.status === 'confirmed' && booking.fromTime && new Date(booking.fromTime) < new Date() && (
-  <TouchableOpacity style={styles.button} onPress={confirmHandover}>
-    <Text style={styles.buttonText}>Confirm Vehicle Received</Text>
-  </TouchableOpacity>
-)}
+          <TouchableOpacity style={styles.button} onPress={confirmHandover}>
+            <Text style={styles.buttonText}>Confirm Vehicle Received</Text>
+          </TouchableOpacity>
+        )}
 
         {eligibilityError && (
           <Text style={{ color: 'red', margin: 8 }}>{eligibilityError}</Text>
         )}
+        
         {booking && (
           <>
-            {/* Buffer Time */}
             <Text style={styles.sectionTitle}>Buffer Time</Text>
             <Text style={styles.value}>There is a 2-hour buffer before/after your booking.</Text>
-            {/* Cancellation Policy */}
+            
             <Text style={styles.sectionTitle}>Cancellation Policy</Text>
             <Text style={styles.value}>Cancellations allowed up to 24 hours before booking starts.</Text>
-            {/* Terms Acceptance (if not confirmed) */}
+            
             {booking.status !== 'confirmed' && (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
                 <TouchableOpacity onPress={() => setAcceptTerms(!acceptTerms)} style={{ marginRight: 8 }}>
                   <View style={{ width: 24, height: 24, borderWidth: 1, borderColor: '#003366', backgroundColor: acceptTerms ? '#003366' : '#FFF', justifyContent: 'center', alignItems: 'center' }}>
-                    {acceptTerms && <Ionicons name="checkmark" size={18} color="#FFF" />}
-                  </View>
+                  {acceptTerms && <Ionicons name="checkmark" size={18} color="#FFF" />} </View>
                 </TouchableOpacity>
                 <Text>I accept the Terms and Conditions</Text>
               </View>
             )}
+            
             {/* Feedback Form */}
             {showFeedbackForm && (
               <View style={{ marginVertical: 16, padding: 8, backgroundColor: '#f8f8ff', borderRadius: 8 }}>
@@ -496,42 +554,40 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
                   ))}
                 </View>
                 <Text>Comment:</Text>
-                <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 4, marginVertical: 4 }}>
-                  <TextInput
-                    style={{ minHeight: 40, padding: 4 }}
-                    value={feedbackComment}
-                    onChangeText={setFeedbackComment}
-                    editable
-                    multiline
-                  />
-                </View>
-                <TouchableOpacity style={styles.button} onPress={submitFeedback}>
-                  <Text style={styles.buttonText}>Submit Feedback</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={feedbackComment}
+                  onChangeText={setFeedbackComment}
+                  multiline
+                  placeholder="Share your experience..."
+                />
+                <TouchableOpacity style={styles.submitButton} onPress={submitFeedback}>
+                  <Text style={styles.submitButtonText}>Submit Feedback</Text>
                 </TouchableOpacity>
               </View>
             )}
+            
             {/* Damage Report Form */}
             {showDamageForm && (
               <View style={{ marginVertical: 16, padding: 8, backgroundColor: '#fff0f0', borderRadius: 8 }}>
                 <Text style={styles.sectionTitle}>Damage Report</Text>
                 <Text>Description:</Text>
-                <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 4, marginVertical: 4 }}>
-                  <TextInput
-                    style={{ minHeight: 40, padding: 4 }}
-                    onChangeText={setDamageDescription}
-                    editable
-                    multiline
-                  >{damageDescription}
-                  </TextInput>
-                </View>
-                {/* TODO: Add image picker for damageImages */}
-                <TouchableOpacity style={styles.button} onPress={submitDamage}>
-                  <Text style={styles.buttonText}>Submit Damage Report</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={damageDescription}
+                  onChangeText={setDamageDescription}
+                  multiline
+                  placeholder="Describe the damage..."
+                />
+                {/* TODO: Implement image upload functionality */}
+                <TouchableOpacity style={styles.submitButton} onPress={submitDamageReport}>
+                  <Text style={styles.submitButtonText}>Submit Damage Report</Text>
                 </TouchableOpacity>
               </View>
             )}
           </>
         )}
+        
         {booking.status !== 'canceled' && (
           <TouchableOpacity 
             style={styles.cancelButton} 
@@ -547,8 +603,7 @@ const BookingDetailsScreen = ({ userType = 'user' }: { userType?: 'user' | 'comp
         )}
       </ScrollView>
     </View>
-  );
-};
+  );}
 
 const styles = StyleSheet.create({
   container: {
@@ -670,7 +725,7 @@ const styles = StyleSheet.create({
   statusCompleted: {
     backgroundColor: "#5AC8FA",
   },
-  statusCancelled: {
+  statuscanceled: {
     backgroundColor: "#FF3B30",
   },
   sectionTitle: {
@@ -695,6 +750,27 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 4,
+    padding: 8,
+    marginVertical: 8,
+    minHeight: 100,
+    backgroundColor: '#FFF',
+    color: '#000',
+  },
+  submitButton: {
+    backgroundColor: '#003366',
+    padding: 12,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  submitButtonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
   },
 });
 

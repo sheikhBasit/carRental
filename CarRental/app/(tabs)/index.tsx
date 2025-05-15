@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TextInput, ScrollView, Image, TouchableOpacity, 
-  StyleSheet, ActivityIndicator, Modal, Pressable, Platform, Alert
+  StyleSheet, ActivityIndicator, Modal, Pressable, Platform, Alert,RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,6 +14,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { apiFetch } from '@/utils/api';
   
+type BlackoutPeriod = {
+  from: string; // ISO date string
+  to: string;   // ISO date string
+  reason?: string;
+};
 type CarProps = {
   _id: string;
   manufacturer: string;
@@ -42,7 +47,8 @@ type CarProps = {
   year?: number;
   features?: string[];
   fuelType?: string;
-  blackoutPeriods?: string[];
+  blackoutPeriods?: BlackoutPeriod[];
+
 };
 
 const ExploreScreen = () => {
@@ -55,6 +61,7 @@ const ExploreScreen = () => {
   const [error, setError] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [userCity, setUserCity] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   const [minRent, setMinRent] = useState('');
   const [maxRent, setMaxRent] = useState('');
@@ -79,6 +86,11 @@ const ExploreScreen = () => {
   const [isFiltered, setIsFiltered] = useState(false);
 
   const { likedVehicles, toggleLike } = useLikedVehicles();
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    fetchVehicles().then(() => setRefreshing(false));
+  }, []);
 
   useEffect(() => {
     fetchManufacturers();
@@ -126,6 +138,22 @@ const ExploreScreen = () => {
       setLoading(false);
     }
   };
+  const isNotBlackedOut = (vehicle: CarProps) => {
+    if (!vehicle.blackoutPeriods || vehicle.blackoutPeriods.length === 0) {
+      return true; // No blackout periods = always available
+    }
+  
+    const selectedStart = fromDate.getTime();
+    const selectedEnd = toDate.getTime();
+  
+    return !vehicle.blackoutPeriods.some(period => {
+      const blackoutStart = new Date(period.from).getTime();
+      const blackoutEnd = new Date(period.to).getTime();
+      
+      // Check if date ranges overlap
+      return selectedStart <= blackoutEnd && selectedEnd >= blackoutStart;
+    });
+  };
 
   const handleBookNow = (car: CarProps) => {
     try {
@@ -142,6 +170,51 @@ const ExploreScreen = () => {
     }
   };
 
+  // Add this function to validate dates
+  interface ValidateDatesParams {
+    fromDate: Date;
+    toDate: Date;
+  }
+  
+  const validateDates = ({
+    fromDate,
+    toDate
+  }: ValidateDatesParams): boolean => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Today at midnight
+  
+    // Create date objects without time components for comparison
+    const fromDay = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+    const toDay = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+  
+    // Check if dates are in the past
+    if (fromDay < today) {
+      Alert.alert(
+        'Invalid Date',
+        'From date cannot be in the past. Please select today or a future date.'
+      );
+      return false;
+    }
+  
+    if (toDay < today) {
+      Alert.alert(
+        'Invalid Date',
+        'To date cannot be in the past. Please select today or a future date.'
+      );
+      return false;
+    }
+  
+    // Check date ordering
+    if (fromDay > toDay) {
+      Alert.alert(
+        'Invalid Dates',
+        'From date must be before or the same as To date'
+      );
+      return false;
+    }
+  
+    return true;
+  };
   const handleManufacturerSelect = (manufacturer: string) => {
     setSelectedManufacturer(manufacturer);
     setSelectedModel('All');
@@ -182,6 +255,8 @@ const ExploreScreen = () => {
     setMaxRent('');
     setSelectedCity(userCity);
     setSearchQuery('');
+    setFromDate(new Date());
+    setToDate(new Date());
     setIsFiltered(false);
     setVehicles(allVehicles);
   };
@@ -219,7 +294,31 @@ const ExploreScreen = () => {
     return ['All', ...Array.from(new Set(years)).sort((a = 0, b = 0) => b - a).map(String)];
   };
   const years = getYears();
+// Helper to get day name from date
+const getDayName = (date: Date) => {
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  return days[date.getDay()];
+};
+const isVehicleAvailable = (vehicle: CarProps) => {
+  // First check blackout periods
+  if (!isNotBlackedOut(vehicle)) {
+    return false;
+  }
 
+  // Then check availability days
+  const currentDate = new Date(fromDate);
+  const endDate = new Date(toDate);
+  
+  while (currentDate <= endDate) {
+    const dayName = getDayName(currentDate).toLowerCase();
+    if (!vehicle.availability.days.map(d => d.toLowerCase()).includes(dayName)) {
+      return false;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  return true;
+};
+// Check if vehicle is available for selected dates
   // const getAllFeatures = () => {
   //   const features = allVehicles.flatMap(v => v.features || []);
   //   return Array.from(new Set(features));
@@ -247,40 +346,51 @@ const ExploreScreen = () => {
       selectedVehicleType,
       searchQuery
     });
+    if (fromDate && toDate && !validateDates({fromDate, toDate})) {
+      return;
+    }
   
     let filtered = [...allVehicles];
-    
-    // Check if any filter is active
-    const hasActiveFilters = Boolean(
-      (manufacturer && manufacturer !== 'All') ||
-      (city && city !== 'All' && city !== userCity) ||
-      (minRentVal && minRentVal !== '') ||
-      (maxRentVal && maxRentVal !== '') ||
-      (minYear && minYear !== 'All') ||
-      (maxYear && maxYear !== 'All') ||
-      (minCapacity && minCapacity !== '') ||
-      (selectedTransmission && selectedTransmission !== 'All') ||
-      (selectedFuelType && selectedFuelType !== 'All') ||
-      (selectedFeatures.length > 0) ||
-      (selectedModel && selectedModel !== 'All') ||
-      (selectedVehicleType && selectedVehicleType !== 'All') ||
-      searchQuery.trim().length > 0
-    );
-    
-    setIsFiltered(hasActiveFilters);
-    
-    // Apply search filter first
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(v => 
-        v.manufacturer.toLowerCase().includes(query) ||
-        v.model.toLowerCase().includes(query) ||
-        v.company?.companyName?.toLowerCase().includes(query) ||
-        v.vehicleType?.toLowerCase().includes(query) ||
-        v.cities.some(c => c.name.toLowerCase().includes(query))
-      );
+    if (fromDate && toDate) {
+      filtered = filtered.filter(v => isVehicleAvailable(v));
     }
-    
+  // Check if any filter is active
+  const hasActiveFilters = Boolean(
+    (manufacturer && manufacturer !== 'All') ||
+    (city && city !== 'All' && city !== userCity) ||
+    (minRentVal && minRentVal !== '') ||
+    (maxRentVal && maxRentVal !== '') ||
+    (minYear && minYear !== 'All') ||
+    (maxYear && maxYear !== 'All') ||
+    (minCapacity && minCapacity !== '') ||
+    (selectedTransmission && selectedTransmission !== 'All') ||
+    (selectedFuelType && selectedFuelType !== 'All') ||
+    (selectedFeatures.length > 0) ||
+    (selectedModel && selectedModel !== 'All') ||
+    (selectedVehicleType && selectedVehicleType !== 'All') ||
+    searchQuery.trim().length > 0 ||
+    fromDate ||
+    toDate
+  );
+  
+  setIsFiltered(hasActiveFilters);
+  
+  // Apply search filter first
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
+    filtered = filtered.filter(v => 
+      v.manufacturer.toLowerCase().includes(query) ||
+      v.model.toLowerCase().includes(query) ||
+      v.company?.companyName?.toLowerCase().includes(query) ||
+      v.vehicleType?.toLowerCase().includes(query) ||
+      v.cities.some(c => c.name.toLowerCase().includes(query))
+    );
+  }
+  
+  // Apply date availability filter if dates are selected
+  if (fromDate && toDate) {
+    filtered = filtered.filter(v => isVehicleAvailable(v));
+  } 
     // Then apply other filters
     if (manufacturer && manufacturer !== 'All') {
       filtered = filtered.filter(v => 
@@ -380,7 +490,16 @@ const ExploreScreen = () => {
         {loading && <ActivityIndicator size="large" color="white" />}
         {/* {error ? <Text style={styles.errorText}>{error}</Text> : null} */}
 
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#ADD8E6']} // Customize the loading indicator color
+            tintColor="#ADD8E6" // For iOS
+          />
+        }
+        >
           {vehicles.length > 0 ? (
             vehicles.map((car) => (
               <View key={car._id} style={styles.card}>
@@ -638,8 +757,11 @@ const ExploreScreen = () => {
                   }}
                 />
               )}
+              {fromDate > toDate && (
+  <Text style={styles.errorText}>From date must be before To date</Text>
+)}
               {/* From Time */}
-              <Text style={styles.filterLabel}>From Time</Text>
+              {/* <Text style={styles.filterLabel}>From Time</Text>
               <TouchableOpacity style={styles.filterInput} onPress={() => setShowFromTimePicker(true)}>
                 <Text style={styles.input}>{fromTime || 'Select from time'}</Text>
               </TouchableOpacity>
@@ -657,9 +779,9 @@ const ExploreScreen = () => {
                     }
                   }}
                 />
-              )}
+              )} */}
               {/* To Time */}
-              <Text style={styles.filterLabel}>To Time</Text>
+              {/* <Text style={styles.filterLabel}>To Time</Text>
               <TouchableOpacity style={styles.filterInput} onPress={() => setShowToTimePicker(true)}>
                 <Text style={styles.input}>{toTime || 'Select to time'}</Text>
               </TouchableOpacity>
@@ -677,7 +799,7 @@ const ExploreScreen = () => {
                     }
                   }}
                 />
-              )}
+              )} */}
               {/* Rent Range */}
               <Text style={styles.filterLabel}>Rent Range</Text>
               <View style={styles.rangeContainer}>
@@ -723,6 +845,10 @@ const ExploreScreen = () => {
                 <TouchableOpacity 
                   style={[styles.modalButton, styles.applyButton]}
                   onPress={() => {
+                    if (fromDate > toDate) {
+                      Alert.alert('Invalid Dates', 'From date must be before To date');
+                      return;
+                    }
                     applyFilters();
                     setShowFilters(false);
                     setSearchQuery('');

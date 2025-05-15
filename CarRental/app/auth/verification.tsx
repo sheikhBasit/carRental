@@ -32,14 +32,16 @@ const VerificationCodeScreen: React.FC = () => {
       });
 
       const result = await response.json();
-      await AsyncStorage.setItem('accessToken', result.token);
-
-      if (response.ok) {
-        Alert.alert("Success", "Verification successful! Redirecting...");
-        router.push("/(tabs)"); // Navigate to the next screen
+      console.log("result",result);
+      console.log("result.token",result.token);
+      console.log("result.success",result.success);
+      if (result.success && result.token) {
+        await AsyncStorage.setItem('accessToken', result.token); // ✅ Only store if successful
+        router.push("/auth/loginScreen");
       } else {
         Alert.alert("Error", result.message || "Verification failed. Please try again.");
       }
+      
     } catch (error) {
       console.log("Error verifying code:", error);
       Alert.alert("Error", "Something went wrong. Please try again.");

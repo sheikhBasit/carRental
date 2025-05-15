@@ -260,9 +260,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         cityName: intercity ? "" : cityName,
         status: "pending",
         termsAccepted: true,
-        bookingChannel:'mobile',
+        bookingChannel:'mobile',                                                                                                            
         totalAmount: totalAmount,
-        paymentStatus:"pending"
+        paymentStatus:"paid"
       };
       console.log('[Payment] Booking payload:', bookingPayload);
   
@@ -498,22 +498,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   );
 };
 
-const getDayOfWeek = (date: Date): string => {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  return days[date.getDay()];
-};
-
-const isTimeInRange = (time: string, startTime: string, endTime: string): boolean => {
-  const [hours, minutes] = time.split(':').map(Number);
-  const [startHours, startMinutes] = startTime.split(':').map(Number);
-  const [endHours, endMinutes] = endTime.split(':').map(Number);
-
-  const timeInMinutes = hours * 60 + minutes;
-  const startInMinutes = startHours * 60 + startMinutes;
-  const endInMinutes = endHours * 60 + endMinutes;
-
-  return timeInMinutes >= startInMinutes && timeInMinutes <= endInMinutes;
-};
 
 const checkVehicleAvailability = (vehicle: any, fromDate: Date, toDate: Date, fromTime: string, toTime: string): boolean => {
   console.log('--- Starting availability check ---');
@@ -533,45 +517,54 @@ const checkVehicleAvailability = (vehicle: any, fromDate: Date, toDate: Date, fr
     return true;
   }
 
+  // Convert booking times to Date objects with time components
+  const bookingStart = new Date(fromDate);
+  const [fromHours, fromMins] = fromTime.split(':').map(Number);
+  bookingStart.setHours(fromHours, fromMins, 0, 0);
+  
+  const bookingEnd = new Date(toDate);
+  const [toHours, toMins] = toTime.split(':').map(Number);
+  bookingEnd.setHours(toHours, toMins, 0, 0);
+
+  console.log('Booking time range (with times):', {
+    bookingStart: bookingStart.toISOString(),
+    bookingEnd: bookingEnd.toISOString()
+  });
+
   // Blackout period check
   if (vehicle.blackoutPeriods && vehicle.blackoutPeriods.length > 0) {
     console.log('Checking blackout periods...');
     
-    const bookingStart = new Date(fromDate);
-    const [fromHours, fromMins] = fromTime.split(':').map(Number);
-    bookingStart.setHours(fromHours, fromMins);
-    
-    const bookingEnd = new Date(toDate);
-    const [toHours, toMins] = toTime.split(':').map(Number);
-    bookingEnd.setHours(toHours, toMins);
-
-    console.log('Booking time range:', {
-      bookingStart: bookingStart.toISOString(),
-      bookingEnd: bookingEnd.toISOString()
-    });
-
     for (const period of vehicle.blackoutPeriods) {
+      // Ensure blackout periods are properly parsed as Date objects
       const blackoutStart = new Date(period.from);
       const blackoutEnd = new Date(period.to);
       
+      // Reset seconds and milliseconds to avoid comparison issues
+      blackoutStart.setSeconds(0, 0);
+      blackoutEnd.setSeconds(0, 0);
+
       console.log('Checking against blackout period:', {
         blackoutStart: blackoutStart.toISOString(),
         blackoutEnd: blackoutEnd.toISOString(),
         reason: period.reason
       });
 
-      // Check if booking overlaps with blackout period
-      const overlapStart = bookingStart >= blackoutStart && bookingStart <= blackoutEnd;
-      const overlapEnd = bookingEnd >= blackoutStart && bookingEnd <= blackoutEnd;
-      const containsBlackout = bookingStart <= blackoutStart && bookingEnd >= blackoutEnd;
+      // Check if booking overlaps with blackout period in any way
+      const bookingStartsDuringBlackout = bookingStart >= blackoutStart && bookingStart <= blackoutEnd;
+      const bookingEndsDuringBlackout = bookingEnd >= blackoutStart && bookingEnd <= blackoutEnd;
+      const bookingEncompassesBlackout = bookingStart <= blackoutStart && bookingEnd >= blackoutEnd;
+      const blackoutEncompassesBooking = blackoutStart <= bookingStart && blackoutEnd >= bookingEnd;
 
       console.log('Overlap checks:', {
-        overlapStart,
-        overlapEnd,
-        containsBlackout
+        bookingStartsDuringBlackout,
+        bookingEndsDuringBlackout,
+        bookingEncompassesBlackout,
+        blackoutEncompassesBooking
       });
 
-      if (overlapStart || overlapEnd || containsBlackout) {
+      if (bookingStartsDuringBlackout || bookingEndsDuringBlackout || 
+          bookingEncompassesBlackout || blackoutEncompassesBooking) {
         console.log('❌ Blackout period conflict found');
         return false;
       }
@@ -584,7 +577,12 @@ const checkVehicleAvailability = (vehicle: any, fromDate: Date, toDate: Date, fr
   // Regular availability check
   console.log('Checking regular availability...');
   const currentDate = new Date(fromDate);
-  while (currentDate <= toDate) {
+  currentDate.setHours(0, 0, 0, 0); // Normalize time for day comparison
+  
+  const endDate = new Date(toDate);
+  endDate.setHours(0, 0, 0, 0);
+
+  while (currentDate <= endDate) {
     const dayOfWeek = getDayOfWeek(currentDate);
     console.log(`Checking ${currentDate.toISOString()} (${dayOfWeek})`);
     
@@ -594,7 +592,7 @@ const checkVehicleAvailability = (vehicle: any, fromDate: Date, toDate: Date, fr
       return false;
     }
 
-    // Check time availability for start/end dates
+    // Check time availability for start date
     if (currentDate.getTime() === fromDate.getTime()) {
       console.log('Checking start time availability:', {
         fromTime,
@@ -606,6 +604,8 @@ const checkVehicleAvailability = (vehicle: any, fromDate: Date, toDate: Date, fr
         return false;
       }
     }
+    
+    // Check time availability for end date
     if (currentDate.getTime() === toDate.getTime()) {
       console.log('Checking end time availability:', {
         toTime,
@@ -623,6 +623,25 @@ const checkVehicleAvailability = (vehicle: any, fromDate: Date, toDate: Date, fr
   
   console.log('✅ All availability checks passed');
   return true;
+};
+
+// Helper function to check if time is within range
+const isTimeInRange = (time: string, startTime: string, endTime: string): boolean => {
+  const [hours, minutes] = time.split(':').map(Number);
+  const [startHours, startMinutes] = startTime.split(':').map(Number);
+  const [endHours, endMinutes] = endTime.split(':').map(Number);
+
+  const timeInMinutes = hours * 60 + minutes;
+  const startInMinutes = startHours * 60 + startMinutes;
+  const endInMinutes = endHours * 60 + endMinutes;
+
+  return timeInMinutes >= startInMinutes && timeInMinutes <= endInMinutes;
+};
+
+// Helper function to get day of week
+const getDayOfWeek = (date: Date): string => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[date.getDay()];
 };
 const checkDriverAvailability = (driver: any, fromDate: Date, toDate: Date, fromTime: string, toTime: string): boolean => {
   if (!driver.availability) return true; // If no availability set, assume always available
@@ -726,9 +745,9 @@ const getAvailableDrivers = (drivers: Driver[], fromDate: Date, toDate: Date, fr
   });
 };
 
-const isDateBlackedOut = (date: Date, blackoutPeriods: Array<{from: Date, to: Date}>): boolean => {
+const isDateBlackedOut = (date: Date, blackoutPeriods: Array<{from: string | Date, to: string | Date}>): boolean => {
   if (!blackoutPeriods || blackoutPeriods.length === 0) return false;
-  console.log("BV",blackoutPeriods)
+  
   const checkDate = date.getTime();
   
   return blackoutPeriods.some(period => {
@@ -1130,10 +1149,12 @@ const BookNowScreen = () => {
 
   const handleConfirmBooking = async () => {
     try {
+      console.log("//////////////////////////////////////////////////////////");
       console.log("Blackout period found for date:", car.blackoutPeriods);
       console.log("selected date:", fromDate);
       console.log("selected date:", toDate);
-
+      console.log("selected time:", fromTime);
+      console.log("selected time:", toTime);
 
       // Check if all days in the booking period are available
       if (!checkAllDaysAvailable(fromDate, toDate, car.availability.days)) {
@@ -1161,7 +1182,7 @@ const BookNowScreen = () => {
 
       // Check vehicle availability
       if (!checkVehicleAvailability(car, fromDate, toDate, formatTime(fromTime), formatTime(toTime))) {
-        console.log("Vehicle Not Available",checkVehicleAvailability(car, fromDate, toDate, formatTime(fromTime), formatTime(toTime)));
+        console.log("Vehicle Not Available    4563",checkVehicleAvailability(car, fromDate, toDate, formatTime(fromTime), formatTime(toTime)));
         Alert.alert(
           "Vehicle Not Available",
           "The vehicle is not available for the selected dates and times. Please check the vehicle's availability schedule."

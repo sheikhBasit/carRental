@@ -136,12 +136,6 @@ const LoginScreen: React.FC = () => {
             )}
           </TouchableOpacity>
 
-          <Text style={styles.orText}>or sign up with</Text>
-          <View style={styles.socialIcons}>
-            <TouchableOpacity onPress={() => console.log('Google Login')}>
-              <Image source={require('../../assets/images/google.png')} style={styles.icon} />
-            </TouchableOpacity>
-          </View>
 
           <Text style={styles.signUpText}>
             Don't have an account?{' '}

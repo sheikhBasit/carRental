@@ -448,7 +448,7 @@ const AddCarScreen = () => {
           },
         ]);
       } else {
-        Alert.alert('Error', result.code || 'Something went wrong');
+        Alert.alert('Error', result.message || 'Something went wrong');
       }
     } catch (error: any) {
       Alert.alert('Error', 'Failed to post the car.');

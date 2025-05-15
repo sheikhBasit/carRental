@@ -9,19 +9,32 @@ import {
   Text,
   ActivityIndicator,
   Image,
+  TextInput,
+  Modal,
+  FlatList,
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import InputField from "../../components/ui/InputField";
 import PakistaniProvinceSelector from "../../components/ui/ProvinceSelector";
-import { loadCity, loadUserId, saveCity } from "@/utils/storageUtil";
+import { loadCity, loadUserId, loadUserName, saveCity } from "@/utils/storageUtil";
 import * as Notifications from "expo-notifications";
 import { AppConstants } from "@/constants/appConstants";
-import ProvinceSelector from "@/components/ui/ProvinceSelector";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type ImageUri = string | null;
+
+// City data by province
+const pakistaniCitiesByProvince = {
+  "Punjab": ["Lahore", "Faisalabad", "Rawalpindi", "Multan", "Gujranwala", "Sialkot", "Bahawalpur", "Sargodha", "Jhang", "Sheikhupura"],
+  "Sindh": ["Karachi", "Hyderabad", "Sukkur", "Larkana", "Nawabshah", "Mirpur Khas", "Thatta", "Jacobabad"],
+  "Khyber Pakhtunkhwa": ["Peshawar", "Abbottabad", "Mardan", "Swat", "Nowshera", "Charsadda", "Kohat", "Bannu"],
+  "Balochistan": ["Quetta", "Gwadar", "Turbat", "Khuzdar", "Chaman", "Sibi", "Loralai", "Zhob"],
+  "Gilgit-Baltistan": ["Gilgit", "Skardu", "Hunza", "Nagar", "Shigar", "Astore", "Ghanche"],
+  "Azad Jammu and Kashmir": ["Muzaffarabad", "Mirpur", "Bhimber", "Kotli", "Rawalakot", "Bagh", "Hattian Bala"]
+};
 
 const SignUpScreen: React.FC = () => {
   const [name, setName] = useState("");
@@ -35,24 +48,21 @@ const SignUpScreen: React.FC = () => {
   const [displayCnic, setDisplayCnic] = useState("");
   const [cnicFront, setCnicFront] = useState<ImageUri>(null);
   const [cnicBack, setCnicBack] = useState<ImageUri>(null);
-  const [profilePic, setProfilePic] = useState<ImageUri>(null); // Added for profile picture
-  const [fcmToken, setFcmToken] = useState<string | null>(null); // Added for FCM token
+  const [profilePic, setProfilePic] = useState<ImageUri>(null);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCityPicker, setShowCityPicker] = useState(false);
 
-  // Load city from AsyncStorage when the component mounts
   useEffect(() => {
     loadCity().then(setCity);
-    
-    // Request notification permissions and get FCM token
     registerForPushNotifications();
   }, []);
 
-  // Function to register for push notifications and get FCM token
   const registerForPushNotifications = async () => {
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
@@ -63,7 +73,6 @@ const SignUpScreen: React.FC = () => {
         return;
       }
       
-      // Get the token
       const token = (await Notifications.getExpoPushTokenAsync()).data;
       setFcmToken(token);
     } catch (error) {
@@ -71,7 +80,6 @@ const SignUpScreen: React.FC = () => {
     }
   };
 
-  // Function to pick an image
   const pickImage = async (setImage: React.Dispatch<React.SetStateAction<ImageUri>>) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -85,30 +93,17 @@ const SignUpScreen: React.FC = () => {
     }
   };
 
-  // Handle Sign-Up
   const handleSignUp = async () => {
-    // Start loading
     setIsLoading(true);
 
-    // Validation Checks
     const nameRegex = /^[a-zA-Z\s]+$/;
-    const phoneRegex = /^03\d{9}$/; // 11-digit number starting with 03
-    const cnicRegex = /^\d{13}$/; // Exactly 13 digits
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/; // Standard email format
-    const passwordRegex = /^.{8,20}$/; // Password must be between 8-20 characters
-   
+    const phoneRegex = /^03\d{9}$/;
+    const cnicRegex = /^\d{13}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const passwordRegex = /^.{8,20}$/;
+
     if (!nameRegex.test(name)) {
       Alert.alert("Invalid Input", "Name must contain only letters.");
-      setIsLoading(false);
-      return;
-    }
-    if (!nameRegex.test(city)) {
-      Alert.alert("Invalid Input", "City must contain only letters.");
-      setIsLoading(false);
-      return;
-    }
-    if (!nameRegex.test(province)) {
-      Alert.alert("Invalid Input", "Province must contain only letters.");
       setIsLoading(false);
       return;
     }
@@ -122,7 +117,6 @@ const SignUpScreen: React.FC = () => {
       setIsLoading(false);
       return;
     }
-    
     if (!emailRegex.test(email)) {
       Alert.alert("Invalid Input", "Please enter a valid email address.");
       setIsLoading(false);
@@ -133,15 +127,12 @@ const SignUpScreen: React.FC = () => {
       setIsLoading(false);
       return;
     }
-  
-    // Check if all required images are selected
-    if (!cnicFront || !cnicBack ) {
-      Alert.alert("Error", "Please upload all required images (CNIC  front and back).");
+    if (!cnicFront || !cnicBack) {
+      Alert.alert("Error", "Please upload all required images (CNIC front and back).");
       setIsLoading(false);
       return;
     }
 
-    // Prepare FormData
     const formData = new FormData();
     formData.append("name", name);
     formData.append("email", email);
@@ -151,13 +142,9 @@ const SignUpScreen: React.FC = () => {
     formData.append("city", city);
     formData.append("province", province);
     formData.append("cnic", cnic);
-    
-    // Add FCM token if available
-    if (fcmToken) {
-      formData.append("fcmToken", fcmToken);
-    }
 
-    // Append profile picture if selected
+    if (fcmToken) formData.append("fcmToken", fcmToken);
+
     if (profilePic) {
       formData.append("profilePic", {
         uri: profilePic,
@@ -166,7 +153,6 @@ const SignUpScreen: React.FC = () => {
       } as any);
     }
 
-    // Append images to FormData
     formData.append("cnicFront", {
       uri: cnicFront,
       name: "cnicFront.jpg",
@@ -189,15 +175,12 @@ const SignUpScreen: React.FC = () => {
 
       const result = await response.json();
       if (response.ok) {
-        Alert.alert("Success", "Sign-up successful! Redirecting...");
         const { user } = result;
-        const userId = user._id; // Document ID of the newly created user
         await AsyncStorage.setItem('userEmail', user.email);
-        loadUserId().then(userId);
-        // Store the user ID in local storage or state for future use
-        console.log("User created successfully! User ID:", userId);
-        
-        router.push("./verification"); // Redirect to verification screen
+        loadUserId().then(user._id);
+        loadCity().then(user.city);
+        loadUserName().then(user.name);
+        router.push("./verification");
       } else {
         Alert.alert("Error", result.message || "Sign-up failed. Please try again.");
       }
@@ -205,9 +188,23 @@ const SignUpScreen: React.FC = () => {
       console.log("Error signing up:", error);
       Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
-      setIsLoading(false); // Stop loading regardless of success or failure
+      setIsLoading(false);
     }
   };
+
+  const cities = province ? pakistaniCitiesByProvince[province as keyof typeof pakistaniCitiesByProvince] || [] : [];
+
+  const renderCityItem = ({ item }: { item: string }) => (
+    <TouchableOpacity
+      style={styles.cityItem}
+      onPress={() => {
+        setCity(item);
+        setShowCityPicker(false);
+      }}
+    >
+      <Text>{item}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -219,7 +216,6 @@ const SignUpScreen: React.FC = () => {
       </ImageBackground>
 
       <View style={styles.formContainer}>
-        {/* Profile Picture Upload */}
         <Text style={styles.imageLabel}>Profile Picture (Optional)</Text>
         <TouchableOpacity 
           style={styles.profilePicContainer} 
@@ -236,87 +232,121 @@ const SignUpScreen: React.FC = () => {
         </TouchableOpacity>
 
         <InputField
-        label="Name"
-        placeholder="Enter your name"
-        value={name}
-        onChangeText={setName}
-        keyboardType="default"
-        maxLength={50}
-        autoCapitalize="words"
-      />
+          label="Name"
+          placeholder="Enter your name"
+          value={name}
+          onChangeText={setName}
+          keyboardType="default"
+          maxLength={50}
+          autoCapitalize="words"
+        />
         <InputField
-        label="Email"
-        placeholder="Enter your email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
+          label="Email"
+          placeholder="Enter your email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
         <InputField
-        label="Password"
-        placeholder="Enter password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        maxLength={20}
-      />
+          label="Password"
+          placeholder="Enter password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          maxLength={20}
+        />
         <InputField
-        label="Phone Number"
-        placeholder="Enter phone number"
-        value={phNum}
-        onChangeText={setPhNum}
-        keyboardType="numeric"
-        maxLength={11}
-      />
+          label="Phone Number"
+          placeholder="Enter phone number"
+          value={phNum}
+          onChangeText={setPhNum}
+          keyboardType="numeric"
+          maxLength={11}
+        />
         <InputField
-        label="Address"
-        placeholder="Enter address"
-        value={address}
-        onChangeText={setAddress}
-        keyboardType="default"
-        multiline
-        maxLength={200}
-      />
+          label="Address"
+          placeholder="Enter address"
+          value={address}
+          onChangeText={setAddress}
+          keyboardType="default"
+          multiline
+          maxLength={200}
+        />
+        
         <PakistaniProvinceSelector
-        value={province}
-        onChange={setProvince}
-      />
+          value={province}
+          onChange={setProvince}
+        />
+        
+        <Text style={styles.label}>City</Text>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder={province ? "Select your city" : "Select province first"}
+            value={city}
+            onChangeText={setCity}
+            onFocus={() => setShowCityPicker(false)}
+            editable={!!province}
+          />
+          <TouchableOpacity 
+            style={styles.pickerButton}
+            onPress={() => province && setShowCityPicker(true)}
+            disabled={!province}
+          >
+            <Ionicons name="chevron-down" size={20} color={province ? "#003366" : "#ccc"} />
+          </TouchableOpacity>
+        </View>
+
+        <Modal
+          visible={showCityPicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowCityPicker(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <FlatList
+                data={cities}
+                renderItem={renderCityItem}
+                keyExtractor={(item) => item}
+                ListHeaderComponent={
+                  <Text style={styles.modalHeader}>Select a City</Text>
+                }
+              />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowCityPicker(false)}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
         <InputField
-        label="City"
-        placeholder="Enter city"
-        value={city}
-        onChangeText={setCity}
-        keyboardType="default"
-        maxLength={50}
-        autoCapitalize="words"
-      />
-    
-        <InputField
-        label="CNIC Number"
-        placeholder="Enter CNIC number"
-        value={displayCnic}
-        onChangeText={(value) => {
-            // Remove all non-digit characters
-            const digitsOnly = value.replace(/\D/g, '');
-            // Format as XXXXX-XXXXXXX-X
-            let formatted = '';
-            if (digitsOnly.length > 0) {
-              formatted = digitsOnly.slice(0, Math.min(5, digitsOnly.length));
-            }
-            if (digitsOnly.length > 5) {
-              formatted += '-' + digitsOnly.slice(5, Math.min(12, digitsOnly.length));
-            }
-            if (digitsOnly.length > 12) {
-              formatted += '-' + digitsOnly.slice(12);
-            }
-            setDisplayCnic(formatted);
-            setCnic(digitsOnly);
-          }}
-        keyboardType="numeric"
-        maxLength={15} // Increased to accommodate formatted CNIC
-      />
+          label="CNIC Number"
+          placeholder="Enter CNIC number"
+          value={displayCnic}
+          onChangeText={(value) => {
+              const digitsOnly = value.replace(/\D/g, '');
+              let formatted = '';
+              if (digitsOnly.length > 0) {
+                formatted = digitsOnly.slice(0, Math.min(5, digitsOnly.length));
+              }
+              if (digitsOnly.length > 5) {
+                formatted += '-' + digitsOnly.slice(5, Math.min(12, digitsOnly.length));
+              }
+              if (digitsOnly.length > 12) {
+                formatted += '-' + digitsOnly.slice(12);
+              }
+              setDisplayCnic(formatted);
+              setCnic(digitsOnly);
+            }}
+          keyboardType="numeric"
+          maxLength={15}
+        />
      
-        {/* Image Upload Sections */}
         <Text style={styles.imageLabel}>CNIC Front</Text>
         <TouchableOpacity style={styles.imageUploadButton} onPress={() => pickImage(setCnicFront)}>
           <Text style={styles.imageUploadText}>{cnicFront ? "Change Image" : "Upload Image"}</Text>
@@ -327,8 +357,6 @@ const SignUpScreen: React.FC = () => {
           <Text style={styles.imageUploadText}>{cnicBack ? "Change Image" : "Upload Image"}</Text>
         </TouchableOpacity>
 
-    
-        {/* Sign Up Button with Loader */}
         <TouchableOpacity
           style={[styles.button, isLoading && styles.buttonDisabled]}
           onPress={handleSignUp}
@@ -359,7 +387,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   buttonDisabled: {
-    backgroundColor: "#cccccc", // Disabled button color
+    backgroundColor: "#cccccc",
   },
   buttonText: {
     color: "white",
@@ -389,6 +417,63 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
     justifyContent: "center",
     alignItems: "center",
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#333',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    backgroundColor: '#fff',
+    marginBottom: 15,
+  },
+  input: {
+    flex: 1,
+    padding: 10,
+  },
+  pickerButton: {
+    padding: 10,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    maxHeight: '60%',
+  },
+  modalHeader: {
+    padding: 15,
+    fontSize: 18,
+    fontWeight: 'bold',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    textAlign: 'center',
+  },
+  cityItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  closeButton: {
+    padding: 15,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  closeButtonText: {
+    color: '#003366',
+    fontWeight: 'bold',
   },
 });
 

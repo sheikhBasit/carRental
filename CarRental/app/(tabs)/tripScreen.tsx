@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Image, FlatList, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, Image, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl } from "react-native";
 import { Button } from "react-native-paper";
 import { router, useLocalSearchParams } from "expo-router";
 import AppLayout from "../screens/AppLayout";
@@ -36,7 +36,7 @@ type CarProps = {
   rentalCompany: string;
   capacity: number;
   status: BookingStatus;
-  bookingData: BookingData; // Now properly typed
+  bookingData: BookingData;
 };
 
 const getStatusColor = (status: BookingStatus) => {
@@ -55,6 +55,7 @@ const TripScreen = () => {
   const [canceledCars, setcanceledCars] = useState<CarProps[]>([]);
   const [ongoingCars, setOngoingCars] = useState<CarProps[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<BookingStatus>("confirmed");
   const { refresh } = useLocalSearchParams<{ refresh: string }>();
 
@@ -74,7 +75,6 @@ const TripScreen = () => {
 
   const fetchBookings = async (status: BookingStatus) => {
     try {
-      setLoading(true);
       const userId = await getStoredUserId();
       if (!userId) {
         console.log("[TripScreen] User ID not found in storage");
@@ -117,17 +117,26 @@ const TripScreen = () => {
       if (status === "ongoing") setOngoingCars([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    console.log("[TripScreen] Manual refresh triggered");
+    setRefreshing(true);
+    fetchBookings(activeTab);
   };
 
   useEffect(() => {
     console.log("[TripScreen] Active tab changed to:", activeTab);
+    setLoading(true);
     fetchBookings(activeTab);
   }, [activeTab]);
 
   useEffect(() => {
     if (refresh === 'true') {
       console.log("[TripScreen] Refresh triggered");
+      setRefreshing(true);
       fetchBookings(activeTab);
     }
   }, [refresh, activeTab]);
@@ -259,6 +268,14 @@ const TripScreen = () => {
             ListEmptyComponent={renderEmptyState}
             onEndReached={() => console.log("[TripScreen] Reached end of list")}
             onEndReachedThreshold={0.5}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#007AFF"]}
+                tintColor="#007AFF"
+              />
+            }
           />
         )}
       </View>
@@ -296,7 +313,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   statusOngoing: {
-    color: '#ff9900', // example: orange
+    color: '#ff9900',
     fontWeight: 'bold',
   },
   carImage: {
@@ -337,13 +354,13 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   statusConfirmed: {
-    color: "#00FF00", // Green for confirmed
+    color: "#00FF00",
   },
   statusCompleted: {
-    color: "#808080", // Gray for completed
+    color: "#808080",
   },
   statuscanceled: {
-    color: "#FF0000", // Red for canceled
+    color: "#FF0000",
   },
   backButton: {
     marginVertical: 20,

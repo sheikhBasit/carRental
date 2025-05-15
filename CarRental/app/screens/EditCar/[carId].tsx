@@ -494,7 +494,7 @@ const EditCarScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
-          <View style={styles.inputGroup}>
+          {/* <View style={styles.inputGroup}>
             <Text style={styles.label}>Company</Text>
             <TextInput
               style={styles.input}
@@ -502,7 +502,7 @@ const EditCarScreen = () => {
               value={carDetails.company}
               onChangeText={(text) => handleChange('company', text)}
             />
-          </View>
+          </View> */}
         </View>
 
         {/* Availability Section */}
